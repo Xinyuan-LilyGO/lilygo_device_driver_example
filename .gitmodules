@@ -1,0 +1,18 @@
+[submodule "libraries/lilygo_device_driver"]
+	path = libraries/lilygo_device_driver
+	url = https://github.com/Xinyuan-LilyGO/lilygo_device_driver.git
+[submodule "libraries/cpp_bus_driver"]
+	path = libraries/cpp_bus_driver
+	url = https://github.com/Llgok/cpp_bus_driver.git
+[submodule "libraries/arduino_cpp_bus_driver"]
+	path = libraries/arduino_cpp_bus_driver
+	url = https://github.com/Llgok/arduino_cpp_bus_driver.git
+[submodule "libraries/radiolib_cpp_bus_driver"]
+	path = libraries/radiolib_cpp_bus_driver
+	url = https://github.com/Llgok/radiolib_cpp_bus_driver.git
+[submodule "libraries/icm20948_we"]
+	path = libraries/icm20948_we
+	url = https://github.com/Llgok/icm20948_we.git
+[submodule "libraries/esp-video-components"]
+	path = libraries/esp-video-components
+	url = https://github.com/espressif/esp-video-components.git

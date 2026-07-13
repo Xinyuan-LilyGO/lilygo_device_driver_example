@@ -1,0 +1,55 @@
+menu "Example Configuration"
+
+    choice
+        prompt "Select the camera type"
+        default CAMERA_TYPE_OV2710
+        config CAMERA_TYPE_SC2336
+            bool "SC2336"
+        config CAMERA_TYPE_OV2710
+            bool "OV2710"
+        config CAMERA_TYPE_OV5645
+            bool "OV5645"
+    endchoice
+
+    choice
+        prompt "Select the color format of the screen"
+        default SCREEN_PIXEL_FORMAT_RGB565
+        config SCREEN_PIXEL_FORMAT_RGB565
+            bool "RGB565"
+        config SCREEN_PIXEL_FORMAT_RGB888
+            bool "RGB888"
+    endchoice
+
+    choice
+        prompt "Select the color format of the camera"
+        default CAMERA_PIXEL_FORMAT_RGB565
+        config CAMERA_PIXEL_FORMAT_RGB565
+            bool "RGB565"
+        config CAMERA_PIXEL_FORMAT_RGB888
+            bool "RGB888"
+    endchoice
+
+    choice
+        prompt "Select the example to build"
+        default EXAMPLE_BUILD_SCREEN_LVGL
+        config EXAMPLE_BUILD_AW86224
+            bool "aw86224"
+        config EXAMPLE_BUILD_WIFI_SCAN_CONNECT_TIME
+            bool "wifi_scan_connect_time"
+        config EXAMPLE_BUILD_I2C_SCAN
+            bool "i2c_scan"
+        config EXAMPLE_BUILD_SCREEN_CAMERA
+            bool "screen_camera"
+        config EXAMPLE_BUILD_SCREEN_LVGL
+            bool "screen_lvgl"
+        config EXAMPLE_BUILD_SCREEN_LVGL_TOUCH_DRAW
+            bool "screen_lvgl_touch_draw"
+        config EXAMPLE_BUILD_SGM38121
+            bool "sgm38121"
+        config EXAMPLE_BUILD_SLEEP
+            bool "sleep"
+        config EXAMPLE_BUILD_XL9535
+            bool "xl9535"
+    endchoice
+
+endmenu

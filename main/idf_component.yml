@@ -1,0 +1,41 @@
+dependencies:
+  idf: ">=5.5.4"
+
+  lilygo_device_driver:
+    override_path: "../libraries/lilygo_device_driver"
+
+  common:
+    override_path: "../libraries/common"
+
+  cpp_bus_driver:
+    override_path: "../libraries/cpp_bus_driver"
+
+  arduino_cpp_bus_driver:
+    override_path: "../libraries/arduino_cpp_bus_driver"
+
+  radiolib_cpp_bus_driver:
+    override_path: "../libraries/radiolib_cpp_bus_driver"
+
+  icm20948_we:
+    override_path: "../libraries/icm20948_we"
+
+  lvgl/lvgl:
+    version: "9.5.0"
+    matches:
+      - if: "$CONFIG{EXAMPLE_BUILD_SCREEN_LVGL} == True"
+      - if: "$CONFIG{EXAMPLE_BUILD_SCREEN_LVGL_TOUCH_DRAW} == True"
+
+  espressif/esp_video:
+    override_path: "../libraries/esp-video-components/esp_video"
+    matches:
+      - if: "$CONFIG{EXAMPLE_BUILD_SCREEN_CAMERA} == True"
+
+  espressif/esp_hosted:
+    version: "2.12.3"
+    matches:
+      - if: "$CONFIG{EXAMPLE_BUILD_WIFI_SCAN_CONNECT_TIME} == True"
+
+  espressif/esp_wifi_remote:
+    version: ">=1.6.1,<2.0"
+    matches:
+      - if: "$CONFIG{EXAMPLE_BUILD_WIFI_SCAN_CONNECT_TIME} == True"
