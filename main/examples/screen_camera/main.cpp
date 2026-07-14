@@ -55,9 +55,9 @@ size_t AlignUp(size_t value, size_t alignment) {
 }
 
 uint32_t CameraVideoFormat() {
-#if defined(CONFIG_CAMERA_TYPE_OV5645)
+#if defined(CONFIG_LILYGO_DEVICE_DRIVER_CAMERA_TYPE_OV5645)
   return V4L2_PIX_FMT_RGB565;
-#elif defined(CONFIG_SCREEN_PIXEL_FORMAT_RGB888)
+#elif defined(CONFIG_LILYGO_DEVICE_DRIVER_SCREEN_PIXEL_FORMAT_RGB888)
   return V4L2_PIX_FMT_RGB24;
 #else
   return V4L2_PIX_FMT_RGB565;
@@ -65,9 +65,9 @@ uint32_t CameraVideoFormat() {
 }
 
 ppa_srm_color_mode_t CameraColorMode() {
-#if defined(CONFIG_CAMERA_TYPE_OV5645)
+#if defined(CONFIG_LILYGO_DEVICE_DRIVER_CAMERA_TYPE_OV5645)
   return PPA_SRM_COLOR_MODE_RGB565;
-#elif defined(CONFIG_SCREEN_PIXEL_FORMAT_RGB888)
+#elif defined(CONFIG_LILYGO_DEVICE_DRIVER_SCREEN_PIXEL_FORMAT_RGB888)
   return PPA_SRM_COLOR_MODE_RGB888;
 #else
   return PPA_SRM_COLOR_MODE_RGB565;
@@ -75,7 +75,7 @@ ppa_srm_color_mode_t CameraColorMode() {
 }
 
 ppa_srm_color_mode_t ScreenColorMode() {
-#if defined(CONFIG_SCREEN_PIXEL_FORMAT_RGB888)
+#if defined(CONFIG_LILYGO_DEVICE_DRIVER_SCREEN_PIXEL_FORMAT_RGB888)
   return PPA_SRM_COLOR_MODE_RGB888;
 #else
   return PPA_SRM_COLOR_MODE_RGB565;
