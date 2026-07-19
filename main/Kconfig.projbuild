@@ -16,6 +16,8 @@ menu "Example Configuration"
             bool "screen_lvgl_touch_draw"
         config EXAMPLE_BUILD_SGM38121
             bool "sgm38121"
+        config EXAMPLE_BUILD_ST25R3916
+            bool "st25r3916"
         config EXAMPLE_BUILD_SLEEP
             bool "sleep"
         config EXAMPLE_BUILD_XL9535
