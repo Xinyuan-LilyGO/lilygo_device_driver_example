@@ -6,6 +6,8 @@ menu "Example Configuration"
             bool "aw86224"
         config EXAMPLE_BUILD_WIFI_SCAN_CONNECT_TIME
             bool "wifi_scan_connect_time"
+        config EXAMPLE_BUILD_NETWORK_ADAPTER_UPDATE
+            bool "network_adapter_update"
         config EXAMPLE_BUILD_I2C_SCAN
             bool "i2c_scan"
         config EXAMPLE_BUILD_SCREEN_CAMERA
