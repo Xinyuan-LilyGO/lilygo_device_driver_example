@@ -47,9 +47,17 @@ dependencies:
     matches:
       - if: "$CONFIG{EXAMPLE_BUILD_WIFI_SCAN_CONNECT_TIME} == True"
       - if: "$CONFIG{EXAMPLE_BUILD_NETWORK_ADAPTER_UPDATE} == True"
+      - if: "$CONFIG{EXAMPLE_BUILD_OTA_UPDATE} == True"
 
   espressif/esp_wifi_remote:
     version: ">=1.6.1,<2.0"
     matches:
       - if: "$CONFIG{EXAMPLE_BUILD_WIFI_SCAN_CONNECT_TIME} == True"
       - if: "$CONFIG{EXAMPLE_BUILD_NETWORK_ADAPTER_UPDATE} == True"
+      - if: "$CONFIG{EXAMPLE_BUILD_OTA_UPDATE} == True"
+
+  joltwallet/littlefs:
+    version: ">=1.21.0,<2.0.0"
+    matches:
+      - if: "$CONFIG{EXAMPLE_BUILD_NETWORK_ADAPTER_UPDATE} == True"
+      - if: "$CONFIG{EXAMPLE_BUILD_OTA_UPDATE} == True"

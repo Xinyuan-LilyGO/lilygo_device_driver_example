@@ -8,6 +8,9 @@ menu "Example Configuration"
             bool "wifi_scan_connect_time"
         config EXAMPLE_BUILD_NETWORK_ADAPTER_UPDATE
             bool "network_adapter_update"
+        config EXAMPLE_BUILD_OTA_UPDATE
+            bool "ota_update"
+            select MBEDTLS_CERTIFICATE_BUNDLE
         config EXAMPLE_BUILD_I2C_SCAN
             bool "i2c_scan"
         config EXAMPLE_BUILD_SCREEN_CAMERA

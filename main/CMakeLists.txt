@@ -6,6 +6,8 @@ elseif(CONFIG_EXAMPLE_BUILD_WIFI_SCAN_CONNECT_TIME)
     set(example_name "wifi_scan_connect_time")
 elseif(CONFIG_EXAMPLE_BUILD_NETWORK_ADAPTER_UPDATE)
     set(example_name "network_adapter_update")
+elseif(CONFIG_EXAMPLE_BUILD_OTA_UPDATE)
+    set(example_name "ota_update")
 elseif(CONFIG_EXAMPLE_BUILD_I2C_SCAN)
     set(example_name "i2c_scan")
 elseif(CONFIG_EXAMPLE_BUILD_SCREEN_CAMERA)
@@ -35,12 +37,25 @@ idf_component_register(
     REQUIRES ${example_requires}
 )
 
+if(CONFIG_EXAMPLE_BUILD_OTA_UPDATE)
+    idf_component_optional_requires(PRIVATE
+        app_update
+        esp_app_format
+        esp_event
+        esp_http_client
+        esp_https_ota
+        esp_netif
+        esp_system
+        esp_wifi
+        mbedtls
+    )
+endif()
+
 if(CONFIG_EXAMPLE_BUILD_NETWORK_ADAPTER_UPDATE)
     idf_component_optional_requires(PRIVATE
         bootloader_support
         esp_app_format
         esp_event
-        esp_partition
         esp_system
     )
 
@@ -73,11 +88,11 @@ if(CONFIG_EXAMPLE_BUILD_NETWORK_ADAPTER_UPDATE)
     endif()
 
     partition_table_get_partition_info(network_adapter_firmware_partition_size
-                                       "--partition-name coprocessor_fw" "size")
+                                       "--partition-name storage" "size")
     if(NOT network_adapter_firmware_partition_size)
         message(FATAL_ERROR
             "The selected partition CSV does not contain a "
-            "coprocessor_fw partition")
+            "storage partition")
     endif()
 
     file(SIZE "${network_adapter_firmware_path}"
@@ -90,18 +105,22 @@ if(CONFIG_EXAMPLE_BUILD_NETWORK_ADAPTER_UPDATE)
         message(FATAL_ERROR
             "${network_adapter_chip} firmware "
             "container (${network_adapter_flash_image_size} bytes) exceeds "
-            "coprocessor_fw "
+            "storage "
             "partition (${network_adapter_firmware_partition_size} bytes)")
     endif()
 
     idf_build_get_property(build_dir BUILD_DIR)
     idf_build_get_property(python PYTHON)
     idf_component_get_property(esptool_py_dir esptool_py COMPONENT_DIR)
+    set(network_adapter_littlefs_dir
+        "${build_dir}/network_adapter_littlefs")
     set(network_adapter_flash_image
-        "${build_dir}/network_adapter_firmware.bin")
+        "${network_adapter_littlefs_dir}/network_adapter_firmware.bin")
 
     add_custom_command(
         OUTPUT "${network_adapter_flash_image}"
+        COMMAND "${CMAKE_COMMAND}" -E make_directory
+            "${network_adapter_littlefs_dir}"
         COMMAND "${python}"
             "${esptool_py_dir}/esptool/esptool.py"
             --chip "${network_adapter_esptool_chip}"
@@ -117,15 +136,19 @@ if(CONFIG_EXAMPLE_BUILD_NETWORK_ADAPTER_UPDATE)
     add_custom_target(network_adapter_firmware_image ALL
         DEPENDS "${network_adapter_flash_image}")
 
-    esptool_py_flash_to_partition(flash "coprocessor_fw"
-        "${network_adapter_flash_image}")
-    esptool_py_flash_to_partition(app-flash "coprocessor_fw"
-        "${network_adapter_flash_image}")
-    add_dependencies(flash network_adapter_firmware_image)
-    add_dependencies(app-flash network_adapter_firmware_image)
+    littlefs_create_partition_image(storage
+        "${network_adapter_littlefs_dir}"
+        FLASH_IN_PROJECT
+        DEPENDS "${network_adapter_flash_image}")
+
+    # Keep the previous behavior where app-flash also installs the bundled
+    # network adapter firmware, not just the ESP32-P4 application image.
+    esptool_py_flash_to_partition(app-flash "storage"
+        "${build_dir}/storage.bin")
+    add_dependencies(app-flash littlefs_storage_bin)
 
     message(STATUS
         "${network_adapter_chip} firmware container will be flashed to "
-        "coprocessor_fw: "
+        "storage:/network_adapter_firmware.bin: "
         "${network_adapter_firmware_path}")
 endif()

@@ -2,7 +2,7 @@
  * @Description: 网络适配器版本检查与更新
  * @Author: LILYGO_L
  * @Date: 2026-07-17 00:00:00
- * @LastEditTime: 2026-07-19 16:43:29
+ * @LastEditTime: 2026-07-20 00:00:00
  * @License: GPL 3.0
  */
 #include <algorithm>
@@ -18,7 +18,7 @@
 #include "esp_hosted_api_types.h"
 #include "esp_hosted_event.h"
 #include "esp_hosted_ota.h"
-#include "esp_partition.h"
+#include "esp_littlefs.h"
 #include "esp_system.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
@@ -27,8 +27,11 @@
 
 namespace {
 
-// 用于存放网络适配器待更新固件的分区
-constexpr char kFirmwarePartitionLabel[] = "coprocessor_fw";
+// 用于存放网络适配器待更新固件文件的 LittleFS 分区和挂载路径
+constexpr char kFirmwarePartitionLabel[] = "storage";
+constexpr char kFirmwareStorageBasePath[] = "/storage";
+constexpr char kFirmwareFilePath[] =
+    "/storage/network_adapter_firmware.bin";
 // 网络适配器固件中预期的 ESP-IDF 应用程序名称
 constexpr char kFirmwareProjectName[] = "network_adapter";
 #if CONFIG_SLAVE_IDF_TARGET_ESP32C5
@@ -64,6 +67,38 @@ struct FirmwareImageInfo {
   size_t size = 0;
   esp_app_desc_t app_desc = {};
 };
+
+/**
+ * @brief 以只读方式挂载包含网络适配器固件的 LittleFS 分区
+ * @return 挂载成功时返回 true
+ */
+bool MountFirmwareStorage() {
+  esp_vfs_littlefs_conf_t config = {};
+  config.base_path = kFirmwareStorageBasePath;
+  config.partition_label = kFirmwarePartitionLabel;
+  config.format_if_mount_failed = false;
+  config.read_only = true;
+  config.dont_mount = false;
+  config.grow_on_mount = false;
+
+  const esp_err_t result = esp_vfs_littlefs_register(&config);
+  if (result != ESP_OK) {
+    printf("Mount LittleFS partition '%s' at '%s' failed: %s\n",
+        kFirmwarePartitionLabel, kFirmwareStorageBasePath,
+        esp_err_to_name(result));
+    return false;
+  }
+
+  size_t total_bytes = 0;
+  size_t used_bytes = 0;
+  if (esp_littlefs_info(
+          kFirmwarePartitionLabel, &total_bytes, &used_bytes) == ESP_OK) {
+    printf("LittleFS storage: total=%u used=%u bytes\n",
+        static_cast<unsigned int>(total_bytes),
+        static_cast<unsigned int>(used_bytes));
+  }
+  return true;
+}
 
 /**
  * @brief 处理 ESP-Hosted 传输状态事件
@@ -138,31 +173,57 @@ bool InitEspHostedTransport() {
 }
 
 /**
- * @brief 检查读取范围后从分区读取数据
- * @param partition 待读取的分区
- * @param offset 分区内的字节偏移
+ * @brief 检查读取范围后从固件文件读取数据
+ * @param file 已打开的固件文件
+ * @param file_size 固件文件总长度
+ * @param offset 文件内的字节偏移
  * @param destination 目标缓冲区
  * @param size 读取的字节数
  * @return 读取成功时返回 true
  */
-bool ReadPartition(const esp_partition_t* partition, size_t offset,
+bool ReadFirmwareFile(FILE* file, size_t file_size, size_t offset,
     void* destination, size_t size) {
-  if (partition == nullptr || destination == nullptr ||
-      offset > partition->size || size > partition->size - offset) {
+  if (file == nullptr || destination == nullptr || offset > file_size ||
+      size > file_size - offset) {
     return false;
   }
-  return esp_partition_read(partition, offset, destination, size) == ESP_OK;
+  if (std::fseek(file, static_cast<long>(offset), SEEK_SET) != 0) {
+    return false;
+  }
+  return std::fread(destination, 1, size, file) == size;
+}
+
+/**
+ * @brief 获取固件文件长度并将读写位置恢复到文件开头
+ * @param file 已打开的固件文件
+ * @param file_size 用于返回固件文件长度
+ * @return 获取成功且文件非空时返回 true
+ */
+bool GetFirmwareFileSize(FILE* file, size_t* file_size) {
+  if (file == nullptr || file_size == nullptr ||
+      std::fseek(file, 0, SEEK_END) != 0) {
+    return false;
+  }
+
+  const long end_offset = std::ftell(file);
+  if (end_offset <= 0) {
+    return false;
+  }
+  std::rewind(file);
+  *file_size = static_cast<size_t>(end_offset);
+  return true;
 }
 
 /**
  * @brief 计算 ESP-IDF 应用镜像的完整长度
- * @param partition 存放镜像的分区
+ * @param file 存放镜像的固件文件
+ * @param file_size 固件文件总长度
  * @param image_offset 应用镜像的起始偏移
  * @param image_header 已解析的应用镜像头
  * @param image_size 用于返回完整镜像长度
- * @return 所有镜像段及尾部数据均位于分区范围内时返回 true
+ * @return 所有镜像段及尾部数据均位于文件范围内时返回 true
  */
-bool CalculateImageSize(const esp_partition_t* partition, size_t image_offset,
+bool CalculateImageSize(FILE* file, size_t file_size, size_t image_offset,
     const esp_image_header_t& image_header, size_t* image_size) {
   if (image_size == nullptr || image_header.segment_count == 0 ||
       image_header.segment_count > kMaxImageSegmentCount) {
@@ -173,15 +234,14 @@ bool CalculateImageSize(const esp_partition_t* partition, size_t image_offset,
   size_t total_size = sizeof(esp_image_header_t);
   for (uint8_t index = 0; index < image_header.segment_count; ++index) {
     esp_image_segment_header_t segment_header = {};
-    if (!ReadPartition(partition, cursor, &segment_header,
+    if (!ReadFirmwareFile(file, file_size, cursor, &segment_header,
             sizeof(segment_header))) {
       return false;
     }
 
     cursor += sizeof(segment_header);
     total_size += sizeof(segment_header);
-    if (cursor > partition->size ||
-        segment_header.data_len > partition->size - cursor) {
+    if (cursor > file_size || segment_header.data_len > file_size - cursor) {
       return false;
     }
     cursor += segment_header.data_len;
@@ -194,8 +254,7 @@ bool CalculateImageSize(const esp_partition_t* partition, size_t image_offset,
     total_size += 32;
   }
 
-  if (image_offset > partition->size ||
-      total_size > partition->size - image_offset) {
+  if (image_offset > file_size || total_size > file_size - image_offset) {
     return false;
   }
   *image_size = total_size;
@@ -204,24 +263,25 @@ bool CalculateImageSize(const esp_partition_t* partition, size_t image_offset,
 
 /**
  * @brief 在独立应用镜像或合并固件中查找 network_adapter 应用镜像
- * @param partition 存放待更新固件的分区
+ * @param file 存放待更新固件的文件
+ * @param file_size 固件文件总长度
  * @param image_info 用于返回镜像位置、长度和应用信息
  * @return 找到目标芯片有效的 network_adapter 镜像时返回 true
  */
 bool FindNetworkAdapterImage(
-    const esp_partition_t* partition, FirmwareImageInfo* image_info) {
-  if (partition == nullptr || image_info == nullptr) {
+    FILE* file, size_t file_size, FirmwareImageInfo* image_info) {
+  if (file == nullptr || image_info == nullptr) {
     return false;
   }
 
   for (size_t offset = 0;
        offset + sizeof(esp_image_header_t) +
                sizeof(esp_image_segment_header_t) + sizeof(esp_app_desc_t) <=
-           partition->size;
+           file_size;
        offset += kImageSearchAlignment) {
     esp_image_header_t image_header = {};
-    if (!ReadPartition(
-            partition, offset, &image_header, sizeof(image_header))) {
+    if (!ReadFirmwareFile(
+            file, file_size, offset, &image_header, sizeof(image_header))) {
       continue;
     }
 
@@ -239,8 +299,8 @@ bool FindNetworkAdapterImage(
     esp_app_desc_t app_desc = {};
     const size_t app_desc_offset = offset + sizeof(esp_image_header_t) +
                                    sizeof(esp_image_segment_header_t);
-    if (!ReadPartition(
-            partition, app_desc_offset, &app_desc, sizeof(app_desc))) {
+    if (!ReadFirmwareFile(
+            file, file_size, app_desc_offset, &app_desc, sizeof(app_desc))) {
       continue;
     }
 
@@ -254,7 +314,7 @@ bool FindNetworkAdapterImage(
 
     size_t image_size = 0;
     if (!CalculateImageSize(
-            partition, offset, image_header, &image_size)) {
+            file, file_size, offset, image_header, &image_size)) {
       continue;
     }
 
@@ -301,18 +361,24 @@ bool SupportsOtaActivate(const esp_hosted_coprocessor_fwver_t& version) {
 bool CheckAndUpdateNetworkAdapter() {
   printf("Checking %s network adapter firmware...\n", kCoprocessorName);
 
-  const esp_partition_t* partition = esp_partition_find_first(
-      ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_ANY,
-      kFirmwarePartitionLabel);
-  if (partition == nullptr) {
-    printf("Partition '%s' was not found\n", kFirmwarePartitionLabel);
+  std::unique_ptr<FILE, decltype(&std::fclose)> firmware_file(
+      std::fopen(kFirmwareFilePath, "rb"), &std::fclose);
+  if (firmware_file == nullptr) {
+    printf("Open firmware file '%s' failed\n", kFirmwareFilePath);
+    return false;
+  }
+
+  size_t firmware_file_size = 0;
+  if (!GetFirmwareFileSize(firmware_file.get(), &firmware_file_size)) {
+    printf("Read firmware file size failed: '%s'\n", kFirmwareFilePath);
     return false;
   }
 
   FirmwareImageInfo image_info;
-  if (!FindNetworkAdapterImage(partition, &image_info)) {
+  if (!FindNetworkAdapterImage(
+          firmware_file.get(), firmware_file_size, &image_info)) {
     printf("No valid %s network_adapter image found in '%s'\n",
-        kCoprocessorName, kFirmwarePartitionLabel);
+        kCoprocessorName, kFirmwareFilePath);
     return false;
   }
 
@@ -359,8 +425,8 @@ bool CheckAndUpdateNetworkAdapter() {
   while (sent_size < image_info.size) {
     const size_t chunk_size =
         std::min(kOtaChunkSize, image_info.size - sent_size);
-    if (!ReadPartition(partition, image_info.offset + sent_size, chunk,
-            chunk_size)) {
+    if (!ReadFirmwareFile(firmware_file.get(), firmware_file_size,
+            image_info.offset + sent_size, chunk, chunk_size)) {
       printf("Read %s firmware failed at offset 0x%X\n", kCoprocessorName,
           static_cast<unsigned int>(image_info.offset + sent_size));
       esp_hosted_slave_ota_end();
@@ -409,6 +475,7 @@ bool CheckAndUpdateNetworkAdapter() {
         kCoprocessorName);
   }
 
+  firmware_file.reset();
   printf("Restarting ESP32-P4 to resynchronize with %s...\n",
       kCoprocessorName);
   vTaskDelay(pdMS_TO_TICKS(kHostRestartDelayMs));
@@ -427,6 +494,10 @@ extern "C" void app_main(void) {
   if (!driver.InitXl9535() || !driver.InitPower() ||
       !driver.ConfigXl9535()) {
     printf("Board and %s power initialization failed\n", kCoprocessorName);
+    return;
+  }
+
+  if (!MountFirmwareStorage()) {
     return;
   }
 
