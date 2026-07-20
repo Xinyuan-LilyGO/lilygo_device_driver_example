@@ -36,23 +36,24 @@ namespace {
 
 constexpr char kWifiSsid[] = "LilyGo-AABB";
 constexpr char kWifiPassword[] = "xinyuandianzi";
-// 编译示例前需要填写协处理器和 ESP32-P4 的两个 HTTPS OTA 地址。
-constexpr char kCoprocessorFirmwareUrl[] = "";
-constexpr char kHostFirmwareUrl[] = "";
+// 编译示例前需要填写无线固件和主固件的两个 HTTPS OTA 地址。
+constexpr char kWirelessFirmwareUrl[] = "";
+constexpr char kMainFirmwareUrl[] = "";
 constexpr char kStoragePartitionLabel[] = "storage";
 constexpr char kStorageBasePath[] = "/storage";
-constexpr char kCoprocessorFirmwarePath[] =
+constexpr char kWirelessFirmwarePath[] =
     "/storage/network_adapter_firmware.bin";
-constexpr char kCoprocessorFirmwareTempPath[] =
+constexpr char kWirelessFirmwareTempPath[] =
     "/storage/network_adapter_firmware.tmp";
-constexpr char kPendingHostUpdatePath[] = "/storage/pending_host_ota";
-constexpr char kCoprocessorProjectName[] = "network_adapter";
+constexpr char kPendingMainFirmwareUpdatePath[] =
+    "/storage/pending_main_firmware_ota";
+constexpr char kWirelessFirmwareProjectName[] = "network_adapter";
 #if CONFIG_SLAVE_IDF_TARGET_ESP32C5
-constexpr esp_chip_id_t kExpectedCoprocessorChipId = ESP_CHIP_ID_ESP32C5;
-constexpr char kCoprocessorName[] = "ESP32-C5";
+constexpr esp_chip_id_t kExpectedWirelessChipId = ESP_CHIP_ID_ESP32C5;
+constexpr char kWirelessChipName[] = "ESP32-C5";
 #elif CONFIG_SLAVE_IDF_TARGET_ESP32C6
-constexpr esp_chip_id_t kExpectedCoprocessorChipId = ESP_CHIP_ID_ESP32C6;
-constexpr char kCoprocessorName[] = "ESP32-C6";
+constexpr esp_chip_id_t kExpectedWirelessChipId = ESP_CHIP_ID_ESP32C6;
+constexpr char kWirelessChipName[] = "ESP32-C6";
 #else
 #error "Unsupported Wi-Fi Remote slave target"
 #endif
@@ -63,7 +64,7 @@ constexpr int kHttpTxBufferSize = 4096;
 constexpr size_t kHttpDownloadBufferSize = 4096;
 constexpr size_t kImageSearchAlignment = 0x1000;
 constexpr uint8_t kMaxImageSegmentCount = 16;
-constexpr size_t kCoprocessorOtaChunkSize = 1500;
+constexpr size_t kWirelessFirmwareOtaChunkSize = 1500;
 constexpr EventBits_t kWifiConnectedBit = BIT0;
 constexpr uint32_t kButtonPollIntervalMs = 20;
 constexpr uint32_t kButtonDebounceMs = 40;
@@ -87,20 +88,20 @@ struct FirmwareDownloadContext {
   bool write_failed = false;
 };
 
-enum class CoprocessorUpdateResult {
+enum class WirelessFirmwareUpdateResult {
   kNotRequired,
   kRestarting,
   kFailed,
 };
 
-enum class HostUpdateResult {
+enum class MainFirmwareUpdateResult {
   kNotRequired,
   kRestarting,
   kFailed,
 };
 
 /**
- * @brief 挂载用于保存协处理器固件和更新状态的 LittleFS 分区
+ * @brief 挂载用于保存无线固件和更新状态的 LittleFS 分区
  * @return 挂载成功返回 true，失败返回 false
  */
 bool MountStorage() {
@@ -243,13 +244,13 @@ bool CalculateImageSize(FILE* file, size_t file_size, size_t image_offset,
 }
 
 /**
- * @brief 在独立应用镜像或合并固件中查找目标协处理器应用镜像
+ * @brief 在独立应用镜像或合并固件中查找目标无线固件应用镜像
  * @param file 已打开的固件文件
  * @param file_size 固件文件总长度
  * @param image_info 用于返回镜像偏移、长度和应用描述信息
  * @return 找到芯片型号和项目名称匹配的有效镜像返回 true，否则返回 false
  */
-bool FindCoprocessorImage(
+bool FindWirelessFirmwareImage(
     FILE* file, size_t file_size, FirmwareImageInfo* image_info) {
   if (file == nullptr || image_info == nullptr) {
     return false;
@@ -264,7 +265,7 @@ bool FindCoprocessorImage(
     if (!ReadFirmwareFile(
             file, file_size, offset, &image_header, sizeof(image_header)) ||
         image_header.magic != ESP_IMAGE_HEADER_MAGIC ||
-        image_header.chip_id != kExpectedCoprocessorChipId ||
+        image_header.chip_id != kExpectedWirelessChipId ||
         image_header.segment_count == 0 ||
         image_header.segment_count > kMaxImageSegmentCount) {
       continue;
@@ -276,8 +277,8 @@ bool FindCoprocessorImage(
     if (!ReadFirmwareFile(
             file, file_size, app_desc_offset, &app_desc, sizeof(app_desc)) ||
         app_desc.magic_word != ESP_APP_DESC_MAGIC_WORD ||
-        std::strncmp(app_desc.project_name, kCoprocessorProjectName,
-            sizeof(kCoprocessorProjectName)) != 0) {
+        std::strncmp(app_desc.project_name, kWirelessFirmwareProjectName,
+            sizeof(kWirelessFirmwareProjectName)) != 0) {
       continue;
     }
 
@@ -296,36 +297,38 @@ bool FindCoprocessorImage(
 }
 
 /**
- * @brief 打开并检查协处理器固件文件
- * @param path 协处理器固件文件路径
+ * @brief 打开并检查无线固件文件
+ * @param path 无线固件文件路径
  * @param image_info 用于返回有效应用镜像信息
  * @return 固件文件有效返回 true，失败返回 false
  */
-bool InspectCoprocessorFirmware(
+bool InspectWirelessFirmware(
     const char* path, FirmwareImageInfo* image_info) {
   std::unique_ptr<FILE, decltype(&std::fclose)> firmware_file(
       std::fopen(path, "rb"), &std::fclose);
   if (firmware_file == nullptr) {
-    printf("Open %s firmware file '%s' failed\n", kCoprocessorName, path);
+    printf("Open Wireless firmware (%s) file '%s' failed\n", kWirelessChipName,
+        path);
     return false;
   }
 
   size_t file_size = 0;
   if (!GetFirmwareFileSize(firmware_file.get(), &file_size) ||
-      !FindCoprocessorImage(firmware_file.get(), file_size, image_info)) {
-    printf("No valid %s network_adapter image found in '%s'\n",
-        kCoprocessorName, path);
+      !FindWirelessFirmwareImage(firmware_file.get(), file_size, image_info)) {
+    printf("No valid Wireless firmware (%s) image found in '%s'\n",
+        kWirelessChipName, path);
     return false;
   }
   return true;
 }
 
 /**
- * @brief 将 HTTP 响应数据写入 LittleFS 中的协处理器临时固件文件
+ * @brief 将 HTTP 响应数据写入 LittleFS 中的无线固件临时文件
  * @param event HTTP 客户端事件及其附带的数据
  * @return 事件处理成功返回 ESP_OK，写文件失败返回 ESP_FAIL
  */
-esp_err_t CoprocessorDownloadEventHandler(esp_http_client_event_t* event) {
+esp_err_t WirelessFirmwareDownloadEventHandler(
+    esp_http_client_event_t* event) {
   if (event == nullptr || event->user_data == nullptr) {
     return ESP_ERR_INVALID_ARG;
   }
@@ -346,7 +349,7 @@ esp_err_t CoprocessorDownloadEventHandler(esp_http_client_event_t* event) {
 
   context->downloaded_size += static_cast<size_t>(event->data_len);
   if (context->downloaded_size >= context->next_progress_size) {
-    printf("%s downloaded: %u bytes\n", kCoprocessorName,
+    printf("Wireless firmware (%s) downloaded: %u bytes\n", kWirelessChipName,
         static_cast<unsigned int>(context->downloaded_size));
     context->next_progress_size += 64 * 1024;
   }
@@ -354,41 +357,43 @@ esp_err_t CoprocessorDownloadEventHandler(esp_http_client_event_t* event) {
 }
 
 /**
- * @brief 从配置的 HTTPS 地址下载协处理器固件到 LittleFS
+ * @brief 从配置的 HTTPS 地址下载无线固件到 LittleFS
  * @return 下载、校验并安装固件文件成功返回 true，失败返回 false
  */
-bool DownloadCoprocessorFirmware() {
-  if (kCoprocessorFirmwareUrl[0] == '\0') {
-    printf("Coprocessor firmware URL is not configured\n");
+bool DownloadWirelessFirmware() {
+  if (kWirelessFirmwareUrl[0] == '\0') {
+    printf("Wireless firmware URL is not configured\n");
     return false;
   }
 
   std::unique_ptr<FILE, decltype(&std::fclose)> output_file(
-      std::fopen(kCoprocessorFirmwareTempPath, "wb"), &std::fclose);
+      std::fopen(kWirelessFirmwareTempPath, "wb"), &std::fclose);
   if (output_file == nullptr) {
-    printf("Create temporary %s firmware file failed\n", kCoprocessorName);
-    std::remove(kCoprocessorFirmwareTempPath);
+    printf("Create temporary Wireless firmware (%s) file failed\n",
+        kWirelessChipName);
+    std::remove(kWirelessFirmwareTempPath);
     return false;
   }
 
   FirmwareDownloadContext download_context;
   download_context.file = output_file.get();
   esp_http_client_config_t http_config = {};
-  http_config.url = kCoprocessorFirmwareUrl;
+  http_config.url = kWirelessFirmwareUrl;
   http_config.crt_bundle_attach = esp_crt_bundle_attach;
   http_config.timeout_ms = kHttpTimeoutMs;
   http_config.buffer_size = kHttpDownloadBufferSize;
   http_config.buffer_size_tx = kHttpTxBufferSize;
-  http_config.event_handler = CoprocessorDownloadEventHandler;
+  http_config.event_handler = WirelessFirmwareDownloadEventHandler;
   http_config.user_data = &download_context;
   http_config.keep_alive_enable = true;
   http_config.max_redirection_count = 5;
 
   esp_http_client_handle_t client = esp_http_client_init(&http_config);
   if (client == nullptr) {
-    printf("Create %s firmware HTTP client failed\n", kCoprocessorName);
+    printf("Create Wireless firmware (%s) HTTP client failed\n",
+        kWirelessChipName);
     output_file.reset();
-    std::remove(kCoprocessorFirmwareTempPath);
+    std::remove(kWirelessFirmwareTempPath);
     return false;
   }
 
@@ -406,13 +411,13 @@ bool DownloadCoprocessorFirmware() {
                      !download_context.write_failed &&
                      download_context.downloaded_size > 0;
   if (!download_ok) {
-    printf("Download %s firmware failed: result=%s HTTP=%d\n", kCoprocessorName,
-        esp_err_to_name(result), status_code);
+    printf("Download Wireless firmware (%s) failed: result=%s HTTP=%d\n",
+        kWirelessChipName, esp_err_to_name(result), status_code);
   }
   if (content_length > 0 &&
       download_context.downloaded_size != static_cast<size_t>(content_length)) {
-    printf("%s firmware download is incomplete: %u/%lld bytes\n",
-        kCoprocessorName,
+    printf("Wireless firmware (%s) download is incomplete: %u/%lld bytes\n",
+        kWirelessChipName,
         static_cast<unsigned int>(download_context.downloaded_size),
         static_cast<long long>(content_length));
     download_ok = false;
@@ -420,31 +425,32 @@ bool DownloadCoprocessorFirmware() {
 
   FirmwareImageInfo image_info;
   if (!download_ok ||
-      !InspectCoprocessorFirmware(kCoprocessorFirmwareTempPath, &image_info)) {
-    std::remove(kCoprocessorFirmwareTempPath);
+      !InspectWirelessFirmware(kWirelessFirmwareTempPath, &image_info)) {
+    std::remove(kWirelessFirmwareTempPath);
     return false;
   }
 
-  std::remove(kCoprocessorFirmwarePath);
-  if (std::rename(kCoprocessorFirmwareTempPath, kCoprocessorFirmwarePath) !=
+  std::remove(kWirelessFirmwarePath);
+  if (std::rename(kWirelessFirmwareTempPath, kWirelessFirmwarePath) !=
       0) {
-    printf("Install downloaded %s firmware file failed\n", kCoprocessorName);
-    std::remove(kCoprocessorFirmwareTempPath);
+    printf("Install downloaded Wireless firmware (%s) file failed\n",
+        kWirelessChipName);
+    std::remove(kWirelessFirmwareTempPath);
     return false;
   }
 
-  printf("Downloaded %s firmware to '%s' (%u bytes)\n", kCoprocessorName,
-      kCoprocessorFirmwarePath,
+  printf("Downloaded Wireless firmware (%s) to '%s' (%u bytes)\n",
+      kWirelessChipName, kWirelessFirmwarePath,
       static_cast<unsigned int>(download_context.downloaded_size));
   return true;
 }
 
 /**
- * @brief 检查是否存在重启后继续执行主芯片 OTA 的状态标记
+ * @brief 检查是否存在重启后继续执行主固件 OTA 的状态标记
  * @return 状态标记存在返回 true，否则返回 false
  */
-bool HasPendingHostUpdate() {
-  FILE* marker = std::fopen(kPendingHostUpdatePath, "rb");
+bool HasPendingMainFirmwareUpdate() {
+  FILE* marker = std::fopen(kPendingMainFirmwareUpdatePath, "rb");
   if (marker == nullptr) {
     return false;
   }
@@ -453,54 +459,54 @@ bool HasPendingHostUpdate() {
 }
 
 /**
- * @brief 写入重启后继续执行主芯片 OTA 的状态标记
+ * @brief 写入重启后继续执行主固件 OTA 的状态标记
  * @return 状态标记写入成功返回 true，失败返回 false
  */
-bool SetPendingHostUpdate() {
-  FILE* marker = std::fopen(kPendingHostUpdatePath, "wb");
+bool SetPendingMainFirmwareUpdate() {
+  FILE* marker = std::fopen(kPendingMainFirmwareUpdatePath, "wb");
   if (marker == nullptr) {
-    printf("Create pending host OTA marker failed\n");
+    printf("Create pending Main firmware OTA marker failed\n");
     return false;
   }
   const bool result = std::fwrite("1", 1, 1, marker) == 1;
   std::fclose(marker);
   if (!result) {
-    std::remove(kPendingHostUpdatePath);
+    std::remove(kPendingMainFirmwareUpdatePath);
   }
   return result;
 }
 
 /**
- * @brief 清除重启后继续执行主芯片 OTA 的状态标记
+ * @brief 清除重启后继续执行主固件 OTA 的状态标记
  * @return 状态标记已清除或原本不存在返回 true，失败返回 false
  */
-bool ClearPendingHostUpdate() {
-  if (std::remove(kPendingHostUpdatePath) == 0 || errno == ENOENT) {
+bool ClearPendingMainFirmwareUpdate() {
+  if (std::remove(kPendingMainFirmwareUpdatePath) == 0 || errno == ENOENT) {
     return true;
   }
-  printf("Remove pending host OTA marker failed\n");
+  printf("Remove pending Main firmware OTA marker failed\n");
   return false;
 }
 
 /**
- * @brief 判断当前协处理器固件是否支持显式激活 OTA 镜像
- * @param version 当前协处理器的 ESP-Hosted 固件版本
+ * @brief 判断当前无线固件是否支持显式激活 OTA 镜像
+ * @param version 当前无线芯片的 ESP-Hosted 固件版本
  * @return 固件版本不低于 2.6.0 返回 true，否则返回 false
  */
-bool SupportsCoprocessorOtaActivate(
+bool SupportsWirelessFirmwareOtaActivate(
     const esp_hosted_coprocessor_fwver_t& version) {
   return version.major1 > 2 || (version.major1 == 2 && version.minor1 >= 6);
 }
 
 /**
- * @brief 比较并更新 LittleFS 中保存的协处理器固件
+ * @brief 比较并更新 LittleFS 中保存的无线固件
  * @return 无需更新返回 kNotRequired，准备重启返回 kRestarting，
  * 更新失败返回 kFailed
  */
-CoprocessorUpdateResult CheckAndUpdateCoprocessor() {
+WirelessFirmwareUpdateResult CheckAndUpdateWirelessFirmware() {
   FirmwareImageInfo image_info;
-  if (!InspectCoprocessorFirmware(kCoprocessorFirmwarePath, &image_info)) {
-    return CoprocessorUpdateResult::kFailed;
+  if (!InspectWirelessFirmware(kWirelessFirmwarePath, &image_info)) {
+    return WirelessFirmwareUpdateResult::kFailed;
   }
 
   char target_version[sizeof(image_info.app_desc.version) + 1] = {};
@@ -512,88 +518,93 @@ CoprocessorUpdateResult CheckAndUpdateCoprocessor() {
   const esp_err_t version_result =
       esp_hosted_get_coprocessor_fwversion(&current_version);
   if (version_result != ESP_OK) {
-    printf("Read %s firmware version failed: %s\n", kCoprocessorName,
-        esp_err_to_name(version_result));
-    return CoprocessorUpdateResult::kFailed;
+    printf("Read Wireless firmware (%s) version failed: %s\n",
+        kWirelessChipName, esp_err_to_name(version_result));
+    return WirelessFirmwareUpdateResult::kFailed;
   }
 
   char current_version_text[32] = {};
   std::snprintf(current_version_text, sizeof(current_version_text),
       "%" PRIu32 ".%" PRIu32 ".%" PRIu32, current_version.major1,
       current_version.minor1, current_version.patch1);
-  printf("Stored %s firmware: version=%s offset=0x%X size=%u bytes\n",
-      kCoprocessorName, target_version,
+  printf("Stored Wireless firmware (%s): version=%s offset=0x%X size=%u bytes\n",
+      kWirelessChipName, target_version,
       static_cast<unsigned int>(image_info.offset),
       static_cast<unsigned int>(image_info.size));
-  printf("Running %s firmware: version=%s\n", kCoprocessorName,
+  printf("Running Wireless firmware (%s): version=%s\n", kWirelessChipName,
       current_version_text);
 
   if (std::strcmp(current_version_text, target_version) == 0) {
-    printf("%s firmware is already up to date\n", kCoprocessorName);
-    return CoprocessorUpdateResult::kNotRequired;
+    printf("Wireless firmware (%s) is already up to date\n",
+        kWirelessChipName);
+    return WirelessFirmwareUpdateResult::kNotRequired;
   }
 
   std::unique_ptr<FILE, decltype(&std::fclose)> firmware_file(
-      std::fopen(kCoprocessorFirmwarePath, "rb"), &std::fclose);
+      std::fopen(kWirelessFirmwarePath, "rb"), &std::fclose);
   size_t firmware_file_size = 0;
   if (firmware_file == nullptr ||
       !GetFirmwareFileSize(firmware_file.get(), &firmware_file_size)) {
-    printf("Open stored %s firmware failed\n", kCoprocessorName);
-    return CoprocessorUpdateResult::kFailed;
+    printf("Open stored Wireless firmware (%s) failed\n", kWirelessChipName);
+    return WirelessFirmwareUpdateResult::kFailed;
   }
 
-  auto chunk = std::make_unique<uint8_t[]>(kCoprocessorOtaChunkSize);
+  auto chunk = std::make_unique<uint8_t[]>(kWirelessFirmwareOtaChunkSize);
   if (chunk == nullptr) {
-    printf("Allocate %s OTA buffer failed\n", kCoprocessorName);
-    return CoprocessorUpdateResult::kFailed;
+    printf("Allocate Wireless firmware (%s) OTA buffer failed\n",
+        kWirelessChipName);
+    return WirelessFirmwareUpdateResult::kFailed;
   }
 
-  // 协处理器激活后主芯片必须重启重新同步；先写入标记，重启后自动继续主芯片 OTA。
-  if (!SetPendingHostUpdate()) {
-    return CoprocessorUpdateResult::kFailed;
+  // 无线固件激活后 ESP32-P4 必须重启重新同步；先写入标记，重启后自动继续主固件 OTA。
+  if (!SetPendingMainFirmwareUpdate()) {
+    return WirelessFirmwareUpdateResult::kFailed;
   }
 
-  printf("Updating %s from %s to %s\n", kCoprocessorName, current_version_text,
-      target_version);
+  printf("Updating Wireless firmware (%s) from %s to %s\n", kWirelessChipName,
+      current_version_text, target_version);
   esp_err_t result = esp_hosted_slave_ota_begin();
   if (result != ESP_OK) {
-    printf(
-        "%s OTA begin failed: %s\n", kCoprocessorName, esp_err_to_name(result));
-    ClearPendingHostUpdate();
-    return CoprocessorUpdateResult::kFailed;
+    printf("Wireless firmware (%s) OTA begin failed: %s\n", kWirelessChipName,
+        esp_err_to_name(result));
+    ClearPendingMainFirmwareUpdate();
+    return WirelessFirmwareUpdateResult::kFailed;
   }
 
   size_t sent_size = 0;
   uint32_t last_progress = 0;
-  printf("%s update progress: 0%%\n", kCoprocessorName);
+  printf("Wireless firmware (%s) update progress: 0%%\n", kWirelessChipName);
   while (sent_size < image_info.size) {
     const size_t chunk_size =
-        std::min(kCoprocessorOtaChunkSize, image_info.size - sent_size);
+        std::min(kWirelessFirmwareOtaChunkSize, image_info.size - sent_size);
     if (!ReadFirmwareFile(firmware_file.get(), firmware_file_size,
             image_info.offset + sent_size, chunk.get(), chunk_size)) {
-      printf("Read %s firmware failed at offset 0x%X\n", kCoprocessorName,
+      printf("Read Wireless firmware (%s) failed at offset 0x%X\n",
+          kWirelessChipName,
           static_cast<unsigned int>(image_info.offset + sent_size));
       esp_hosted_slave_ota_end();
-      ClearPendingHostUpdate();
-      return CoprocessorUpdateResult::kFailed;
+      ClearPendingMainFirmwareUpdate();
+      return WirelessFirmwareUpdateResult::kFailed;
     }
 
     result = esp_hosted_slave_ota_write(
         chunk.get(), static_cast<uint32_t>(chunk_size));
     if (result != ESP_OK) {
-      printf("%s OTA write failed at %u bytes: %s\n", kCoprocessorName,
-          static_cast<unsigned int>(sent_size), esp_err_to_name(result));
+      printf("Wireless firmware (%s) OTA write failed at %u bytes: %s\n",
+          kWirelessChipName, static_cast<unsigned int>(sent_size),
+          esp_err_to_name(result));
       esp_hosted_slave_ota_end();
-      ClearPendingHostUpdate();
-      return CoprocessorUpdateResult::kFailed;
+      ClearPendingMainFirmwareUpdate();
+      return WirelessFirmwareUpdateResult::kFailed;
     }
 
     sent_size += chunk_size;
     const uint32_t progress =
         static_cast<uint32_t>(sent_size * 100 / image_info.size);
     if (progress == 100 || progress >= last_progress + 5) {
-      printf("%s update progress: %" PRIu32 "%% (%u/%u bytes)\n",
-          kCoprocessorName, progress, static_cast<unsigned int>(sent_size),
+      printf("Wireless firmware (%s) update progress: %" PRIu32
+             "%% (%u/%u bytes)\n",
+          kWirelessChipName, progress, static_cast<unsigned int>(sent_size),
           static_cast<unsigned int>(image_info.size));
       last_progress = progress;
     }
@@ -601,34 +612,35 @@ CoprocessorUpdateResult CheckAndUpdateCoprocessor() {
 
   result = esp_hosted_slave_ota_end();
   if (result != ESP_OK) {
-    printf("%s OTA verification failed: %s\n", kCoprocessorName,
-        esp_err_to_name(result));
-    ClearPendingHostUpdate();
-    return CoprocessorUpdateResult::kFailed;
+    printf("Wireless firmware (%s) OTA verification failed: %s\n",
+        kWirelessChipName, esp_err_to_name(result));
+    ClearPendingMainFirmwareUpdate();
+    return WirelessFirmwareUpdateResult::kFailed;
   }
 
-  if (SupportsCoprocessorOtaActivate(current_version)) {
+  if (SupportsWirelessFirmwareOtaActivate(current_version)) {
     result = esp_hosted_slave_ota_activate();
     if (result != ESP_OK) {
-      printf("%s OTA activate failed: %s\n", kCoprocessorName,
-          esp_err_to_name(result));
-      ClearPendingHostUpdate();
-      return CoprocessorUpdateResult::kFailed;
+      printf("Wireless firmware (%s) OTA activate failed: %s\n",
+          kWirelessChipName, esp_err_to_name(result));
+      ClearPendingMainFirmwareUpdate();
+      return WirelessFirmwareUpdateResult::kFailed;
     }
-    printf("%s new firmware activated\n", kCoprocessorName);
+    printf("Wireless firmware (%s) activated\n", kWirelessChipName);
   } else {
-    printf("Current %s firmware activates the update during OTA end\n",
-        kCoprocessorName);
+    printf("Current Wireless firmware (%s) activates the update during OTA end\n",
+        kWirelessChipName);
   }
 
   firmware_file.reset();
   printf(
-      "Restarting ESP32-P4 to resynchronize with %s; P4 OTA will resume "
+      "Restarting ESP32-P4 to resynchronize with Wireless firmware (%s); "
+      "Main firmware OTA will resume "
       "automatically\n",
-      kCoprocessorName);
+      kWirelessChipName);
   vTaskDelay(pdMS_TO_TICKS(2000));
   esp_restart();
-  return CoprocessorUpdateResult::kRestarting;
+  return WirelessFirmwareUpdateResult::kRestarting;
 }
 
 /**
@@ -668,7 +680,7 @@ void WifiEventHandler(void* handler_arg, esp_event_base_t event_base,
 }
 
 /**
- * @brief 初始化通过 ESP-Hosted 协处理器提供的 Wi-Fi Station
+ * @brief 初始化通过 ESP-Hosted 无线芯片提供的 Wi-Fi Station
  * @return 初始化并启动成功返回 true，失败返回 false
  */
 bool InitWifiStation() {
@@ -758,25 +770,25 @@ bool InitWifiStation() {
 }
 
 /**
- * @brief 检查服务器主芯片镜像的项目名称是否与当前程序一致
- * @param new_app 服务器主芯片镜像中的应用描述信息
+ * @brief 检查服务器主固件镜像的项目名称是否与当前程序一致
+ * @param new_app 服务器主固件镜像中的应用描述信息
  * @return 项目名称一致返回 true，否则返回 false
  */
-bool ValidateNewImage(const esp_app_desc_t& new_app) {
+bool ValidateMainFirmwareImage(const esp_app_desc_t& new_app) {
   const esp_app_desc_t* running_app = esp_app_get_description();
   if (running_app == nullptr) {
-    printf("Read running firmware description failed\n");
+    printf("Read running Main firmware description failed\n");
     return false;
   }
 
-  printf("Running firmware: project=%s version=%s\n", running_app->project_name,
-      running_app->version);
-  printf("Server firmware:  project=%s version=%s\n", new_app.project_name,
+  printf("Running Main firmware: project=%s version=%s\n",
+      running_app->project_name, running_app->version);
+  printf("Server Main firmware:  project=%s version=%s\n", new_app.project_name,
       new_app.version);
 
   if (std::strncmp(new_app.project_name, running_app->project_name,
           sizeof(new_app.project_name)) != 0) {
-    printf("OTA image project name does not match the running firmware\n");
+    printf("Main firmware project name does not match the running firmware\n");
     return false;
   }
 
@@ -784,11 +796,11 @@ bool ValidateNewImage(const esp_app_desc_t& new_app) {
 }
 
 /**
- * @brief 比较服务器主芯片镜像与当前运行程序的版本号
- * @param new_app 服务器主芯片镜像中的应用描述信息
+ * @brief 比较服务器主固件镜像与当前运行程序的版本号
+ * @param new_app 服务器主固件镜像中的应用描述信息
  * @return 版本号相同返回 true，否则返回 false
  */
-bool IsSameVersion(const esp_app_desc_t& new_app) {
+bool IsSameMainFirmwareVersion(const esp_app_desc_t& new_app) {
   const esp_app_desc_t* running_app = esp_app_get_description();
   if (running_app == nullptr) {
     return false;
@@ -798,11 +810,11 @@ bool IsSameVersion(const esp_app_desc_t& new_app) {
 }
 
 /**
- * @brief 按固定百分比间隔输出主芯片 OTA 下载进度
- * @param ota_handle 当前主芯片 HTTPS OTA 会话句柄
+ * @brief 按固定百分比间隔输出主固件 OTA 下载进度
+ * @param ota_handle 当前主固件 HTTPS OTA 会话句柄
  * @param last_progress_percent 上一次已经输出的进度百分比
  */
-void PrintProgress(
+void PrintMainFirmwareProgress(
     esp_https_ota_handle_t ota_handle, int* last_progress_percent) {
   const int image_size = esp_https_ota_get_image_size(ota_handle);
   const int image_read = esp_https_ota_get_image_len_read(ota_handle);
@@ -817,23 +829,23 @@ void PrintProgress(
   }
 
   *last_progress_percent = progress_percent;
-  printf("OTA download progress: %d%% (%d/%d bytes)\n", progress_percent,
-      image_read, image_size);
+  printf("Main firmware download progress: %d%% (%d/%d bytes)\n",
+      progress_percent, image_read, image_size);
 }
 
 /**
- * @brief 检查并安装服务器上的主芯片 ESP32-P4 应用固件
+ * @brief 检查并安装服务器上的 ESP32-P4 主固件
  * @return 无需更新返回 kNotRequired，准备重启返回 kRestarting，
  * 更新失败返回 kFailed
  */
-HostUpdateResult CheckAndUpdateHost() {
-  if (kHostFirmwareUrl[0] == '\0') {
-    printf("ESP32-P4 firmware URL is not configured\n");
-    return HostUpdateResult::kFailed;
+MainFirmwareUpdateResult CheckAndUpdateMainFirmware() {
+  if (kMainFirmwareUrl[0] == '\0') {
+    printf("Main firmware (ESP32-P4) URL is not configured\n");
+    return MainFirmwareUpdateResult::kFailed;
   }
 
   esp_http_client_config_t http_config = {};
-  http_config.url = kHostFirmwareUrl;
+  http_config.url = kMainFirmwareUrl;
   http_config.crt_bundle_attach = esp_crt_bundle_attach;
   http_config.timeout_ms = kHttpTimeoutMs;
   http_config.buffer_size_tx = kHttpTxBufferSize;
@@ -843,12 +855,13 @@ HostUpdateResult CheckAndUpdateHost() {
   ota_config.http_config = &http_config;
 
   // 预签名下载地址可能包含临时凭据，因此日志中不输出完整 URL。
-  printf("Checking firmware from the configured HTTPS URL\n");
+  printf("Checking Main firmware from the configured HTTPS URL\n");
   esp_https_ota_handle_t ota_handle = nullptr;
   esp_err_t result = esp_https_ota_begin(&ota_config, &ota_handle);
   if (result != ESP_OK) {
-    printf("ESP HTTPS OTA begin failed: %s\n", esp_err_to_name(result));
-    return HostUpdateResult::kFailed;
+    printf("Main firmware HTTPS OTA begin failed: %s\n",
+        esp_err_to_name(result));
+    return MainFirmwareUpdateResult::kFailed;
   }
 
   esp_app_desc_t new_app = {};
@@ -856,69 +869,71 @@ HostUpdateResult CheckAndUpdateHost() {
   if (result != ESP_OK) {
     printf("Read OTA image description failed: %s\n", esp_err_to_name(result));
     esp_https_ota_abort(ota_handle);
-    return HostUpdateResult::kFailed;
+    return MainFirmwareUpdateResult::kFailed;
   }
 
-  if (!ValidateNewImage(new_app)) {
+  if (!ValidateMainFirmwareImage(new_app)) {
     esp_https_ota_abort(ota_handle);
-    return HostUpdateResult::kFailed;
+    return MainFirmwareUpdateResult::kFailed;
   }
 
-  if (IsSameVersion(new_app)) {
-    printf("Firmware is already up to date\n");
+  if (IsSameMainFirmwareVersion(new_app)) {
+    printf("Main firmware is already up to date\n");
     esp_https_ota_abort(ota_handle);
-    return HostUpdateResult::kNotRequired;
+    return MainFirmwareUpdateResult::kNotRequired;
   }
 
-  printf("New firmware found; starting automatic update\n");
+  printf("New Main firmware found; starting automatic update\n");
   int last_progress_percent = -kProgressStepPercent;
   do {
     result = esp_https_ota_perform(ota_handle);
-    PrintProgress(ota_handle, &last_progress_percent);
+    PrintMainFirmwareProgress(ota_handle, &last_progress_percent);
   } while (result == ESP_ERR_HTTPS_OTA_IN_PROGRESS);
 
   if (result != ESP_OK) {
-    printf("OTA download failed: %s\n", esp_err_to_name(result));
+    printf("Main firmware OTA download failed: %s\n",
+        esp_err_to_name(result));
     esp_https_ota_abort(ota_handle);
-    return HostUpdateResult::kFailed;
+    return MainFirmwareUpdateResult::kFailed;
   }
 
   if (!esp_https_ota_is_complete_data_received(ota_handle)) {
-    printf("OTA download ended before the complete image was received\n");
+    printf("Main firmware OTA ended before the complete image was received\n");
     esp_https_ota_abort(ota_handle);
-    return HostUpdateResult::kFailed;
+    return MainFirmwareUpdateResult::kFailed;
   }
 
   result = esp_https_ota_finish(ota_handle);
   if (result != ESP_OK) {
-    printf("OTA image verification failed: %s\n", esp_err_to_name(result));
-    return HostUpdateResult::kFailed;
+    printf("Main firmware OTA image verification failed: %s\n",
+        esp_err_to_name(result));
+    return MainFirmwareUpdateResult::kFailed;
   }
 
-  ClearPendingHostUpdate();
-  printf("OTA update succeeded; restarting into version %s\n", new_app.version);
+  ClearPendingMainFirmwareUpdate();
+  printf("Main firmware OTA succeeded; restarting into version %s\n",
+      new_app.version);
   vTaskDelay(pdMS_TO_TICKS(kRestartDelayMs));
   esp_restart();
-  return HostUpdateResult::kRestarting;
+  return MainFirmwareUpdateResult::kRestarting;
 }
 
 /**
- * @brief 执行主芯片 OTA 阶段并在无需更新时清除续跑标记
+ * @brief 执行主固件 OTA 阶段并在无需更新时清除续跑标记
  */
-void RunHostUpdateStage() {
-  const HostUpdateResult result = CheckAndUpdateHost();
-  if (result == HostUpdateResult::kNotRequired) {
-    ClearPendingHostUpdate();
+void RunMainFirmwareUpdateStage() {
+  const MainFirmwareUpdateResult result = CheckAndUpdateMainFirmware();
+  if (result == MainFirmwareUpdateResult::kNotRequired) {
+    ClearPendingMainFirmwareUpdate();
   }
 }
 
 /**
- * @brief 按照协处理器优先、ESP32-P4 随后的顺序执行组合更新
+ * @brief 按照无线固件优先、主固件随后的顺序执行组合更新
  */
 void RunCombinedUpdate() {
-  if (kCoprocessorFirmwareUrl[0] == '\0' ||
-      kHostFirmwareUrl[0] == '\0') {
-    printf("Configure both coprocessor and ESP32-P4 firmware URLs first\n");
+  if (kWirelessFirmwareUrl[0] == '\0' || kMainFirmwareUrl[0] == '\0') {
+    printf("Configure both Wireless firmware and Main firmware URLs first\n");
     return;
   }
 
@@ -926,28 +941,29 @@ void RunCombinedUpdate() {
     return;
   }
 
-  printf("Step 1/2: downloading and checking %s firmware\n", kCoprocessorName);
-  if (!DownloadCoprocessorFirmware()) {
+  printf("Step 1/2: downloading and checking Wireless firmware (%s)\n",
+      kWirelessChipName);
+  if (!DownloadWirelessFirmware()) {
     return;
   }
 
-  const CoprocessorUpdateResult coprocessor_result =
-      CheckAndUpdateCoprocessor();
-  if (coprocessor_result == CoprocessorUpdateResult::kFailed) {
+  const WirelessFirmwareUpdateResult wireless_firmware_result =
+      CheckAndUpdateWirelessFirmware();
+  if (wireless_firmware_result == WirelessFirmwareUpdateResult::kFailed) {
     return;
   }
-  if (coprocessor_result == CoprocessorUpdateResult::kRestarting) {
+  if (wireless_firmware_result == WirelessFirmwareUpdateResult::kRestarting) {
     return;
   }
 
-  printf("Step 2/2: checking ESP32-P4 firmware\n");
-  RunHostUpdateStage();
+  printf("Step 2/2: checking Main firmware (ESP32-P4)\n");
+  RunMainFirmwareUpdateStage();
 }
 
 /**
- * @brief 确认当前运行的主芯片 OTA 镜像并取消回滚
+ * @brief 确认当前运行的主固件 OTA 镜像并取消回滚
  */
-void ConfirmRunningFirmware() {
+void ConfirmRunningMainFirmware() {
 #if defined(CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE)
   const esp_partition_t* running_partition = esp_ota_get_running_partition();
   esp_ota_img_states_t ota_state = ESP_OTA_IMG_UNDEFINED;
@@ -959,9 +975,10 @@ void ConfirmRunningFirmware() {
 
   const esp_err_t result = esp_ota_mark_app_valid_cancel_rollback();
   if (result == ESP_OK) {
-    printf("Running OTA firmware marked as valid\n");
+    printf("Running Main firmware marked as valid\n");
   } else {
-    printf("Mark running firmware valid failed: %s\n", esp_err_to_name(result));
+    printf("Mark running Main firmware valid failed: %s\n",
+        esp_err_to_name(result));
   }
 #endif
 }
@@ -983,18 +1000,21 @@ void OtaTask(void* task_parameter) {
 
   xEventGroupWaitBits(
       g_wifi_events, kWifiConnectedBit, pdFALSE, pdTRUE, portMAX_DELAY);
-  ConfirmRunningFirmware();
-  if (HasPendingHostUpdate()) {
-    printf(
-        "Verifying %s update before resuming ESP32-P4 OTA\n", kCoprocessorName);
-    const CoprocessorUpdateResult coprocessor_result =
-        CheckAndUpdateCoprocessor();
-    if (coprocessor_result == CoprocessorUpdateResult::kNotRequired) {
-      RunHostUpdateStage();
+  ConfirmRunningMainFirmware();
+  if (HasPendingMainFirmwareUpdate()) {
+    printf("Verifying Wireless firmware (%s) before resuming Main firmware "
+           "OTA\n",
+        kWirelessChipName);
+    const WirelessFirmwareUpdateResult wireless_firmware_result =
+        CheckAndUpdateWirelessFirmware();
+    if (wireless_firmware_result ==
+        WirelessFirmwareUpdateResult::kNotRequired) {
+      RunMainFirmwareUpdateStage();
     }
   }
-  printf("Press and release BOOT once to update %s first, then ESP32-P4\n",
-      kCoprocessorName);
+  printf("Press and release BOOT once to update Wireless firmware (%s) first, "
+         "then Main firmware (ESP32-P4)\n",
+      kWirelessChipName);
 
   bool was_pressed = false;
   TickType_t press_start_tick = 0;
@@ -1011,8 +1031,9 @@ void OtaTask(void* task_parameter) {
         } else {
           printf("Wi-Fi is not connected; OTA check skipped\n");
         }
-        printf("Press BOOT again to update %s first, then ESP32-P4\n",
-            kCoprocessorName);
+        printf("Press BOOT again to update Wireless firmware (%s) first, then "
+               "Main firmware (ESP32-P4)\n",
+            kWirelessChipName);
       }
     }
     was_pressed = is_pressed;
