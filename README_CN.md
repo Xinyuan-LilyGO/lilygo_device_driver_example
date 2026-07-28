@@ -36,7 +36,6 @@
 
 ```bash
 git clone --recursive https://github.com/Xinyuan-LilyGO/lilygo_device_driver_example.git
-cd lilygo_device_driver_example
 ```
 
 如果克隆时没有使用 `--recursive`，请初始化子模块：

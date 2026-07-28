@@ -37,7 +37,6 @@ Select the required example from the project configuration menu.
 
 ```bash
 git clone --recursive https://github.com/Xinyuan-LilyGO/lilygo_device_driver_example.git
-cd lilygo_device_driver_example
 ```
 
 If the repository was cloned without `--recursive`, initialize its submodules:
