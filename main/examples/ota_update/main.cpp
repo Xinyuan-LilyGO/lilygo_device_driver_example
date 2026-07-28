@@ -1,8 +1,8 @@
 /*
- * @Description: BOOT 按键触发 ESP32-C5/C6 与 ESP32-P4 HTTPS OTA 更新示例
+ * @Description: 通过 BOOT 按键触发网络适配器与主控固件 HTTPS OTA 更新的示例
  * @Author: LILYGO_L
- * @Date: 2026-07-19 00:00:00
- * @LastEditTime: 2026-07-20 10:21:05
+ * @Date: 2026-07-28 13:59:02
+ * @LastEditTime: 2026-07-28 14:05:30
  * @License: GPL 3.0
  */
 #include <algorithm>

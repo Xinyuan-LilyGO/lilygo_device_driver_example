@@ -4,6 +4,8 @@ menu "Example Configuration"
         default EXAMPLE_BUILD_SCREEN_LVGL
         config EXAMPLE_BUILD_AW86224
             bool "aw86224"
+        config EXAMPLE_BUILD_BATTERY_MANAGEMENT
+            bool "battery_management"
         config EXAMPLE_BUILD_WIFI_SCAN_CONNECT_TIME
             bool "wifi_scan_connect_time"
         config EXAMPLE_BUILD_NETWORK_ADAPTER_UPDATE

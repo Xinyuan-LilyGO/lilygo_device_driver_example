@@ -1,8 +1,8 @@
 /*
- * @Description: sgm38121
+ * @Description: 配置并循环切换 SGM38121 多路电源输出的示例
  * @Author: LILYGO_L
- * @Date: 2026-07-10 10:27:43
- * @LastEditTime: 2026-07-13 00:00:00
+ * @Date: 2026-07-28 13:59:02
+ * @LastEditTime: 2026-07-28 14:05:30
  * @License: GPL 3.0
  */
 #include "common.h"

@@ -1,8 +1,8 @@
 /*
- * @Description: screen_lvgl
+ * @Description: 在屏幕上运行 LVGL 仪表盘界面的示例
  * @Author: LILYGO_L
- * @Date: 2026-07-10 10:38:17
- * @LastEditTime: 2026-07-13 14:56:42
+ * @Date: 2026-07-28 13:59:02
+ * @LastEditTime: 2026-07-28 14:05:30
  * @License: GPL 3.0
  */
 #include <algorithm>

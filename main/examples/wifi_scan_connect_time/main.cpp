@@ -1,8 +1,8 @@
 /*
- * @Description: None
+ * @Description: 扫描 Wi-Fi、连接指定网络并周期获取网络时间的示例
  * @Author: LILYGO_L
- * @Date: 2026-07-10 11:03:22
- * @LastEditTime: 2026-07-11 16:06:25
+ * @Date: 2026-07-28 13:59:02
+ * @LastEditTime: 2026-07-28 14:05:30
  * @License: GPL 3.0
  */
 #include <stdlib.h>

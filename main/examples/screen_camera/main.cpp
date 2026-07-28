@@ -1,8 +1,8 @@
 /*
- * @Description: screen_camera
+ * @Description: 采集摄像头画面并实时显示到屏幕的示例
  * @Author: LILYGO_L
- * @Date: 2026-07-10 11:03:22
- * @LastEditTime: 2026-07-13 00:00:00
+ * @Date: 2026-07-28 13:59:02
+ * @LastEditTime: 2026-07-28 14:05:30
  * @License: GPL 3.0
  */
 #include <fcntl.h>

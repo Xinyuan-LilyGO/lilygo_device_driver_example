@@ -1,8 +1,8 @@
 /*
- * @Description: None
+ * @Description: AW86224 触觉反馈马达波形播放与增益测试示例
  * @Author: LILYGO_L
- * @Date: 2026-07-10 10:38:17
- * @LastEditTime: 2026-07-11 11:52:04
+ * @Date: 2026-07-28 13:59:02
+ * @LastEditTime: 2026-07-28 14:05:30
  * @License: GPL 3.0
  */
 #include "common.h"

@@ -1,8 +1,8 @@
 /*
- * @Description: screen_lvgl_touch_draw
+ * @Description: 使用 LVGL 读取触摸输入并在屏幕上绘图的示例
  * @Author: LILYGO_L
- * @Date: 2026-07-10 10:38:17
- * @LastEditTime: 2026-07-13 00:00:00
+ * @Date: 2026-07-28 13:59:02
+ * @LastEditTime: 2026-07-28 14:05:30
  * @License: GPL 3.0
  */
 #include <ctime>

@@ -1,8 +1,8 @@
 /*
- * @Description: 网络适配器版本检查与更新
+ * @Description: 检查并更新网络适配器固件的示例
  * @Author: LILYGO_L
- * @Date: 2026-07-17 00:00:00
- * @LastEditTime: 2026-07-20 00:00:00
+ * @Date: 2026-07-28 13:59:02
+ * @LastEditTime: 2026-07-28 14:05:30
  * @License: GPL 3.0
  */
 #include <algorithm>

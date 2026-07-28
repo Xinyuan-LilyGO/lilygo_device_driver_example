@@ -2,6 +2,11 @@ set(example_requires "common")
 
 if(CONFIG_EXAMPLE_BUILD_AW86224)
     set(example_name "aw86224")
+elseif(CONFIG_EXAMPLE_BUILD_BATTERY_MANAGEMENT)
+    set(example_name "battery_management")
+    set(example_extra_sources
+        "examples/battery_management/bq27220.cpp"
+        "examples/battery_management/axp517.cpp")
 elseif(CONFIG_EXAMPLE_BUILD_WIFI_SCAN_CONNECT_TIME)
     set(example_name "wifi_scan_connect_time")
 elseif(CONFIG_EXAMPLE_BUILD_NETWORK_ADAPTER_UPDATE)

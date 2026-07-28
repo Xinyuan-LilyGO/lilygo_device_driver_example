@@ -1,8 +1,8 @@
 /*
- * @Description: STSW-ST25RFAL002 ST25R3916 NFC discovery example
+ * @Description: 使用 ST25R3916 和 STSW-ST25RFAL002 执行 NFC 轮询发现的示例
  * @Author: LILYGO_L
- * @Date: 2026-07-17 21:35:06
- * @LastEditTime: 2026-07-20 15:45:00
+ * @Date: 2026-07-28 13:59:02
+ * @LastEditTime: 2026-07-28 14:05:30
  * @License: GPL 3.0
  */
 #include <algorithm>

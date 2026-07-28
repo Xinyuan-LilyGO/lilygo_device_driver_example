@@ -1,8 +1,8 @@
 /*
- * @Description: i2c_scan
+ * @Description: 扫描 I2C 总线并输出已发现设备地址的示例
  * @Author: LILYGO_L
- * @Date: 2026-07-10 10:27:41
- * @LastEditTime: 2026-07-13 00:00:00
+ * @Date: 2026-07-28 13:59:02
+ * @LastEditTime: 2026-07-28 14:05:30
  * @License: GPL 3.0
  */
 #include <memory>

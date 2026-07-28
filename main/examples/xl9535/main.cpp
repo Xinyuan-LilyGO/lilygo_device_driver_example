@@ -1,8 +1,8 @@
 /*
- * @Description: xl9535
+ * @Description: 控制 XL9535 GPIO 扩展器全部引脚高低电平切换的示例
  * @Author: LILYGO_L
- * @Date: 2026-07-10 10:27:46
- * @LastEditTime: 2026-07-13 15:14:10
+ * @Date: 2026-07-28 13:59:02
+ * @LastEditTime: 2026-07-28 14:05:30
  * @License: GPL 3.0
  */
 #include "common.h"

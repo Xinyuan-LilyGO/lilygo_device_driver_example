@@ -1,8 +1,8 @@
 /*
- * @Description: None
+ * @Description: 演示深度睡眠以及按键和定时器唤醒流程
  * @Author: LILYGO_L
- * @Date: 2026-07-10 11:03:22
- * @LastEditTime: 2026-07-26 13:02:10
+ * @Date: 2026-07-28 13:59:02
+ * @LastEditTime: 2026-07-28 14:05:30
  * @License: GPL 3.0
  */
 #include "common.h"
