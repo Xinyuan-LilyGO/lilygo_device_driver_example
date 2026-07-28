@@ -2,7 +2,7 @@
  * @Description: None
  * @Author: LILYGO_L
  * @Date: 2026-07-10 11:03:22
- * @LastEditTime: 2026-07-10 14:06:11
+ * @LastEditTime: 2026-07-26 13:02:10
  * @License: GPL 3.0
  */
 #include "common.h"
@@ -56,7 +56,7 @@ extern "C" void app_main(void) {
   printf("Entering deep sleep in 5 seconds\n");
   vTaskDelay(pdMS_TO_TICKS(5000));
 
-  if (!driver.SetSleep(common::DeviceDriver::SleepLevel::kDeep, true)) {
+  if (!driver.SetPowerState(common::DeviceDriver::PowerState::kOff)) {
     printf("Device sleep preparation reported a failure\n");
   }
   EnableWakeupSources();
