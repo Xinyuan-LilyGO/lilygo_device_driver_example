@@ -1,6 +1,6 @@
 # LoRa RX Sensitivity Test
 
-**English | [中文](./README_CN.md)**
+## **English | [Chinese](./README_CN.md)**
 
 This example performs a conducted LoRa receiver sensitivity test with an RF
 signal generator capable of generating LoRa waveforms. It only receives
