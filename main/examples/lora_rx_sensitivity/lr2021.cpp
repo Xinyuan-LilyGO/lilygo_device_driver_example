@@ -1,39 +1,40 @@
 /*
- * @Description: LR2021 LoRa 数据发送与接收实现
+ * @Description: 实现 LR2021 的 LoRa 接收灵敏度测试
  * @Author: LILYGO_L
- * @Date: 2026-07-28 13:59:02
- * @LastEditTime: 2026-07-29 11:09:21
+ * @Date: 2026-07-29 15:09:12
+ * @LastEditTime: 2026-07-29 16:55:27
  * @License: GPL 3.0
  */
 #include "common.h"
-#include "lora_send_receive.h"
+#include "lora_rx_sensitivity.h"
 
 #include <array>
 
 #if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4)
 
-namespace lora_send_receive {
+namespace lora_rx_sensitivity {
 namespace {
 
+constexpr uint32_t kFrequencyHz = 433000000U;
 constexpr lr20xx_system_irq_mask_t kRadioIrqMask =
-    LR20XX_SYSTEM_IRQ_TX_DONE | LR20XX_SYSTEM_IRQ_RX_DONE |
-    LR20XX_SYSTEM_IRQ_LORA_HEADER_ERROR | LR20XX_SYSTEM_IRQ_CRC_ERROR |
-    LR20XX_SYSTEM_IRQ_LEN_ERROR | LR20XX_SYSTEM_IRQ_TIMEOUT;
+    LR20XX_SYSTEM_IRQ_RX_DONE |
+    LR20XX_SYSTEM_IRQ_LORA_HEADER_ERROR |
+    LR20XX_SYSTEM_IRQ_CRC_ERROR | LR20XX_SYSTEM_IRQ_LEN_ERROR |
+    LR20XX_SYSTEM_IRQ_TIMEOUT;
 
-lr20xx_radio_lora_pkt_params_t MakePacketConfig(uint8_t payload_length) {
+lr20xx_radio_lora_pkt_params_t MakePacketConfig() {
   return {
       .preamble_len_in_symb = 8,
       .pkt_mode = LR20XX_RADIO_LORA_PKT_EXPLICIT,
-      .pld_len_in_bytes = payload_length,
+      .pld_len_in_bytes = static_cast<uint8_t>(kPayloadLength),
       .crc = LR20XX_RADIO_LORA_CRC_ENABLED,
       .iq = LR20XX_RADIO_LORA_IQ_STANDARD,
   };
 }
 
-bool SetPayloadLength(
-    usp_cpp_bus_driver::Lr20xx& lr2021, uint8_t payload_length) {
+bool SetPacketConfig(usp_cpp_bus_driver::Lr20xx& lr2021) {
   const lr20xx_radio_lora_pkt_params_t packet_config =
-      MakePacketConfig(payload_length);
+      MakePacketConfig();
   return lr2021.Invoke(
              lr20xx_radio_lora_set_packet_params, &packet_config) ==
          LR20XX_STATUS_OK;
@@ -47,19 +48,21 @@ bool ReadAndClearIrq(usp_cpp_bus_driver::Lr20xx& lr2021,
 }
 
 bool StartReceive(usp_cpp_bus_driver::Lr20xx& lr2021) {
-  return lr2021.Invoke(lr20xx_radio_fifo_clear_rx) == LR20XX_STATUS_OK &&
-         SetPayloadLength(lr2021, 255) && lr2021.StartReceive(0);
+  return lr2021.Invoke(lr20xx_radio_fifo_clear_rx) ==
+             LR20XX_STATUS_OK &&
+         SetPacketConfig(lr2021) && lr2021.StartReceive(0);
 }
 
 bool CalibrateFrontEnd(usp_cpp_bus_driver::Lr20xx& lr2021) {
   constexpr lr20xx_radio_common_front_end_calibration_value_t
       kCalibration = {
           .rx_path = LR20XX_RADIO_COMMON_RX_PATH_LF,
-          .frequency_in_hertz = 433000000U,
+          .frequency_in_hertz = kFrequencyHz,
       };
   for (uint8_t attempt = 0; attempt < 10; ++attempt) {
     if (lr2021.Invoke(lr20xx_radio_common_calibrate_front_end_helper,
-            &kCalibration, static_cast<uint8_t>(1)) == LR20XX_STATUS_OK) {
+            &kCalibration, static_cast<uint8_t>(1)) ==
+        LR20XX_STATUS_OK) {
       return true;
     }
     vTaskDelay(pdMS_TO_TICKS(5));
@@ -92,24 +95,24 @@ void RunLr2021() {
 
   auto& xl9535 = *driver.chip().xl9535;
   auto& lr2021 = *driver.chip().lr2021;
+  const auto spreading_factor =
+      static_cast<lr20xx_radio_lora_sf_t>(kSpreadingFactor);
   const usp_cpp_bus_driver::Lr20xx::LoraConfig lora_config = {
-      .frequency_hz = 433000000U,
+      .frequency_hz = kFrequencyHz,
       .modulation =
           {
-              .sf = LR20XX_RADIO_LORA_SF7,
+              .sf = spreading_factor,
               .bw = LR20XX_RADIO_LORA_BW_125,
               .cr = LR20XX_RADIO_LORA_CR_4_5,
-              .ppm = LR20XX_RADIO_LORA_NO_PPM,
+              .ppm =
+                  lr20xx_radio_lora_get_recommended_ppm_offset(
+                      spreading_factor, LR20XX_RADIO_LORA_BW_125),
           },
-      .packet =
-          {
-              .preamble_len_in_symb = 8,
-              .pkt_mode = LR20XX_RADIO_LORA_PKT_EXPLICIT,
-              .pld_len_in_bytes = 255,
-              .crc = LR20XX_RADIO_LORA_CRC_ENABLED,
-              .iq = LR20XX_RADIO_LORA_IQ_STANDARD,
-          },
-      .sync_word = 0x12,
+      .packet = MakePacketConfig(),
+      .sync_word = kPublicSyncWord,
+      .rx_path = LR20XX_RADIO_COMMON_RX_PATH_LF,
+      .rx_boost_mode =
+          LR20XX_RADIO_COMMON_RX_PATH_BOOST_MODE_7,
       .pa =
           {
               .pa_sel = LR20XX_RADIO_COMMON_PA_SEL_LF,
@@ -122,62 +125,52 @@ void RunLr2021() {
       .ramp_time = LR20XX_RADIO_COMMON_RAMP_48_US,
   };
 
-  if (!CalibrateFrontEnd(lr2021) || !lr2021.Configure(lora_config) ||
+  if (!CalibrateFrontEnd(lr2021) ||
+      !lr2021.Configure(lora_config) ||
       lr2021.Invoke(lr20xx_system_clear_irq_status,
           LR20XX_SYSTEM_IRQ_ALL_MASK) != LR20XX_STATUS_OK ||
       lr2021.Invoke(lr20xx_system_set_dio_irq_cfg,
-          LR20XX_SYSTEM_DIO_11, kRadioIrqMask) != LR20XX_STATUS_OK ||
+          LR20XX_SYSTEM_DIO_11, kRadioIrqMask) !=
+          LR20XX_STATUS_OK ||
       !StartReceive(lr2021)) {
-    printf("LR2021 LoRa configuration failed\n");
+    printf("LR2021 sensitivity-test configuration failed\n");
     return;
   }
 
+  TestSession session("LR2021", kFrequencyHz);
+  session.PrintSetup();
   std::array<uint8_t, 255> receive_buffer = {};
-  bool transmitting = false;
   bool button_was_pressed = false;
-  printf("LR2021 LoRa receive started\n");
 
   while (true) {
     const bool button_pressed = ButtonPressed(tool);
-    if (button_pressed && !button_was_pressed && !transmitting) {
+    if (button_pressed && !button_was_pressed) {
       vTaskDelay(pdMS_TO_TICKS(30));
       if (ButtonPressed(tool)) {
-        printf("LR2021 send started\n");
-        const bool transmit_started =
-            lr2021.Invoke(lr20xx_system_clear_irq_status,
-                LR20XX_SYSTEM_IRQ_ALL_MASK) == LR20XX_STATUS_OK &&
-            lr2021.Invoke(lr20xx_radio_fifo_clear_tx) ==
-                LR20XX_STATUS_OK &&
-            SetPayloadLength(
-                lr2021, static_cast<uint8_t>(kTestPayload.size())) &&
-            lr2021.WriteBuffer(kTestPayload.data(), kTestPayload.size()) &&
-            lr2021.StartTransmit(5000);
-        if (transmit_started) {
-          transmitting = true;
-        } else {
-          printf("LR2021 send failed\n");
-          if (!StartReceive(lr2021)) {
-            printf("LR2021 restart receive failed\n");
-            return;
-          }
+        if (lr2021.Invoke(lr20xx_system_clear_irq_status,
+                LR20XX_SYSTEM_IRQ_ALL_MASK) != LR20XX_STATUS_OK ||
+            !StartReceive(lr2021)) {
+          printf("LR2021 button restart receive failed\n");
+          return;
         }
+        session.Restart(esp_log_timestamp());
       }
     }
-    button_was_pressed = button_pressed;
 
     if (xl9535.GpioRead(common::board::gpio::xl9535::kRadioDio1) == 1) {
+      const uint32_t current_time = esp_log_timestamp();
       lr20xx_system_irq_mask_t irq_status = 0;
       if (!ReadAndClearIrq(lr2021, irq_status)) {
-        printf("LR2021 read IRQ failed\n");
-      } else if ((irq_status & LR20XX_SYSTEM_IRQ_TX_DONE) != 0) {
-        printf("LR2021 send completed\n");
-        transmitting = false;
+        session.RecordDriverError();
       } else if ((irq_status &
-                     (LR20XX_SYSTEM_IRQ_LORA_HEADER_ERROR |
-                         LR20XX_SYSTEM_IRQ_CRC_ERROR |
-                         LR20XX_SYSTEM_IRQ_LEN_ERROR)) != 0) {
-        printf("LR2021 receive packet error (IRQ: 0x%08lX)\n",
-            static_cast<unsigned long>(irq_status));
+                     LR20XX_SYSTEM_IRQ_LORA_HEADER_ERROR) != 0) {
+        session.RecordPacketError(
+            PacketError::kHeader, current_time);
+      } else if ((irq_status & LR20XX_SYSTEM_IRQ_CRC_ERROR) != 0) {
+        session.RecordPacketError(PacketError::kCrc, current_time);
+      } else if ((irq_status & LR20XX_SYSTEM_IRQ_LEN_ERROR) != 0) {
+        session.RecordPacketError(
+            PacketError::kLength, current_time);
       } else if ((irq_status & LR20XX_SYSTEM_IRQ_RX_DONE) != 0) {
         lr20xx_radio_lora_packet_status_t packet_status = {};
         if (lr2021.Invoke(
@@ -185,46 +178,49 @@ void RunLr2021() {
                 LR20XX_STATUS_OK &&
             packet_status.packet_length_bytes > 0 &&
             packet_status.packet_length_bytes <= receive_buffer.size() &&
-            lr2021.ReadBuffer(
-                receive_buffer.data(), packet_status.packet_length_bytes)) {
+            lr2021.ReadBuffer(receive_buffer.data(),
+                packet_status.packet_length_bytes)) {
           const float packet_rssi =
               static_cast<float>(packet_status.rssi_pkt_in_dbm) -
-              static_cast<float>(packet_status.rssi_pkt_half_dbm_count) * 0.5f;
+              static_cast<float>(
+                  packet_status.rssi_pkt_half_dbm_count) *
+                  0.5f;
           const float signal_rssi =
-              static_cast<float>(packet_status.rssi_signal_pkt_in_dbm) -
+              static_cast<float>(
+                  packet_status.rssi_signal_pkt_in_dbm) -
               static_cast<float>(
                   packet_status.rssi_signal_pkt_half_dbm_count) *
                   0.5f;
           const float snr =
               static_cast<float>(packet_status.snr_pkt_raw) * 0.25f;
-          printf(
-              "LR2021 receive RSSI: %.2f dBm, signal RSSI: %.2f dBm, "
-              "SNR: %.2f dB\n",
-              packet_rssi, signal_rssi, snr);
-          for (uint8_t index = 0;
-               index < packet_status.packet_length_bytes; ++index) {
-            printf("LR2021 data[%u]: %u\n",
-                static_cast<unsigned int>(index),
-                static_cast<unsigned int>(receive_buffer[index]));
-          }
+          session.RecordPacket(receive_buffer.data(),
+              packet_status.packet_length_bytes,
+              {
+                  .packet_rssi_dbm = packet_rssi,
+                  .signal_rssi_dbm = signal_rssi,
+                  .snr_db = snr,
+                  .has_signal_rssi = true,
+              },
+              current_time);
         } else {
-          printf("LR2021 receive packet failed\n");
+          session.RecordPacketError(PacketError::kRead, current_time);
         }
       } else if ((irq_status & LR20XX_SYSTEM_IRQ_TIMEOUT) != 0) {
-        printf("LR2021 radio timeout\n");
-        transmitting = false;
+        session.RecordDriverError();
       }
 
-      if (!transmitting && !StartReceive(lr2021)) {
+      if (!StartReceive(lr2021)) {
         printf("LR2021 restart receive failed\n");
         return;
       }
     }
 
-    vTaskDelay(pdMS_TO_TICKS(10));
+    session.Poll(esp_log_timestamp());
+    button_was_pressed = button_pressed;
+    vTaskDelay(pdMS_TO_TICKS(1));
   }
 }
 
-}  // namespace lora_send_receive
+}  // namespace lora_rx_sensitivity
 
 #endif

@@ -2,17 +2,17 @@
  * @Description: SX1262 LoRa 数据发送与接收实现
  * @Author: LILYGO_L
  * @Date: 2026-07-28 13:59:02
- * @LastEditTime: 2026-07-28 14:05:30
+ * @LastEditTime: 2026-07-29 15:45:19
  * @License: GPL 3.0
  */
 #include "common.h"
-#include "lora_send_receive.h"
+#include "lora_tx_rx.h"
 
 #include <array>
 
 #if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4)
 
-namespace lora_send_receive {
+namespace lora_tx_rx {
 namespace {
 
 const char* ChipModeToString(sx126x_chip_modes_t mode) {
@@ -84,15 +84,16 @@ void RunSx1262() {
   auto& sx1262 = *driver.chip().sx1262;
   usp_cpp_bus_driver::Sx126x::LoraConfig lora_config;
   lora_config.frequency_hz = 920000000;
-  lora_config.spreading_factor = SX126X_LORA_SF7;
+  lora_config.spreading_factor = SX126X_LORA_SF12;
   lora_config.bandwidth = SX126X_LORA_BW_125;
   lora_config.coding_rate = SX126X_LORA_CR_4_5;
   lora_config.preamble_length = 8;
-  lora_config.sync_word = 0x12;
+  lora_config.sync_word = kPublicSyncWord;
   lora_config.max_payload_length = 255;
   lora_config.output_power_dbm = 22;
   lora_config.crc_enabled = true;
   lora_config.invert_iq = false;
+  lora_config.rx_boosted = true;
   if (!sx1262.Configure(lora_config) || !sx1262.StartReceive()) {
     printf("SX1262 LoRa configuration failed\n");
     return;
@@ -179,6 +180,6 @@ void RunSx1262() {
   }
 }
 
-}  // namespace lora_send_receive
+}  // namespace lora_tx_rx
 
 #endif

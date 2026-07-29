@@ -9,9 +9,15 @@ menu "Example Configuration"
         config EXAMPLE_BUILD_GPS
             bool "gps"
             depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 || LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR
-        config EXAMPLE_BUILD_LORA_SEND_RECEIVE
-            bool "lora_send_receive"
+        config EXAMPLE_BUILD_LORA_TX_RX
+            bool "lora_tx_rx"
             depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 || LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR
+        config EXAMPLE_BUILD_LORA_RX_SENSITIVITY
+            bool "lora_rx_sensitivity"
+            depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 || LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR
+            help
+                Dedicated conducted LoRa receiver sensitivity and PER test
+                for use with a LoRa-capable RF signal generator.
         config EXAMPLE_BUILD_RTC
             bool "rtc"
             depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4

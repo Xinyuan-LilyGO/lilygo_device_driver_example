@@ -2,17 +2,17 @@
  * @Description: LR1121 LoRa 数据发送与接收实现
  * @Author: LILYGO_L
  * @Date: 2026-07-28 13:59:02
- * @LastEditTime: 2026-07-28 14:05:30
+ * @LastEditTime: 2026-07-29 15:45:19
  * @License: GPL 3.0
  */
 #include "common.h"
-#include "lora_send_receive.h"
+#include "lora_tx_rx.h"
 
 #include <array>
 
 #if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR)
 
-namespace lora_send_receive {
+namespace lora_tx_rx {
 namespace {
 
 constexpr uint32_t kRadioIrqMask =
@@ -90,10 +90,10 @@ void RunLr1121() {
       .frequency_hz = 2450000000U,
       .modulation =
           {
-              .sf = LR11XX_RADIO_LORA_SF7,
+              .sf = LR11XX_RADIO_LORA_SF12,
               .bw = LR11XX_RADIO_LORA_BW_125,
               .cr = LR11XX_RADIO_LORA_CR_4_5,
-              .ldro = 0,
+              .ldro = 1,
           },
       .packet =
           {
@@ -103,7 +103,8 @@ void RunLr1121() {
               .crc = LR11XX_RADIO_LORA_CRC_ON,
               .iq = LR11XX_RADIO_LORA_IQ_STANDARD,
           },
-      .sync_word = 0x12,
+      .sync_word = kPublicSyncWord,
+      .rx_boosted = true,
       .pa =
           {
               .pa_sel = LR11XX_RADIO_PA_SEL_HF,
@@ -207,6 +208,6 @@ void RunLr1121() {
   }
 }
 
-}  // namespace lora_send_receive
+}  // namespace lora_tx_rx
 
 #endif

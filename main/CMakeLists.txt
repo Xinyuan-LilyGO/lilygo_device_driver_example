@@ -13,12 +13,19 @@ elseif(CONFIG_EXAMPLE_BUILD_GPS)
         "examples/gps/gps.cpp"
         "examples/gps/l76k.cpp"
         "examples/gps/nrf9151.cpp")
-elseif(CONFIG_EXAMPLE_BUILD_LORA_SEND_RECEIVE)
-    set(example_name "lora_send_receive")
+elseif(CONFIG_EXAMPLE_BUILD_LORA_RX_SENSITIVITY)
+    set(example_name "lora_rx_sensitivity")
     set(example_extra_sources
-        "examples/lora_send_receive/lr2021.cpp"
-        "examples/lora_send_receive/lr1121.cpp"
-        "examples/lora_send_receive/sx1262.cpp")
+        "examples/lora_rx_sensitivity/lora_rx_sensitivity.cpp"
+        "examples/lora_rx_sensitivity/lr2021.cpp"
+        "examples/lora_rx_sensitivity/lr1121.cpp"
+        "examples/lora_rx_sensitivity/sx1262.cpp")
+elseif(CONFIG_EXAMPLE_BUILD_LORA_TX_RX)
+    set(example_name "lora_tx_rx")
+    set(example_extra_sources
+        "examples/lora_tx_rx/lr2021.cpp"
+        "examples/lora_tx_rx/lr1121.cpp"
+        "examples/lora_tx_rx/sx1262.cpp")
 elseif(CONFIG_EXAMPLE_BUILD_RTC)
     set(example_name "rtc")
 elseif(CONFIG_EXAMPLE_BUILD_BATTERY_MANAGEMENT)
