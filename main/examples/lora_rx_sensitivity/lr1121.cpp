@@ -2,7 +2,7 @@
  * @Description: 实现 LR1121 的 LoRa 接收灵敏度测试
  * @Author: LILYGO_L
  * @Date: 2026-07-29 15:09:12
- * @LastEditTime: 2026-07-29 16:55:27
+ * @LastEditTime: 2026-07-29 18:00:58
  * @License: GPL 3.0
  */
 #include "common.h"
@@ -15,7 +15,9 @@
 namespace lora_rx_sensitivity {
 namespace {
 
-constexpr uint32_t kFrequencyHz = 2450000000U;
+constexpr lr11xx_radio_lora_bw_t kLoraBandwidth =
+    kUseHighFrequencyPath ? LR11XX_RADIO_LORA_BW_200
+                          : LR11XX_RADIO_LORA_BW_125;
 constexpr uint32_t kRadioIrqMask =
     LR11XX_SYSTEM_IRQ_RX_DONE | LR11XX_SYSTEM_IRQ_HEADER_ERROR |
     LR11XX_SYSTEM_IRQ_CRC_ERROR | LR11XX_SYSTEM_IRQ_TIMEOUT;
@@ -75,13 +77,13 @@ void RunLr1121() {
   constexpr auto kLoraSpreadingFactor =
       static_cast<lr11xx_radio_lora_sf_t>(kSpreadingFactor);
   constexpr uint8_t kLdroEnabled =
-      kSpreadingFactor >= 11 ? 1 : 0;
+      kSpreadingFactor >= (kUseHighFrequencyPath ? 12 : 11) ? 1 : 0;
   const usp_cpp_bus_driver::Lr11xx::LoraConfig lora_config = {
       .frequency_hz = kFrequencyHz,
       .modulation =
           {
               .sf = kLoraSpreadingFactor,
-              .bw = LR11XX_RADIO_LORA_BW_125,
+              .bw = kLoraBandwidth,
               .cr = LR11XX_RADIO_LORA_CR_4_5,
               .ldro = kLdroEnabled,
           },
@@ -90,12 +92,19 @@ void RunLr1121() {
       .rx_boosted = true,
       .pa =
           {
-              .pa_sel = LR11XX_RADIO_PA_SEL_HF,
-              .pa_reg_supply = LR11XX_RADIO_PA_REG_SUPPLY_VREG,
-              .pa_duty_cycle = 0x00,
-              .pa_hp_sel = 0x00,
+              .pa_sel =
+                  kUseHighFrequencyPath ? LR11XX_RADIO_PA_SEL_HF
+                                        : LR11XX_RADIO_PA_SEL_HP,
+              .pa_reg_supply =
+                  kUseHighFrequencyPath
+                      ? LR11XX_RADIO_PA_REG_SUPPLY_VREG
+                      : LR11XX_RADIO_PA_REG_SUPPLY_VBAT,
+              .pa_duty_cycle =
+                  kUseHighFrequencyPath ? 0x00 : 0x04,
+              .pa_hp_sel =
+                  kUseHighFrequencyPath ? 0x00 : 0x07,
           },
-      .output_power_dbm = 13,
+      .output_power_dbm = kUseHighFrequencyPath ? 13 : 22,
       .ramp_time = LR11XX_RADIO_RAMP_48_US,
   };
 

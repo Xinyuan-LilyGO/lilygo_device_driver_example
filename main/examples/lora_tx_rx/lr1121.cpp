@@ -2,7 +2,7 @@
  * @Description: LR1121 LoRa 数据发送与接收实现
  * @Author: LILYGO_L
  * @Date: 2026-07-28 13:59:02
- * @LastEditTime: 2026-07-29 15:45:19
+ * @LastEditTime: 2026-07-29 18:00:58
  * @License: GPL 3.0
  */
 #include "common.h"
@@ -15,6 +15,9 @@
 namespace lora_tx_rx {
 namespace {
 
+constexpr lr11xx_radio_lora_bw_t kLoraBandwidth =
+    kUseHighFrequencyPath ? LR11XX_RADIO_LORA_BW_200
+                          : LR11XX_RADIO_LORA_BW_125;
 constexpr uint32_t kRadioIrqMask =
     LR11XX_SYSTEM_IRQ_TX_DONE | LR11XX_SYSTEM_IRQ_RX_DONE |
     LR11XX_SYSTEM_IRQ_HEADER_ERROR | LR11XX_SYSTEM_IRQ_CRC_ERROR |
@@ -87,11 +90,11 @@ void RunLr1121() {
 
   auto& lr1121 = *driver.chip().lr1121;
   const usp_cpp_bus_driver::Lr11xx::LoraConfig lora_config = {
-      .frequency_hz = 2450000000U,
+      .frequency_hz = kFrequencyHz,
       .modulation =
           {
               .sf = LR11XX_RADIO_LORA_SF12,
-              .bw = LR11XX_RADIO_LORA_BW_125,
+              .bw = kLoraBandwidth,
               .cr = LR11XX_RADIO_LORA_CR_4_5,
               .ldro = 1,
           },
@@ -107,12 +110,19 @@ void RunLr1121() {
       .rx_boosted = true,
       .pa =
           {
-              .pa_sel = LR11XX_RADIO_PA_SEL_HF,
-              .pa_reg_supply = LR11XX_RADIO_PA_REG_SUPPLY_VREG,
-              .pa_duty_cycle = 0x00,
-              .pa_hp_sel = 0x00,
+              .pa_sel =
+                  kUseHighFrequencyPath ? LR11XX_RADIO_PA_SEL_HF
+                                        : LR11XX_RADIO_PA_SEL_HP,
+              .pa_reg_supply =
+                  kUseHighFrequencyPath
+                      ? LR11XX_RADIO_PA_REG_SUPPLY_VREG
+                      : LR11XX_RADIO_PA_REG_SUPPLY_VBAT,
+              .pa_duty_cycle =
+                  kUseHighFrequencyPath ? 0x00 : 0x04,
+              .pa_hp_sel =
+                  kUseHighFrequencyPath ? 0x00 : 0x07,
           },
-      .output_power_dbm = 13,
+      .output_power_dbm = kUseHighFrequencyPath ? 13 : 22,
       .ramp_time = LR11XX_RADIO_RAMP_48_US,
   };
   if (!lr1121.Configure(lora_config) ||

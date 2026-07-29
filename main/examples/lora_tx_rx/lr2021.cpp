@@ -2,7 +2,7 @@
  * @Description: LR2021 LoRa 数据发送与接收实现
  * @Author: LILYGO_L
  * @Date: 2026-07-28 13:59:02
- * @LastEditTime: 2026-07-29 15:45:19
+ * @LastEditTime: 2026-07-29 18:22:36
  * @License: GPL 3.0
  */
 #include "common.h"
@@ -15,6 +15,15 @@
 namespace lora_tx_rx {
 namespace {
 
+constexpr lr20xx_radio_lora_bw_t kLoraBandwidth =
+    kUseHighFrequencyPath ? LR20XX_RADIO_LORA_BW_203
+                          : LR20XX_RADIO_LORA_BW_125;
+constexpr lr20xx_radio_common_rx_path_t kReceivePath =
+    kUseHighFrequencyPath ? LR20XX_RADIO_COMMON_RX_PATH_HF
+                          : LR20XX_RADIO_COMMON_RX_PATH_LF;
+// T-Display-P4的LR2021在1 GHz及以上必须限制为最大+5 dBm
+constexpr bool kApplyBoardHighFrequencyPowerLimit =
+    kFrequencyHz >= 1000000000U;
 constexpr lr20xx_system_irq_mask_t kRadioIrqMask =
     LR20XX_SYSTEM_IRQ_TX_DONE | LR20XX_SYSTEM_IRQ_RX_DONE |
     LR20XX_SYSTEM_IRQ_LORA_HEADER_ERROR | LR20XX_SYSTEM_IRQ_CRC_ERROR |
@@ -54,8 +63,8 @@ bool StartReceive(usp_cpp_bus_driver::Lr20xx& lr2021) {
 bool CalibrateFrontEnd(usp_cpp_bus_driver::Lr20xx& lr2021) {
   constexpr lr20xx_radio_common_front_end_calibration_value_t
       kCalibration = {
-          .rx_path = LR20XX_RADIO_COMMON_RX_PATH_LF,
-          .frequency_in_hertz = 433000000U,
+          .rx_path = kReceivePath,
+          .frequency_in_hertz = kFrequencyHz,
       };
   for (uint8_t attempt = 0; attempt < 10; ++attempt) {
     if (lr2021.Invoke(lr20xx_radio_common_calibrate_front_end_helper,
@@ -93,11 +102,11 @@ void RunLr2021() {
   auto& xl9535 = *driver.chip().xl9535;
   auto& lr2021 = *driver.chip().lr2021;
   const usp_cpp_bus_driver::Lr20xx::LoraConfig lora_config = {
-      .frequency_hz = 433000000U,
+      .frequency_hz = kFrequencyHz,
       .modulation =
           {
               .sf = LR20XX_RADIO_LORA_SF12,
-              .bw = LR20XX_RADIO_LORA_BW_125,
+              .bw = kLoraBandwidth,
               .cr = LR20XX_RADIO_LORA_CR_4_5,
               .ppm = LR20XX_RADIO_LORA_PPM_1_4,
           },
@@ -110,18 +119,27 @@ void RunLr2021() {
               .iq = LR20XX_RADIO_LORA_IQ_STANDARD,
           },
       .sync_word = kPublicSyncWord,
-      .rx_path = LR20XX_RADIO_COMMON_RX_PATH_LF,
+      .rx_path = kReceivePath,
       .rx_boost_mode =
           LR20XX_RADIO_COMMON_RX_PATH_BOOST_MODE_7,
       .pa =
           {
-              .pa_sel = LR20XX_RADIO_COMMON_PA_SEL_LF,
+              .pa_sel =
+                  kUseHighFrequencyPath
+                      ? LR20XX_RADIO_COMMON_PA_SEL_HF
+                      : LR20XX_RADIO_COMMON_PA_SEL_LF,
               .pa_lf_mode = LR20XX_RADIO_COMMON_PA_LF_MODE_FSM,
-              .pa_lf_duty_cycle = 7,
+              .pa_lf_duty_cycle =
+                  kUseHighFrequencyPath ? 6 : 7,
               .pa_lf_slices = 7,
-              .pa_hf_duty_cycle = 16,
+              // T-Display-P4的LR2021在1 GHz以上最大只允许+5 dBm。
+              // 官方HF PA表中+5 dBm对应duty cycle 31。
+              .pa_hf_duty_cycle =
+                  kApplyBoardHighFrequencyPowerLimit ? 31 : 16,
           },
-      .output_power_half_dbm = 44,
+      // HF PA的+5 dBm表项要求SetTxParams写入15个半dBm单位。
+      .output_power_half_dbm =
+          kApplyBoardHighFrequencyPowerLimit ? 15 : 44,
       .ramp_time = LR20XX_RADIO_COMMON_RAMP_48_US,
   };
 

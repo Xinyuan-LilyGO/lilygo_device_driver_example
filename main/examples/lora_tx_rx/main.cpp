@@ -2,7 +2,7 @@
  * @Description: 根据当前硬件配置运行对应的 LoRa 数据收发测试
  * @Author: LILYGO_L
  * @Date: 2026-07-28 13:59:02
- * @LastEditTime: 2026-07-29 15:50:15
+ * @LastEditTime: 2026-07-29 18:00:58
  * @License: GPL 3.0
  */
 #include "common.h"
@@ -10,7 +10,10 @@
 
 extern "C" void app_main(void) {
   printf("LoRa TX/RX example on %s\n", common::kBoardName);
-  printf("LoRa: SF12, BW 125 kHz, CR 4/5, public sync word 0x34\n");
+  printf("LoRa: %lu MHz, SF12, BW %lu kHz, CR 4/5, "
+         "public sync word 0x34\n",
+      static_cast<unsigned long>(lora_tx_rx::kFrequencyHz / 1000000U),
+      static_cast<unsigned long>(lora_tx_rx::kBandwidthKhz));
 
   if (!common::InitDriver()) {
     printf("Device driver initialization completed with errors\n");

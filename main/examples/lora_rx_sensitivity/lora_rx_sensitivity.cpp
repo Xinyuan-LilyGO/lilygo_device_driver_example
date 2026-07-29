@@ -2,7 +2,7 @@
  * @Description: 实现 LoRa 接收灵敏度测试会话、数据校验与丢包率统计
  * @Author: LILYGO_L
  * @Date: 2026-07-29 15:09:12
- * @LastEditTime: 2026-07-29 16:13:45
+ * @LastEditTime: 2026-07-29 18:00:58
  * @License: GPL 3.0
  */
 #include "lora_rx_sensitivity.h"
@@ -59,8 +59,9 @@ void TestSession::PrintSetup() const {
   printf("Radio: %s\n", radio_name_);
   printf("Frequency: %lu Hz\n",
       static_cast<unsigned long>(frequency_hz_));
-  printf("Modulation: LoRa, SF%u, BW 125 kHz, CR 4/5\n",
-      static_cast<unsigned int>(kSpreadingFactor));
+  printf("Modulation: LoRa, SF%u, BW %lu kHz, CR 4/5\n",
+      static_cast<unsigned int>(kSpreadingFactor),
+      static_cast<unsigned long>(kBandwidthKhz));
   printf("Packet: explicit header, preamble 8, payload 64 bytes\n");
   printf("Payload CRC: on, IQ: standard, public sync word: 0x34\n");
   printf("Low data rate optimization: on, receiver gain: boosted\n");

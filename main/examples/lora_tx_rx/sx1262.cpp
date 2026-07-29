@@ -2,7 +2,7 @@
  * @Description: SX1262 LoRa 数据发送与接收实现
  * @Author: LILYGO_L
  * @Date: 2026-07-28 13:59:02
- * @LastEditTime: 2026-07-29 15:45:19
+ * @LastEditTime: 2026-07-29 18:00:58
  * @License: GPL 3.0
  */
 #include "common.h"
@@ -64,6 +64,11 @@ bool ButtonPressed(cpp_bus_driver::Tool& tool) {
 }  // namespace
 
 void RunSx1262() {
+  if constexpr (kUseHighFrequencyPath) {
+    printf("SX1262 does not support the selected 2400 MHz frequency\n");
+    return;
+  }
+
   auto& driver = common::GetDriver();
   if (!driver.IsXl9535Ready() || !driver.IsSx1262Ready() ||
       !driver.SetSx1262PowerState(
@@ -83,7 +88,7 @@ void RunSx1262() {
   auto& xl9535 = *driver.chip().xl9535;
   auto& sx1262 = *driver.chip().sx1262;
   usp_cpp_bus_driver::Sx126x::LoraConfig lora_config;
-  lora_config.frequency_hz = 920000000;
+  lora_config.frequency_hz = kFrequencyHz;
   lora_config.spreading_factor = SX126X_LORA_SF12;
   lora_config.bandwidth = SX126X_LORA_BW_125;
   lora_config.coding_rate = SX126X_LORA_CR_4_5;

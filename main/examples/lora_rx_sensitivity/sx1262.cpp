@@ -2,7 +2,7 @@
  * @Description: 实现 SX1262 的 LoRa 接收灵敏度测试
  * @Author: LILYGO_L
  * @Date: 2026-07-29 15:09:12
- * @LastEditTime: 2026-07-29 16:55:27
+ * @LastEditTime: 2026-07-29 18:00:58
  * @License: GPL 3.0
  */
 #include "common.h"
@@ -15,8 +15,6 @@
 namespace lora_rx_sensitivity {
 namespace {
 
-constexpr uint32_t kFrequencyHz = 920000000U;
-
 bool ButtonPressed(cpp_bus_driver::Tool& tool) {
   return tool.GpioRead(common::BootButtonGpio()) == 0;
 }
@@ -24,6 +22,11 @@ bool ButtonPressed(cpp_bus_driver::Tool& tool) {
 }  // namespace
 
 void RunSx1262() {
+  if constexpr (kUseHighFrequencyPath) {
+    printf("SX1262 does not support the selected 2400 MHz frequency\n");
+    return;
+  }
+
   auto& driver = common::GetDriver();
   if (!driver.IsXl9535Ready() || !driver.IsSx1262Ready() ||
       !driver.SetSx1262PowerState(

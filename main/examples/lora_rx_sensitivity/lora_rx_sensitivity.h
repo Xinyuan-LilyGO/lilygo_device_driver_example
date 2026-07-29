@@ -2,7 +2,7 @@
  * @Description: 声明 LoRa 接收灵敏度与丢包率测试的公共接口
  * @Author: LILYGO_L
  * @Date: 2026-07-29 15:09:12
- * @LastEditTime: 2026-07-29 16:55:27
+ * @LastEditTime: 2026-07-29 18:00:58
  * @License: GPL 3.0
  */
 #pragma once
@@ -13,6 +13,23 @@
 
 namespace lora_rx_sensitivity {
 
+// 常用LoRa载波频率预设
+inline constexpr uint32_t kFrequency433MHz = 433000000U;
+inline constexpr uint32_t kFrequency868MHz = 868000000U;
+inline constexpr uint32_t kFrequency915MHz = 915000000U;
+inline constexpr uint32_t kFrequency2400MHz = 2400000000U;
+// LR2021、SX1262和LR1121统一使用的默认载波频率，修改此处即可切换
+inline constexpr uint32_t kFrequencyHz = kFrequency433MHz;
+static_assert(kFrequencyHz == kFrequency433MHz ||
+        kFrequencyHz == kFrequency868MHz ||
+        kFrequencyHz == kFrequency915MHz ||
+        kFrequencyHz == kFrequency2400MHz,
+    "Select one of the predefined LoRa frequencies");
+// 2.4 GHz使用HF射频通路和203 kHz带宽，Sub-GHz使用LF通路和125 kHz
+inline constexpr bool kUseHighFrequencyPath =
+    kFrequencyHz == kFrequency2400MHz;
+inline constexpr uint32_t kBandwidthKhz =
+    kUseHighFrequencyPath ? 203U : 125U;
 // Semtech数据手册灵敏度测试使用的Payload长度
 inline constexpr size_t kPayloadLength = 64;
 // 每个输入功率点要求信号发生器发送的总包数

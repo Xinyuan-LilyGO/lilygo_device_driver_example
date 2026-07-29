@@ -11,20 +11,41 @@ and automatic radio detection:
 
 | Radio | Test frequency |
 | --- | ---: |
-| SX1262 | 920 MHz |
+| SX1262 | 433 MHz |
 | LR2021 | 433 MHz |
-| LR1121 | 2450 MHz |
+| LR1121 | 433 MHz |
 
 These frequencies match the current hardware RF paths. Do not change them
 without verifying the RF matching network and applicable regulatory
 requirements.
+
+`lora_rx_sensitivity.h` provides presets for 433, 868, 915, and 2400 MHz.
+Change only the `kFrequencyHz` selection line to switch the complete example,
+for example:
+
+```cpp
+inline constexpr uint32_t kFrequencyHz = kFrequency868MHz;
+```
+
+At 433, 868, or 915 MHz, LR2021 and LR1121 automatically use the Sub-GHz RF
+path and 125 kHz bandwidth. At 2400 MHz, they automatically use the HF RF
+path and 203 kHz bandwidth. SX1262 does not support 2400 MHz; if it is
+automatically detected, the program reports the unsupported frequency and
+stops the test.
+
+The LR2021 RF path on T-Display-P4 has an additional hardware limit: at
+frequencies of 1 GHz or above, transmit power must not exceed `+5 dBm`.
+The LR2021 implementation therefore uses the official HF PA table entry for
+`+5 dBm`; Sub-GHz remains configured for `+22 dBm`. This sensitivity example
+does not actively transmit. The PA setting only keeps driver initialization
+safe and consistent with the TX/RX example.
 
 ## Test Criteria
 
 The program uses the LoRa sensitivity conditions defined in the Semtech
 datasheets:
 
-- Bandwidth: 125 kHz
+- Bandwidth: 125 kHz for Sub-GHz, 203 kHz at 2400 MHz
 - Spreading factor: Set by `kSpreadingFactor`, default SF12
 - Coding rate: 4/5
 - Preamble: 8 symbols
@@ -39,9 +60,9 @@ datasheets:
 
 Change `kSpreadingFactor` in `lora_rx_sensitivity.h` to set the actual receive
 SF used by LR2021, SX1262, and LR1121 together. The valid range is 5 through
-12. These are the default program settings. LR1121 operation at 2.4 GHz with
-BW125 is outside its datasheet range and cannot directly use an official
-sensitivity figure; see the exception in the table below.
+12. These are the default program settings. LR1121 also uses its 433 MHz
+Sub-GHz path, so the corresponding official typical sensitivity below can
+be used as a reference.
 
 The RF signal generator must transmit exactly 1000 packets. PER is calculated
 as:
@@ -68,7 +89,7 @@ match the receiver:
 | --- | --- |
 | Frequency | Match the radio frequency in the table above |
 | Spreading Factor | Match `kSpreadingFactor`, default SF12 |
-| Bandwidth | 125 kHz |
+| Bandwidth | 125 kHz for Sub-GHz, 203 kHz at 2400 MHz |
 | Coding Rate | 4/5 |
 | Preamble Length | 8 |
 | Header | Explicit |
@@ -157,13 +178,11 @@ These values are typical IC RF-port results under the datasheet conditions.
 They exclude losses from RF switches, filters, matching networks, the PCB,
 cables, and adapters, and they are not guaranteed worst-case limits.
 
-The `-141 dBm` value in the Semtech product table must not be applied to the
-LR1121 row because it is the SF12/BW125 Sub-GHz reference. The LR1121
-datasheet defines a 203 kHz to 812 kHz LoRa bandwidth range at 2.4 GHz, so
-the current 2450 MHz/BW125 combination is outside the official range. One
-published 2.4 GHz reference is `-129 dBm @ SF7/BW406`. Do not claim an
-official sensitivity for the current combination until both the program and
-instrument use an officially supported 2.4 GHz bandwidth.
+The current LR1121 default of 433 MHz/BW125 is a Sub-GHz condition, so
+`-141 dBm` can be used as the official typical IC RF-port reference. The
+LR1121 2.4 GHz row is retained only to describe its high-frequency path:
+the datasheet specifies LoRa bandwidths from 203 kHz to 812 kHz at 2.4 GHz,
+so this example's BW125 setting cannot be used directly at 2.4 GHz.
 
 The following examples show generator settings with no path loss and with a
 20 dB fixed attenuator. The 20 dB value only demonstrates the calculation;
@@ -174,7 +193,7 @@ actual test.
 | --- | ---: | ---: | ---: | ---: |
 | LR2021 | -130 dBm to -145 dBm | -130 dBm to -145 dBm | -110 dBm to -125 dBm | Approximately -130 dBm to -145 dBm |
 | SX1262 | -125 dBm to -140 dBm | -125 dBm to -140 dBm | -105 dBm to -120 dBm | Approximately -125 dBm to -140 dBm |
-| LR1121 | No official range for the current combination | Not an official pass/fail basis | Not an official pass/fail basis | Not an official pass/fail basis |
+| LR1121 | -130 dBm to -145 dBm | -130 dBm to -145 dBm | -110 dBm to -125 dBm | Approximately -130 dBm to -145 dBm |
 
 Set the instrument using:
 
