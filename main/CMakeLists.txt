@@ -1,12 +1,45 @@
 set(example_requires "common")
 
-if(CONFIG_EXAMPLE_BUILD_AW86224)
-    set(example_name "aw86224")
+if(CONFIG_EXAMPLE_BUILD_HAPTIC_FEEDBACK)
+    set(example_name "haptic_feedback")
+elseif(CONFIG_EXAMPLE_BUILD_IMU)
+    set(example_name "imu")
+    set(example_extra_sources
+        "examples/imu/bhi260ap_qmc6310n.cpp"
+        "examples/imu/icm20948.cpp")
+elseif(CONFIG_EXAMPLE_BUILD_GPS)
+    set(example_name "gps")
+    set(example_extra_sources
+        "examples/gps/gps.cpp"
+        "examples/gps/l76k.cpp"
+        "examples/gps/nrf9151.cpp")
+elseif(CONFIG_EXAMPLE_BUILD_LORA_SEND_RECEIVE)
+    set(example_name "lora_send_receive")
+    set(example_extra_sources
+        "examples/lora_send_receive/lr1121.cpp"
+        "examples/lora_send_receive/sx1262.cpp")
+elseif(CONFIG_EXAMPLE_BUILD_RTC)
+    set(example_name "rtc")
 elseif(CONFIG_EXAMPLE_BUILD_BATTERY_MANAGEMENT)
     set(example_name "battery_management")
     set(example_extra_sources
         "examples/battery_management/bq27220.cpp"
         "examples/battery_management/axp517.cpp")
+elseif(CONFIG_EXAMPLE_BUILD_MICROPHONE_SPEAKER_LOOPBACK)
+    set(example_name "microphone_speaker_loopback")
+    set(example_extra_sources
+        "examples/microphone_speaker_loopback/es8311.cpp"
+        "examples/microphone_speaker_loopback/es8389.cpp")
+elseif(CONFIG_EXAMPLE_BUILD_SD_MP3)
+    set(example_name "sd_mp3")
+    set(example_extra_sources
+        "examples/sd_mp3/es8311.cpp"
+        "examples/sd_mp3/es8389.cpp")
+elseif(CONFIG_EXAMPLE_BUILD_WIFI_MP3)
+    set(example_name "wifi_mp3")
+    set(example_extra_sources
+        "examples/wifi_mp3/es8311.cpp"
+        "examples/wifi_mp3/es8389.cpp")
 elseif(CONFIG_EXAMPLE_BUILD_WIFI_SCAN_CONNECT_TIME)
     set(example_name "wifi_scan_connect_time")
 elseif(CONFIG_EXAMPLE_BUILD_NETWORK_ADAPTER_UPDATE)
@@ -51,6 +84,17 @@ if(CONFIG_EXAMPLE_BUILD_OTA_UPDATE)
         esp_https_ota
         esp_netif
         esp_system
+        esp_wifi
+        mbedtls
+    )
+endif()
+
+if(CONFIG_EXAMPLE_BUILD_WIFI_MP3)
+    idf_component_optional_requires(PRIVATE
+        esp_event
+        esp_http_client
+        esp_netif
+        esp_timer
         esp_wifi
         mbedtls
     )

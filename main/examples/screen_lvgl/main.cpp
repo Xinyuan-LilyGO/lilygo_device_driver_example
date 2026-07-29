@@ -55,12 +55,56 @@ void FillColorBars(void* buffer, int width, int height, int bits_per_pixel) {
   }
 }
 
+/**
+ * @brief 运行当前屏幕支持的镜像、颜色、反色和休眠测试效果
+ */
+void RunScreenEffects() {
+  auto& driver = common::GetDriver();
+  if (common::IsHi8561Screen() && driver.IsHi8561Ready()) {
+    auto* screen = driver.chip().hi8561.get();
+    screen->SetMirror(cpp_bus_driver::Hi8561::MirrorMode::kHorizontal);
+    vTaskDelay(pdMS_TO_TICKS(1000));
+    screen->SetMirror(cpp_bus_driver::Hi8561::MirrorMode::kVertical);
+    vTaskDelay(pdMS_TO_TICKS(1000));
+    screen->SetMirror(
+        cpp_bus_driver::Hi8561::MirrorMode::kHorizontalVertical);
+    vTaskDelay(pdMS_TO_TICKS(1000));
+    screen->SetMirror(cpp_bus_driver::Hi8561::MirrorMode::kOff);
+    screen->SetColorOrder(cpp_bus_driver::Hi8561::ColorOrder::kBgr);
+    vTaskDelay(pdMS_TO_TICKS(1000));
+    screen->SetColorOrder(cpp_bus_driver::Hi8561::ColorOrder::kRgb);
+    screen->SetInversion(true);
+    vTaskDelay(pdMS_TO_TICKS(1000));
+    screen->SetInversion(false);
+    screen->SetScreenOff(true);
+    screen->SetSleep(true);
+    vTaskDelay(pdMS_TO_TICKS(1000));
+    screen->SetSleep(false);
+    screen->SetScreenOff(false);
+    return;
+  }
+#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4)
+  if (!driver.IsRm69a10Ready()) {
+    return;
+  }
+  auto* screen = driver.chip().rm69a10.get();
+  screen->SetInversion(true);
+  vTaskDelay(pdMS_TO_TICKS(1000));
+  screen->SetInversion(false);
+  screen->SetScreenOff(true);
+  screen->SetSleep(true);
+  vTaskDelay(pdMS_TO_TICKS(1000));
+  screen->SetSleep(false);
+  screen->SetScreenOff(false);
+#endif
+}
+
 }  // namespace
 
 extern "C" void app_main(void) {
   printf("LVGL screen example on %s\n", common::kBoardName);
   common::InitDriver();
-  if (!common::ScreenReady()) {
+  if (!common::GetDriver().IsScreenReady()) {
     printf("Screen init failed\n");
     return;
   }
@@ -91,7 +135,7 @@ extern "C" void app_main(void) {
   }
 
   vTaskDelay(pdMS_TO_TICKS(1000));
-  common::RunScreenEffects();
+  RunScreenEffects();
   while (true) {
     vTaskDelay(pdMS_TO_TICKS(1000));
   }

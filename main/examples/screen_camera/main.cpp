@@ -334,7 +334,7 @@ void RunCameraPreview() {
 extern "C" void app_main(void) {
   printf("Camera screen example on %s\n", common::kBoardName);
   common::InitDriver();
-  if (!common::ScreenReady()) {
+  if (!common::GetDriver().IsScreenReady()) {
     printf("Screen init failed\n");
     return;
   }

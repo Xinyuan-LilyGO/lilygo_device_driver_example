@@ -2,10 +2,28 @@ menu "Example Configuration"
     choice
         prompt "Select the example to build"
         default EXAMPLE_BUILD_SCREEN_LVGL
-        config EXAMPLE_BUILD_AW86224
-            bool "aw86224"
+        config EXAMPLE_BUILD_HAPTIC_FEEDBACK
+            bool "haptic_feedback"
+        config EXAMPLE_BUILD_IMU
+            bool "imu"
+        config EXAMPLE_BUILD_GPS
+            bool "gps"
+            depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 || LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR
+        config EXAMPLE_BUILD_LORA_SEND_RECEIVE
+            bool "lora_send_receive"
+            depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 || LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR
+        config EXAMPLE_BUILD_RTC
+            bool "rtc"
+            depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4
         config EXAMPLE_BUILD_BATTERY_MANAGEMENT
             bool "battery_management"
+        config EXAMPLE_BUILD_MICROPHONE_SPEAKER_LOOPBACK
+            bool "microphone_speaker_loopback"
+        config EXAMPLE_BUILD_SD_MP3
+            bool "sd_mp3"
+        config EXAMPLE_BUILD_WIFI_MP3
+            bool "wifi_mp3"
+            select MBEDTLS_CERTIFICATE_BUNDLE
         config EXAMPLE_BUILD_WIFI_SCAN_CONNECT_TIME
             bool "wifi_scan_connect_time"
         config EXAMPLE_BUILD_NETWORK_ADAPTER_UPDATE

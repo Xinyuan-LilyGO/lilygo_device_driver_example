@@ -255,11 +255,11 @@ void RunAxp517Example() {
 
   auto& driver = common::GetDriver();
   common::InitDriver();
-  auto& axp517 = driver.chip().axp517;
-  if (axp517 == nullptr || !driver.status().axp517.init_flag) {
+  if (!driver.IsAxp517Ready()) {
     printf("AXP517 init failed\n");
     return;
   }
+  auto& axp517 = driver.chip().axp517;
 
   cpp_bus_driver::Axp517::AdcChannel adc_channel = {
       .vbus_current_measure = true,

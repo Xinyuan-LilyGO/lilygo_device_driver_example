@@ -11,11 +11,11 @@ extern "C" void app_main(void) {
   printf("XL9535 example on %s\n", common::kBoardName);
   auto& driver = common::GetDriver();
   common::InitDriver();
-  auto& xl9535 = driver.chip().xl9535;
-  if (xl9535 == nullptr || !driver.status().xl9535.init_flag) {
+  if (!driver.IsXl9535Ready()) {
     printf("XL9535 init failed\n");
     return;
   }
+  auto& xl9535 = driver.chip().xl9535;
 
   using Mode = cpp_bus_driver::Xl95x5::Mode;
   using Pin = cpp_bus_driver::Xl95x5::Pin;

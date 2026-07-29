@@ -23,7 +23,7 @@ namespace common {
  * @return 初始化成功返回 true，否则返回 false
  */
 bool LvglPort::Init(lv_indev_read_cb_t input_callback) {
-  if (input_callback == nullptr || !ScreenReady()) {
+  if (input_callback == nullptr || !GetDriver().IsScreenReady()) {
     return false;
   }
 

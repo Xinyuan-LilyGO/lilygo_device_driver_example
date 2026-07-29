@@ -19,10 +19,72 @@ lv_layer_t g_layer;
 time_t g_last_touch_time = 0;
 bool g_needs_clear = false;
 
+bool TouchReady() {
+  auto& driver = common::GetDriver();
+#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4)
+  return driver.IsScreenReady() && driver.IsTouchReady();
+#else
+  return driver.IsScreenReady() && driver.IsHi8561TouchReady();
+#endif
+}
+
+template <typename Touch>
+bool ReadSingleTouchFrom(Touch* touch, int& x, int& y) {
+  typename Touch::TouchPoint point;
+  if (touch == nullptr || !touch->GetSingleTouchPoint(point) ||
+      point.info.empty()) {
+    return false;
+  }
+  x = point.info[0].x;
+  y = point.info[0].y;
+  return true;
+}
+
+bool ReadSingleTouch(int& x, int& y) {
+  auto& driver = common::GetDriver();
+  if (common::IsHi8561Screen()) {
+    return ReadSingleTouchFrom(driver.chip().hi8561_touch.get(), x, y);
+  }
+#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4)
+  return ReadSingleTouchFrom(driver.chip().gt9895.get(), x, y);
+#else
+  return false;
+#endif
+}
+
+template <typename Touch>
+void PrintMultipleTouchFrom(Touch* touch) {
+  typename Touch::TouchPoint point;
+  if (touch == nullptr || !touch->GetMultipleTouchPoint(point)) {
+    return;
+  }
+  printf("Touch finger: %u edge touch flag: %u\n",
+      static_cast<unsigned int>(point.finger_count),
+      static_cast<unsigned int>(point.edge_touch_flag));
+  for (size_t i = 0; i < point.info.size(); ++i) {
+    printf("Touch num:[%u] x: %u y: %u p: %u\n",
+        static_cast<unsigned int>(i + 1),
+        static_cast<unsigned int>(point.info[i].x),
+        static_cast<unsigned int>(point.info[i].y),
+        static_cast<unsigned int>(point.info[i].pressure_value));
+  }
+}
+
+void PrintMultipleTouch() {
+  auto& driver = common::GetDriver();
+  if (common::IsHi8561Screen()) {
+    PrintMultipleTouchFrom(driver.chip().hi8561_touch.get());
+    return;
+  }
+#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4)
+  PrintMultipleTouchFrom(driver.chip().gt9895.get());
+#endif
+}
+
 void TouchInput(lv_indev_t*, lv_indev_data_t* data) {
   int x = 0;
   int y = 0;
-  if (common::ReadSingleTouch(x, y)) {
+  if (ReadSingleTouch(x, y)) {
     data->state = LV_INDEV_STATE_PRESSED;
     data->point.x = x;
     data->point.y = y;
@@ -85,7 +147,7 @@ void ClearCanvasTimer(lv_timer_t*) {
 extern "C" void app_main(void) {
   printf("LVGL touch drawing example on %s\n", common::kBoardName);
   common::InitDriver();
-  if (!common::TouchReady()) {
+  if (!TouchReady()) {
     printf("Screen or touch init failed\n");
     return;
   }
@@ -106,7 +168,7 @@ extern "C" void app_main(void) {
   uint32_t next_log_time = 0;
   while (true) {
     if (esp_log_timestamp() >= next_log_time) {
-      common::PrintMultipleTouch();
+      PrintMultipleTouch();
       next_log_time = esp_log_timestamp() + 1000;
     }
     vTaskDelay(pdMS_TO_TICKS(10));

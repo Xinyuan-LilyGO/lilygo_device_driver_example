@@ -41,11 +41,11 @@ void RunBq27220Example() {
   auto& driver = common::GetDriver();
   common::InitDriver();
 
-  auto& bq27220 = driver.chip().bq27220;
-  if (bq27220 == nullptr || !driver.status().bq27220.init_flag) {
+  if (!driver.IsBq27220Ready()) {
     printf("BQ27220 init failed\n");
     return;
   }
+  auto& bq27220 = driver.chip().bq27220;
 
   cpp_bus_driver::Bq27220::CedvProfile battery_profile;
   battery_profile.design_capacity = kBatteryCapacityMah;

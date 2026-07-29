@@ -6,6 +6,10 @@ if(CONFIG_EXAMPLE_BUILD_SCREEN_LVGL OR
     list(APPEND sources "./src/common_lvgl.cpp")
 endif()
 
+if(CONFIG_EXAMPLE_BUILD_SD_MP3)
+    list(APPEND sources "./src/audio/mp3_metadata.cpp")
+endif()
+
 idf_component_register(
     SRCS ${sources}
     INCLUDE_DIRS "./src"

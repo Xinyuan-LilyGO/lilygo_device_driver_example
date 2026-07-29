@@ -1,5 +1,5 @@
 /*
- * @Description: AW86224 触觉反馈马达波形播放与增益测试示例
+ * @Description: 触觉反馈马达的波形播放与增益测试示例
  * @Author: LILYGO_L
  * @Date: 2026-07-28 13:59:02
  * @LastEditTime: 2026-07-28 14:05:30
@@ -18,15 +18,15 @@ constexpr uint32_t kStopMs = 180;
 }  // namespace
 
 extern "C" void app_main(void) {
-  printf("AW86224 example on %s\n", common::kBoardName);
+  printf("Haptic feedback example on %s\n", common::kBoardName);
 
   auto& driver = common::GetDriver();
   common::InitDriver();
-  auto& aw86224 = driver.chip().aw86224;
-  if (aw86224 == nullptr || !driver.status().aw86224.init_flag) {
+  if (!driver.IsAw86224Ready()) {
     printf("AW86224 init failed\n");
     return;
   }
+  auto& aw86224 = driver.chip().aw86224;
 
   while (true) {
     const auto& info = driver.status().aw86224.ram_waveform_info;

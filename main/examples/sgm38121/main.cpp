@@ -11,11 +11,11 @@ extern "C" void app_main(void) {
   printf("SGM38121 example on %s\n", common::kBoardName);
   auto& driver = common::GetDriver();
   common::InitDriver();
-  auto& sgm38121 = driver.chip().sgm38121;
-  if (sgm38121 == nullptr || !driver.status().sgm38121.init_flag) {
+  if (!driver.IsSgm38121Ready()) {
     printf("SGM38121 init failed\n");
     return;
   }
+  auto& sgm38121 = driver.chip().sgm38121;
 
   using Channel = cpp_bus_driver::Sgm38121::Channel;
   using Status = cpp_bus_driver::Sgm38121::Status;
