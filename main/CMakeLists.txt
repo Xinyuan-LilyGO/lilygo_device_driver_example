@@ -16,6 +16,7 @@ elseif(CONFIG_EXAMPLE_BUILD_GPS)
 elseif(CONFIG_EXAMPLE_BUILD_LORA_SEND_RECEIVE)
     set(example_name "lora_send_receive")
     set(example_extra_sources
+        "examples/lora_send_receive/lr2021.cpp"
         "examples/lora_send_receive/lr1121.cpp"
         "examples/lora_send_receive/sx1262.cpp")
 elseif(CONFIG_EXAMPLE_BUILD_RTC)

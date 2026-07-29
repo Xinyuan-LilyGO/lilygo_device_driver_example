@@ -16,7 +16,18 @@ extern "C" void app_main(void) {
   }
 
 #if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4)
-  lora_send_receive::RunSx1262();
+  auto& driver = common::GetDriver();
+  switch (driver.radio_type()) {
+    case common::board::device::RadioType::kSx1262:
+      lora_send_receive::RunSx1262();
+      break;
+    case common::board::device::RadioType::kLr2021:
+      lora_send_receive::RunLr2021();
+      break;
+    default:
+      printf("No supported LoRa radio was detected\n");
+      break;
+  }
 #elif defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR)
   lora_send_receive::RunLr1121();
 #endif

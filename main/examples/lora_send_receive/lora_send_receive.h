@@ -16,6 +16,7 @@ inline constexpr std::array<uint8_t, 9> kTestPayload = {
     1, 2, 3, 4, 5, 6, 7, 8, 9};
 
 void RunLr1121();
+void RunLr2021();
 void RunSx1262();
 
 }  // namespace lora_send_receive

@@ -84,11 +84,15 @@ void RunSx1262() {
   auto& sx1262 = *driver.chip().sx1262;
   usp_cpp_bus_driver::Sx126x::LoraConfig lora_config;
   lora_config.frequency_hz = 920000000;
-  lora_config.spreading_factor = SX126X_LORA_SF9;
+  lora_config.spreading_factor = SX126X_LORA_SF7;
   lora_config.bandwidth = SX126X_LORA_BW_125;
-  lora_config.coding_rate = SX126X_LORA_CR_4_7;
+  lora_config.coding_rate = SX126X_LORA_CR_4_5;
+  lora_config.preamble_length = 8;
+  lora_config.sync_word = 0x12;
+  lora_config.max_payload_length = 255;
   lora_config.output_power_dbm = 22;
   lora_config.crc_enabled = true;
+  lora_config.invert_iq = false;
   if (!sx1262.Configure(lora_config) || !sx1262.StartReceive()) {
     printf("SX1262 LoRa configuration failed\n");
     return;
@@ -117,7 +121,7 @@ void RunSx1262() {
     }
     button_was_pressed = button_pressed;
 
-    if (xl9535.GpioRead(common::board::gpio::xl9535::kSx1262Dio1) == 1) {
+    if (xl9535.GpioRead(common::board::gpio::xl9535::kRadioDio1) == 1) {
       sx126x_irq_mask_t irq_mask = SX126X_IRQ_NONE;
       if (!sx1262.GetIrqStatus(irq_mask)) {
         printf("SX1262 get IRQ status failed\n");

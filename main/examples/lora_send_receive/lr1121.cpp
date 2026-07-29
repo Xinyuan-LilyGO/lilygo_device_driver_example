@@ -59,7 +59,7 @@ bool WaitForIrq(cpp_bus_driver::Tool& tool,
 }
 
 bool StartReceive(usp_cpp_bus_driver::Lr11xx& lr1121) {
-  return SetPayloadLength(lr1121, 255) && lr1121.StartReceive(0xFFFFFFU);
+  return SetPayloadLength(lr1121, 255) && lr1121.StartReceive(0);
 }
 
 bool ButtonPressed(cpp_bus_driver::Tool& tool) {
@@ -86,7 +86,36 @@ void RunLr1121() {
   }
 
   auto& lr1121 = *driver.chip().lr1121;
-  if (lr1121.Invoke(lr11xx_system_clear_irq_status,
+  const usp_cpp_bus_driver::Lr11xx::LoraConfig lora_config = {
+      .frequency_hz = 2450000000U,
+      .modulation =
+          {
+              .sf = LR11XX_RADIO_LORA_SF7,
+              .bw = LR11XX_RADIO_LORA_BW_125,
+              .cr = LR11XX_RADIO_LORA_CR_4_5,
+              .ldro = 0,
+          },
+      .packet =
+          {
+              .preamble_len_in_symb = 8,
+              .header_type = LR11XX_RADIO_LORA_PKT_EXPLICIT,
+              .pld_len_in_bytes = 255,
+              .crc = LR11XX_RADIO_LORA_CRC_ON,
+              .iq = LR11XX_RADIO_LORA_IQ_STANDARD,
+          },
+      .sync_word = 0x12,
+      .pa =
+          {
+              .pa_sel = LR11XX_RADIO_PA_SEL_HF,
+              .pa_reg_supply = LR11XX_RADIO_PA_REG_SUPPLY_VREG,
+              .pa_duty_cycle = 0x00,
+              .pa_hp_sel = 0x00,
+          },
+      .output_power_dbm = 13,
+      .ramp_time = LR11XX_RADIO_RAMP_48_US,
+  };
+  if (!lr1121.Configure(lora_config) ||
+      lr1121.Invoke(lr11xx_system_clear_irq_status,
           LR11XX_SYSTEM_IRQ_ALL_MASK) != LR11XX_STATUS_OK ||
       lr1121.Invoke(lr11xx_system_set_dio_irq_params, kRadioIrqMask,
           LR11XX_SYSTEM_IRQ_NONE) != LR11XX_STATUS_OK ||
