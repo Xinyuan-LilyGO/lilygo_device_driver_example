@@ -32,6 +32,9 @@ menu "Example Configuration"
             select MBEDTLS_CERTIFICATE_BUNDLE
         config EXAMPLE_BUILD_WIFI_SCAN_CONNECT_TIME
             bool "wifi_scan_connect_time"
+        config EXAMPLE_BUILD_COPROCESSOR_DOWNLOAD_MODE
+            bool "coprocessor_download_mode"
+            depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 || LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR
         config EXAMPLE_BUILD_NETWORK_ADAPTER_UPDATE
             bool "network_adapter_update"
         config EXAMPLE_BUILD_OTA_UPDATE
