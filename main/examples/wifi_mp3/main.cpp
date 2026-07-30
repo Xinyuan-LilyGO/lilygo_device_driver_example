@@ -2,7 +2,7 @@
  * @Description: 通过无线网络获取、解码并播放 MP3 音频流
  * @Author: LILYGO_L
  * @Date: 2026-07-28 13:59:02
- * @LastEditTime: 2026-07-28 14:05:30
+ * @LastEditTime: 2026-07-30 16:40:27
  * @License: GPL 3.0
  */
 #include "common.h"
@@ -131,6 +131,8 @@ void HttpStreamPlayTask(void*) {
   esp_audio_dec_register_default();
   esp_audio_dec_cfg_t decoder_config = {
       .type = ESP_AUDIO_TYPE_MP3,
+      .cfg = nullptr,
+      .cfg_sz = 0,
   };
   esp_audio_dec_handle_t decoder = nullptr;
   if (esp_audio_dec_open(&decoder_config, &decoder) != ESP_AUDIO_ERR_OK) {
@@ -168,10 +170,14 @@ void HttpStreamPlayTask(void*) {
     esp_audio_dec_in_raw_t input = {
         .buffer = read_buffer.get(),
         .len = total_input,
+        .consumed = 0,
+        .frame_recover = ESP_AUDIO_DEC_RECOVERY_NONE,
     };
     esp_audio_dec_out_frame_t output = {
         .buffer = pcm_buffer.get(),
         .len = kPcmBufferSize,
+        .needed_size = 0,
+        .decoded_size = 0,
     };
 
     while (input.len > 0) {
