@@ -1510,7 +1510,9 @@ extern "C" void app_main(void) {
 #else
   auto& board_driver = common::GetDriver();
   auto* nfc = board_driver.chip().st25r3916.get();
-  if (!board_driver.IsSt25r3916Ready() || nfc == nullptr) {
+  if (nfc == nullptr ||
+      !board_driver.SetSt25r3916PowerEnabled(true) ||
+      !board_driver.IsSt25r3916Ready()) {
     const auto& status = board_driver.status().st25r3916;
     std::printf("[ERROR] ST25R3916 initialization failed\n");
     std::printf("        RFAL     : %s (code %u)\n",

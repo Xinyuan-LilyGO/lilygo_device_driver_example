@@ -4,7 +4,7 @@
 
 [![Release](https://img.shields.io/github/v/release/Xinyuan-LilyGO/lilygo_device_driver_example?style=flat-square)](https://github.com/Xinyuan-LilyGO/lilygo_device_driver_example/releases)
 [![License](https://img.shields.io/github/license/Xinyuan-LilyGO/lilygo_device_driver_example?style=flat-square)](./LICENSE)
-[![ESP-IDF](https://img.shields.io/badge/ESP--IDF-Supported-ff6f00?style=flat-square)](https://github.com/espressif/esp-idf)
+[![ESP-IDF](https://img.shields.io/badge/ESP--IDF-v5.5.3%2B-ff6f00?style=flat-square)](https://github.com/espressif/esp-idf)
 
 **lilygo_device_driver_example** collects and maintains ESP-IDF examples for
 [`lilygo_device_driver`](https://github.com/Xinyuan-LilyGO/lilygo_device_driver).

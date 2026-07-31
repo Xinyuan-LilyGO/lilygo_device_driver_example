@@ -147,6 +147,11 @@ void ClearCanvasTimer(lv_timer_t*) {
 extern "C" void app_main(void) {
   printf("LVGL touch drawing example on %s\n", common::kBoardName);
   common::InitDriver();
+  if (!common::GetDriver().SetPowerState(
+          common::DeviceDriver::PowerState::kActive)) {
+    printf("Screen or touch wake-up failed\n");
+    return;
+  }
   if (!TouchReady()) {
     printf("Screen or touch init failed\n");
     return;

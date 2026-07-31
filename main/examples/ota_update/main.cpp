@@ -1054,6 +1054,10 @@ extern "C" void app_main(void) {
   if (!MountStorage()) {
     return;
   }
+  if (!common::SetWifiCoprocessorPowerEnabled(true)) {
+    printf("Wi-Fi coprocessor power enable failed\n");
+    return;
+  }
 
   const esp_err_t hosted_result = static_cast<esp_err_t>(esp_hosted_init());
   if (hosted_result != ESP_OK) {

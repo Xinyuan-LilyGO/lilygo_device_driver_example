@@ -215,6 +215,10 @@ bool FetchAndPrintRealTime() {
 extern "C" void app_main(void) {
   printf("Wi-Fi scan, connect, and time example on %s\n", common::kBoardName);
   common::InitDriver();
+  if (!common::SetWifiCoprocessorPowerEnabled(true)) {
+    printf("Wi-Fi coprocessor power enable failed\n");
+    return;
+  }
 
   const esp_err_t result = esp_hosted_init();
   if (result != ESP_OK) {

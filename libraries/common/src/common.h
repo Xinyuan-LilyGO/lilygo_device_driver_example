@@ -45,6 +45,14 @@ inline bool InitDriver() {
   return GetDriver().Init(DeviceDriver::InitMode::kSync);
 }
 
+inline bool SetWifiCoprocessorPowerEnabled(bool enabled) {
+#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4)
+  return GetDriver().SetEsp32c6PowerEnabled(enabled);
+#else
+  return GetDriver().SetEsp32c5PowerEnabled(enabled);
+#endif
+}
+
 /**
  * @brief 获取 ESP32-P4 启动按键 GPIO
  * @return 启动按键 GPIO 编号

@@ -285,6 +285,10 @@ extern "C" void app_main(void) {
   if (!common::InitDriver()) {
     printf("Device driver initialization completed with errors\n");
   }
+  if (!common::SetWifiCoprocessorPowerEnabled(true)) {
+    printf("Wi-Fi coprocessor power enable failed\n");
+    return;
+  }
 
   const esp_err_t hosted_result = esp_hosted_init();
   if (hosted_result != ESP_OK) {

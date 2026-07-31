@@ -97,7 +97,7 @@ void ParseAcceleration(
 
 bool ConfigureBhi260ap() {
   auto& driver = common::GetDriver();
-  if (!driver.IsBhi260apReady()) {
+  if (!driver.IsBhi260apReady() || !driver.SetBhi260apSleep(false)) {
     const auto* bhi260ap = driver.chip().bhi260ap.get();
     printf("BHI260AP is not ready (error code: %d)\n",
         bhi260ap == nullptr ? BHY2_E_NULL_PTR : bhi260ap->last_error());
@@ -121,7 +121,7 @@ bool ConfigureBhi260ap() {
 
 bool GetQmc6310n() {
   auto& driver = common::GetDriver();
-  if (!driver.IsQmc6310nReady()) {
+  if (!driver.IsQmc6310nReady() || !driver.SetQmc6310nSleep(false)) {
     printf("QMC6310N is not ready\n");
     return false;
   }
