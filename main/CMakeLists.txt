@@ -85,6 +85,13 @@ idf_component_register(
     REQUIRES ${example_requires}
 )
 
+if(CONFIG_EXAMPLE_BUILD_SLEEP)
+    idf_component_optional_requires(PRIVATE
+        esp_driver_uart
+        esp_hw_support
+    )
+endif()
+
 if(CONFIG_EXAMPLE_BUILD_OTA_UPDATE)
     idf_component_optional_requires(PRIVATE
         app_update
