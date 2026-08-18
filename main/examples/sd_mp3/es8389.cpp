@@ -20,8 +20,8 @@ uint32_t g_sample_rate = common::board::device::es8389::kSampleRate;
 bool InitSdMp3Audio() {
   auto& driver = common::GetDriver();
   if (!driver.IsEs8389Ready() ||
-      !driver.SetEs8389PowerState(
-          common::DeviceDriver::Es8389PowerState::kActive)) {
+      !driver.SetEs8389OperatingMode(
+          common::DeviceDriver::Es8389OperatingMode::kActive)) {
     return false;
   }
 

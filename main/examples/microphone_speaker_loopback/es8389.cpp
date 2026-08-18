@@ -23,9 +23,9 @@ constexpr size_t kAudioBufferSize =
 void RunEs8389MicrophoneSpeakerLoopback() {
   auto& driver = common::GetDriver();
   if (!driver.IsEs8389Ready() ||
-      !driver.SetEs8389PowerState(
-          common::DeviceDriver::Es8389PowerState::kActive)) {
-    printf("ES8389 active power state setup failed\n");
+      !driver.SetEs8389OperatingMode(
+          common::DeviceDriver::Es8389OperatingMode::kActive)) {
+    printf("ES8389 active operating mode setup failed\n");
     return;
   }
 

@@ -254,7 +254,10 @@ void RunAxp517Example() {
   printf("AXP517 battery management example\n");
 
   auto& driver = common::GetDriver();
-  common::InitDriver();
+  if (!common::InitMinimalDriver()) {
+    printf("Minimal device driver initialization failed\n");
+    return;
+  }
   if (!driver.IsAxp517Ready()) {
     printf("AXP517 init failed\n");
     return;

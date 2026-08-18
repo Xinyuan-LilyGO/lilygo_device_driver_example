@@ -10,7 +10,14 @@
 extern "C" void app_main(void) {
   printf("SGM38121 example on %s\n", common::kBoardName);
   auto& driver = common::GetDriver();
-  common::InitDriver();
+#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR)
+  if (!common::InitMinimalDriver() || !driver.InitSgm38121()) {
+#else
+  if (!common::InitMinimalDriver()) {
+#endif
+    printf("Minimal device driver initialization failed\n");
+    return;
+  }
   if (!driver.IsSgm38121Ready()) {
     printf("SGM38121 init failed\n");
     return;

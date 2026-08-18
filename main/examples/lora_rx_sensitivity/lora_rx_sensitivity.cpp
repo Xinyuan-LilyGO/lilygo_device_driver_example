@@ -63,7 +63,8 @@ void TestSession::PrintSetup() const {
       static_cast<unsigned int>(kSpreadingFactor),
       static_cast<unsigned long>(kBandwidthKhz));
   printf("Packet: explicit header, preamble 8, payload 64 bytes\n");
-  printf("Payload CRC: on, IQ: standard, public sync word: 0x34\n");
+  printf("Payload CRC: on, IQ: standard, public sync word: 0x%02X\n",
+      static_cast<unsigned int>(kSyncWord));
   printf("Low data rate optimization: on, receiver gain: boosted\n");
   printf("Expected RF generator packet count: %lu\n",
       static_cast<unsigned long>(kExpectedPacketCount));

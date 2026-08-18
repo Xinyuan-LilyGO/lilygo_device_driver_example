@@ -29,8 +29,8 @@ void RunSx1262() {
 
   auto& driver = common::GetDriver();
   if (!driver.IsXl9535Ready() || !driver.IsSx1262Ready() ||
-      !driver.SetSx1262PowerState(
-          common::DeviceDriver::Sx1262PowerState::kStandby)) {
+      !driver.SetSx1262OperatingMode(
+          common::DeviceDriver::Sx1262OperatingMode::kStandby)) {
     printf("SX1262 initialization or wake-up failed\n");
     return;
   }
@@ -52,7 +52,7 @@ void RunSx1262() {
   lora_config.bandwidth = SX126X_LORA_BW_125;
   lora_config.coding_rate = SX126X_LORA_CR_4_5;
   lora_config.preamble_length = 8;
-  lora_config.sync_word = kPublicSyncWord;
+  lora_config.sync_word = kSyncWord;
   lora_config.max_payload_length =
       static_cast<uint8_t>(kPayloadLength);
   lora_config.crc_enabled = true;

@@ -28,9 +28,9 @@ void RunEs8311MicrophoneSpeakerLoopback() {
   }
   auto& es8311 = driver.chip().es8311;
 
-  if (!driver.SetEs8311PowerState(
-          common::DeviceDriver::Es8311PowerState::kDuplex)) {
-    printf("ES8311 duplex power state setup failed\n");
+  if (!driver.SetEs8311OperatingMode(
+          common::DeviceDriver::Es8311OperatingMode::kDuplex)) {
+    printf("ES8311 duplex operating mode setup failed\n");
     return;
   }
 

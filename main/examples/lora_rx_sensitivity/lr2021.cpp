@@ -2,7 +2,7 @@
  * @Description: 实现 LR2021 的 LoRa 接收灵敏度测试
  * @Author: LILYGO_L
  * @Date: 2026-07-29 15:09:12
- * @LastEditTime: 2026-07-29 18:22:36
+ * @LastEditTime: 2026-08-18 17:08:53
  * @License: GPL 3.0
  */
 #include "common.h"
@@ -24,6 +24,13 @@ constexpr lr20xx_radio_common_rx_path_t kReceivePath =
 // T-Display-P4的LR2021在1 GHz及以上必须限制为最大+5 dBm
 constexpr bool kApplyBoardHighFrequencyPowerLimit =
     kFrequencyHz >= 1000000000U;
+constexpr uint8_t kUnusedLfPaDutyCycle = 6;
+constexpr uint8_t kLfPaDutyCycle = 7;
+constexpr uint8_t kLfPaSlices = 7;
+constexpr uint8_t kUnusedHfPaDutyCycle = 16;
+constexpr uint8_t kHfPaDutyCycle5Dbm = 31;
+constexpr int8_t kLfOutputPower22Dbm = 44;
+constexpr int8_t kHfOutputPower5Dbm = 15;
 constexpr lr20xx_system_irq_mask_t kRadioIrqMask =
     LR20XX_SYSTEM_IRQ_RX_DONE |
     LR20XX_SYSTEM_IRQ_LORA_HEADER_ERROR |
@@ -87,8 +94,8 @@ bool ButtonPressed(cpp_bus_driver::Tool& tool) {
 void RunLr2021() {
   auto& driver = common::GetDriver();
   if (!driver.IsXl9535Ready() || !driver.IsLr2021Ready() ||
-      !driver.SetLr2021PowerState(
-          common::DeviceDriver::Lr2021PowerState::kStandby)) {
+      !driver.SetLr2021OperatingMode(
+          common::DeviceDriver::Lr2021OperatingMode::kStandby)) {
     printf("LR2021 initialization or wake-up failed\n");
     return;
   }
@@ -117,7 +124,7 @@ void RunLr2021() {
                       spreading_factor, kLoraBandwidth),
           },
       .packet = MakePacketConfig(),
-      .sync_word = kPublicSyncWord,
+      .sync_word = kSyncWord,
       .rx_path = kReceivePath,
       .rx_boost_mode =
           LR20XX_RADIO_COMMON_RX_PATH_BOOST_MODE_7,
@@ -129,16 +136,20 @@ void RunLr2021() {
                       : LR20XX_RADIO_COMMON_PA_SEL_LF,
               .pa_lf_mode = LR20XX_RADIO_COMMON_PA_LF_MODE_FSM,
               .pa_lf_duty_cycle =
-                  kUseHighFrequencyPath ? 6 : 7,
-              .pa_lf_slices = 7,
+                  kUseHighFrequencyPath ? kUnusedLfPaDutyCycle
+                                        : kLfPaDutyCycle,
+              .pa_lf_slices = kLfPaSlices,
               // T-Display-P4的LR2021在1 GHz以上最大只允许+5 dBm。
               // 官方HF PA表中+5 dBm对应duty cycle 31。
               .pa_hf_duty_cycle =
-                  kApplyBoardHighFrequencyPowerLimit ? 31 : 16,
+                  kApplyBoardHighFrequencyPowerLimit
+                      ? kHfPaDutyCycle5Dbm
+                      : kUnusedHfPaDutyCycle,
           },
       // HF PA的+5 dBm表项要求SetTxParams写入15个半dBm单位。
       .output_power_half_dbm =
-          kApplyBoardHighFrequencyPowerLimit ? 15 : 44,
+          kApplyBoardHighFrequencyPowerLimit ? kHfOutputPower5Dbm
+                                             : kLfOutputPower22Dbm,
       .ramp_time = LR20XX_RADIO_COMMON_RAMP_48_US,
   };
 
@@ -176,7 +187,7 @@ void RunLr2021() {
 
     if (xl9535.GpioRead(common::board::gpio::xl9535::kRadioDio1) == 1) {
       const uint32_t current_time = esp_log_timestamp();
-      lr20xx_system_irq_mask_t irq_status = 0;
+      lr20xx_system_irq_mask_t irq_status = LR20XX_SYSTEM_IRQ_NONE;
       if (!ReadAndClearIrq(lr2021, irq_status)) {
         session.RecordDriverError();
       } else if ((irq_status &

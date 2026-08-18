@@ -147,6 +147,11 @@ bool InitEspHostedTransport() {
     return false;
   }
 
+  if (!common::RegisterWifiCoprocessorResetCallback()) {
+    printf("Register Wi-Fi coprocessor reset callback failed\n");
+    return false;
+  }
+
   result = static_cast<esp_err_t>(esp_hosted_init());
   if (result != ESP_OK) {
     printf("esp_hosted_init failed: %s\n", esp_err_to_name(result));
@@ -490,9 +495,7 @@ extern "C" void app_main(void) {
 
   printf("%s network adapter update example\n", kCoprocessorName);
   auto& driver = lilygo_device_driver::TDisplayP4Driver::GetInstance();
-  driver.CreateDrivers();
-  if (!driver.InitXl9535() || !driver.InitPower() ||
-      !driver.ConfigXl9535()) {
+  if (!driver.InitMinimal() || !driver.SetEsp32c6PowerEnabled(true)) {
     printf("Board and %s power initialization failed\n", kCoprocessorName);
     return;
   }

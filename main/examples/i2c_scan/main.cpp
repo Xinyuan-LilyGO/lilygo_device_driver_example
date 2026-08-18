@@ -34,7 +34,10 @@ void Scan(const char* name,
 extern "C" void app_main(void) {
   printf("I2C scan example on %s\n", common::kBoardName);
   auto& driver = common::GetDriver();
-  common::InitDriver();
+  if (!common::InitMinimalDriver()) {
+    printf("Minimal device driver initialization failed\n");
+    return;
+  }
 
   while (true) {
     Scan("port1", driver.bus().xl9535_i2c_bus);

@@ -30,13 +30,15 @@ bool TouchReady() {
 
 template <typename Touch>
 bool ReadSingleTouchFrom(Touch* touch, int& x, int& y) {
-  typename Touch::TouchPoint point;
-  if (touch == nullptr || !touch->GetSingleTouchPoint(point) ||
-      point.info.empty()) {
+  cpp_bus_driver::TouchFrame frame;
+  if (touch == nullptr ||
+      touch->ReadPrimaryTouch(&frame) !=
+          cpp_bus_driver::TouchReadStatus::kSuccess ||
+      frame.contact_count == 0) {
     return false;
   }
-  x = point.info[0].x;
-  y = point.info[0].y;
+  x = frame.contacts[0].x;
+  y = frame.contacts[0].y;
   return true;
 }
 
@@ -54,19 +56,21 @@ bool ReadSingleTouch(int& x, int& y) {
 
 template <typename Touch>
 void PrintMultipleTouchFrom(Touch* touch) {
-  typename Touch::TouchPoint point;
-  if (touch == nullptr || !touch->GetMultipleTouchPoint(point)) {
+  cpp_bus_driver::TouchFrame frame;
+  if (touch == nullptr ||
+      touch->ReadTouchFrame(&frame) !=
+          cpp_bus_driver::TouchReadStatus::kSuccess) {
     return;
   }
   printf("Touch finger: %u edge touch flag: %u\n",
-      static_cast<unsigned int>(point.finger_count),
-      static_cast<unsigned int>(point.edge_touch_flag));
-  for (size_t i = 0; i < point.info.size(); ++i) {
+      static_cast<unsigned int>(frame.contact_count),
+      static_cast<unsigned int>(frame.edge_touch));
+  for (size_t i = 0; i < frame.contact_count; ++i) {
     printf("Touch num:[%u] x: %u y: %u p: %u\n",
         static_cast<unsigned int>(i + 1),
-        static_cast<unsigned int>(point.info[i].x),
-        static_cast<unsigned int>(point.info[i].y),
-        static_cast<unsigned int>(point.info[i].pressure_value));
+        static_cast<unsigned int>(frame.contacts[i].x),
+        static_cast<unsigned int>(frame.contacts[i].y),
+        static_cast<unsigned int>(frame.contacts[i].pressure));
   }
 }
 
@@ -146,11 +150,8 @@ void ClearCanvasTimer(lv_timer_t*) {
 
 extern "C" void app_main(void) {
   printf("LVGL touch drawing example on %s\n", common::kBoardName);
-  common::InitDriver();
-  if (!common::GetDriver().SetPowerState(
-          common::DeviceDriver::PowerState::kActive)) {
-    printf("Screen or touch wake-up failed\n");
-    return;
+  if (!common::InitDriver()) {
+    printf("Device driver initialization completed with errors\n");
   }
   if (!TouchReady()) {
     printf("Screen or touch init failed\n");

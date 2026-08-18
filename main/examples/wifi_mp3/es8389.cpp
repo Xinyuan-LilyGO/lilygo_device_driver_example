@@ -19,8 +19,8 @@ esp_codec_dev_handle_t g_output_codec_dev = nullptr;
 bool InitWifiMp3Audio() {
   auto& driver = common::GetDriver();
   if (!driver.IsEs8389Ready() ||
-      !driver.SetEs8389PowerState(
-          common::DeviceDriver::Es8389PowerState::kActive)) {
+      !driver.SetEs8389OperatingMode(
+          common::DeviceDriver::Es8389OperatingMode::kActive)) {
     return false;
   }
 

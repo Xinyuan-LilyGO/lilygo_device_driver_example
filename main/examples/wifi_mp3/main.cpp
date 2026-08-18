@@ -289,6 +289,10 @@ extern "C" void app_main(void) {
     printf("Wi-Fi coprocessor power enable failed\n");
     return;
   }
+  if (!common::RegisterWifiCoprocessorResetCallback()) {
+    printf("Register Wi-Fi coprocessor reset callback failed\n");
+    return;
+  }
 
   const esp_err_t hosted_result = esp_hosted_init();
   if (hosted_result != ESP_OK) {

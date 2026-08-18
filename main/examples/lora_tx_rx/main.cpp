@@ -11,9 +11,10 @@
 extern "C" void app_main(void) {
   printf("LoRa TX/RX example on %s\n", common::kBoardName);
   printf("LoRa: %lu MHz, SF12, BW %lu kHz, CR 4/5, "
-         "public sync word 0x34\n",
+         "public sync word 0x%02X\n",
       static_cast<unsigned long>(lora_tx_rx::kFrequencyHz / 1000000U),
-      static_cast<unsigned long>(lora_tx_rx::kBandwidthKhz));
+      static_cast<unsigned long>(lora_tx_rx::kBandwidthKhz),
+      static_cast<unsigned int>(lora_tx_rx::kSyncWord));
 
   if (!common::InitDriver()) {
     printf("Device driver initialization completed with errors\n");

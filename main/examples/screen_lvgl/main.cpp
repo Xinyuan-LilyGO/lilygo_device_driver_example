@@ -103,11 +103,8 @@ void RunScreenEffects() {
 
 extern "C" void app_main(void) {
   printf("LVGL screen example on %s\n", common::kBoardName);
-  common::InitDriver();
-  if (!common::GetDriver().SetPowerState(
-          common::DeviceDriver::PowerState::kActive)) {
-    printf("Screen wake-up failed\n");
-    return;
+  if (!common::InitDriver()) {
+    printf("Device driver initialization completed with errors\n");
   }
   if (!common::GetDriver().IsScreenReady()) {
     printf("Screen init failed\n");

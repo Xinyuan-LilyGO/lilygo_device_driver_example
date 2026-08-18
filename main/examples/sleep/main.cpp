@@ -39,7 +39,7 @@ extern "C" void app_main(void) {
     printf("Device initialization reported a failure; continue shutdown\n");
   }
 
-  if (!driver.SetPowerState(common::DeviceDriver::PowerState::kOff)) {
+  if (!driver.PrepareDriversForPowerOff()) {
     printf("Device sleep preparation reported a failure\n");
   }
 

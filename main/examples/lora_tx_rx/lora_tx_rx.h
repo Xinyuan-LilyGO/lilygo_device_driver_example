@@ -10,6 +10,8 @@
 #include <array>
 #include <cstdint>
 
+#include "lr20xx_radio_lora_types.h"
+
 namespace lora_tx_rx {
 
 // 常用LoRa载波频率预设
@@ -30,7 +32,8 @@ inline constexpr bool kUseHighFrequencyPath =
 inline constexpr uint32_t kBandwidthKhz =
     kUseHighFrequencyPath ? 203U : 125U;
 // LoRa公共网络同步字
-inline constexpr uint8_t kPublicSyncWord = 0x34;
+inline constexpr uint8_t kSyncWord =
+    LR20XX_RADIO_LORA_SYNCWORD_LORAWAN_PUBLIC_NETWORK;
 // LoRa发送与接收测试载荷
 inline constexpr std::array<uint8_t, 9> kTestPayload = {
     1, 2, 3, 4, 5, 6, 7, 8, 9};

@@ -19,8 +19,8 @@ cpp_bus_driver::Es8311* g_es8311 = nullptr;
 bool InitWifiMp3Audio() {
   auto& driver = common::GetDriver();
   if (!driver.IsEs8311Ready() ||
-      !driver.SetEs8311PowerState(
-          common::DeviceDriver::Es8311PowerState::kPlayback)) {
+      !driver.SetEs8311OperatingMode(
+          common::DeviceDriver::Es8311OperatingMode::kPlayback)) {
     return false;
   }
 

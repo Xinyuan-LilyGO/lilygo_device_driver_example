@@ -11,6 +11,9 @@
 #include <cstddef>
 #include <cstdint>
 
+#include "lr20xx_radio_lora_types.h"
+#include "smtc_rac_lib/smtc_ral/src/ral_defs.h"
+
 namespace lora_rx_sensitivity {
 
 // 常用LoRa载波频率预设
@@ -39,11 +42,13 @@ inline constexpr uint32_t kIdleFinishTimeMs = 10000;
 // 等待首包和测试进行期间周期输出状态日志的时间间隔
 inline constexpr uint32_t kProgressPrintIntervalMs = 5000;
 // 可修改的LoRa扩频因子，LR2021、SX1262和LR1121统一使用该值
-inline constexpr uint8_t kSpreadingFactor = 12;
-static_assert(kSpreadingFactor >= 5 && kSpreadingFactor <= 12,
+inline constexpr ral_lora_sf_t kSpreadingFactor = RAL_LORA_SF12;
+static_assert(kSpreadingFactor >= RAL_LORA_SF5 &&
+        kSpreadingFactor <= RAL_LORA_SF12,
     "LoRa spreading factor must be between SF5 and SF12");
 // LoRa公共网络同步字
-inline constexpr uint8_t kPublicSyncWord = 0x34;
+inline constexpr uint8_t kSyncWord =
+    LR20XX_RADIO_LORA_SYNCWORD_LORAWAN_PUBLIC_NETWORK;
 
 // 信号发生器选择All 1时生成的固定64字节测试Payload
 inline constexpr std::array<uint8_t, kPayloadLength> kExpectedPayload = {

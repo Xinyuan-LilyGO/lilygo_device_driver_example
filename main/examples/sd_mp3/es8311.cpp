@@ -20,8 +20,8 @@ uint32_t g_sample_rate = common::board::device::es8311::kSampleRate;
 bool InitSdMp3Audio() {
   auto& driver = common::GetDriver();
   if (!driver.IsEs8311Ready() ||
-      !driver.SetEs8311PowerState(
-          common::DeviceDriver::Es8311PowerState::kPlayback)) {
+      !driver.SetEs8311OperatingMode(
+          common::DeviceDriver::Es8311OperatingMode::kPlayback)) {
     return false;
   }
 

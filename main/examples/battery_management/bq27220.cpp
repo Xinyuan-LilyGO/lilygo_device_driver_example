@@ -39,7 +39,10 @@ void RunBq27220Example() {
   printf("BQ27220 battery management example\n");
 
   auto& driver = common::GetDriver();
-  common::InitDriver();
+  if (!common::InitMinimalDriver()) {
+    printf("Minimal device driver initialization failed\n");
+    return;
+  }
 
   if (!driver.IsBq27220Ready()) {
     printf("BQ27220 init failed\n");

@@ -38,6 +38,12 @@ inline constexpr const char* kBoardName = "T-Display-P4-Air";
 inline DeviceDriver& GetDriver() { return DeviceDriver::GetInstance(); }
 
 /**
+ * @brief 初始化当前板卡的最小设备驱动集合
+ * @return 初始化成功返回 true，否则返回 false
+ */
+inline bool InitMinimalDriver() { return GetDriver().InitMinimal(); }
+
+/**
  * @brief 以同步模式初始化当前板卡设备驱动
  * @return 初始化成功返回 true，否则返回 false
  */
@@ -45,6 +51,11 @@ inline bool InitDriver() {
   return GetDriver().Init(DeviceDriver::InitMode::kSync);
 }
 
+/**
+ * @brief 设置当前板卡 Wi-Fi 协处理器的电源使能状态
+ * @param enabled true 开启协处理器，false 关闭协处理器
+ * @return 设置成功返回 true，否则返回 false
+ */
 inline bool SetWifiCoprocessorPowerEnabled(bool enabled) {
 #if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4)
   return GetDriver().SetEsp32c6PowerEnabled(enabled);
@@ -52,6 +63,12 @@ inline bool SetWifiCoprocessorPowerEnabled(bool enabled) {
   return GetDriver().SetEsp32c5PowerEnabled(enabled);
 #endif
 }
+
+/**
+ * @brief 注册 ESP-Hosted Wi-Fi 协处理器复位回调
+ * @return 注册成功返回 true，否则返回 false
+ */
+bool RegisterWifiCoprocessorResetCallback();
 
 /**
  * @brief 获取 ESP32-P4 启动按键 GPIO
@@ -116,7 +133,9 @@ inline bool SendScreen(
 inline void StartBacklight() {
   auto& driver = GetDriver();
   if (IsHi8561Screen() && driver.IsHi8561BacklightReady()) {
-    driver.chip().hi8561_backlight->StartGradientTime(100, 500);
+    driver.chip().hi8561_backlight->FadeTo(
+        {.value = 1, .scale = 1}, 500,
+        cpp_bus_driver::Pwm::FadeMode::kWaitForCompletion);
     return;
   }
 #if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4)

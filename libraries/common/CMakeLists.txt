@@ -17,3 +17,4 @@ idf_component_register(
 )
 
 idf_component_optional_requires(PUBLIC lvgl__lvgl)
+idf_component_optional_requires(PRIVATE esp_hosted)

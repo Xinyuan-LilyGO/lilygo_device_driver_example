@@ -10,7 +10,14 @@
 extern "C" void app_main(void) {
   printf("XL9535 example on %s\n", common::kBoardName);
   auto& driver = common::GetDriver();
-  common::InitDriver();
+#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR)
+  if (!common::InitMinimalDriver() || !driver.InitXl9535()) {
+#else
+  if (!common::InitMinimalDriver()) {
+#endif
+    printf("Minimal device driver initialization failed\n");
+    return;
+  }
   if (!driver.IsXl9535Ready()) {
     printf("XL9535 init failed\n");
     return;

@@ -159,10 +159,9 @@ void ReadGnssOutput(cpp_bus_driver::HardwareUart& uart,
 
 void RunNrf9151() {
   auto& driver = common::GetDriver();
-  if (!driver.SetNrf9151PowerEnabled(true) ||
-      !driver.IsNrf9151Ready() || (driver.chip().nrf9151 == nullptr) ||
+  if (!driver.IsNrf9151Ready() || (driver.chip().nrf9151 == nullptr) ||
       (driver.bus().nrf9151_uart_bus == nullptr)) {
-    printf("[nRF9151] power-on or initialization failed\n");
+    printf("[nRF9151] initialization failed\n");
     return;
   }
 
