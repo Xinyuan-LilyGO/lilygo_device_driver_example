@@ -34,7 +34,7 @@ dependencies:
       - if: "$CONFIG{EXAMPLE_BUILD_SCREEN_LVGL_TOUCH_DRAW} == True"
 
   espressif/esp_hosted:
-    override_path: "../libraries/esp-hosted-mcu"
+    override_path: "../libraries/esp_hosted"
     matches:
       - if: "$CONFIG{EXAMPLE_BUILD_WIFI_MP3} == True"
       - if: "$CONFIG{EXAMPLE_BUILD_WIFI_SCAN_CONNECT_TIME} == True"
