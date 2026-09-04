@@ -2,7 +2,7 @@
  * @Description: SX1262 LoRa 数据发送与接收实现
  * @Author: LILYGO_L
  * @Date: 2026-07-28 13:59:02
- * @LastEditTime: 2026-07-29 18:00:58
+ * @LastEditTime: 2026-09-03 16:57:00
  * @License: GPL 3.0
  */
 #include "common.h"
@@ -152,9 +152,9 @@ void RunSx1262() {
           usp_cpp_bus_driver::Sx126x::PacketMetrics metrics;
           if (sx1262.ReadPacket(receive_buffer.data(), receive_buffer.size(),
                   received_size, &metrics)) {
-            printf("SX1262 receive RSSI: %d dBm, SNR: %d dB\n",
-                static_cast<int>(metrics.rssi_dbm),
-                static_cast<int>(metrics.snr_db));
+            printf("SX1262 receive RSSI: %.2f dBm, SNR: %.2f dB\n",
+                static_cast<double>(metrics.rssi_quarter_dbm) / 4.0,
+                static_cast<double>(metrics.snr_quarter_db) / 4.0);
             for (uint8_t index = 0; index < received_size; ++index) {
               printf("SX1262 data[%u]: %u\n",
                   static_cast<unsigned int>(index),

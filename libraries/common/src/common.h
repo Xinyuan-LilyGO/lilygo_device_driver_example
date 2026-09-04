@@ -2,7 +2,7 @@
  * @Description: Common board helpers for device driver examples
  * @Author: LILYGO_L
  * @Date: 2026-07-11 16:22:23
- * @LastEditTime: 2026-07-13 14:39:13
+ * @LastEditTime: 2026-09-03 17:56:33
  * @License: GPL 3.0
  */
 #pragma once
@@ -132,18 +132,24 @@ inline bool SendScreen(
  */
 inline void StartBacklight() {
   auto& driver = GetDriver();
-  if (IsHi8561Screen() && driver.IsHi8561BacklightReady()) {
-    driver.chip().hi8561_backlight->FadeTo(
+#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4)
+  if (IsHi8561Screen() && driver.IsPt4103Ready()) {
+    driver.chip().pt4103->FadeTo(
         {.value = 1, .scale = 1}, 500,
         cpp_bus_driver::Pwm::FadeMode::kWaitForCompletion);
     return;
   }
-#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4)
   if (IsRm69a10Screen() && driver.IsRm69a10Ready()) {
     for (uint16_t brightness = 0; brightness < 255; brightness += 5) {
       driver.chip().rm69a10->SetBrightness(static_cast<uint8_t>(brightness));
       vTaskDelay(pdMS_TO_TICKS(10));
     }
+  }
+#else
+  if (driver.IsSy7200aReady()) {
+    driver.chip().sy7200a->FadeTo(
+        {.value = 1, .scale = 1}, 500,
+        cpp_bus_driver::Pwm::FadeMode::kWaitForCompletion);
   }
 #endif
 }

@@ -2,7 +2,7 @@
  * @Description: 实现 LR1121 的 LoRa 接收灵敏度测试
  * @Author: LILYGO_L
  * @Date: 2026-07-29 15:09:12
- * @LastEditTime: 2026-07-29 18:00:58
+ * @LastEditTime: 2026-09-03 16:57:00
  * @License: GPL 3.0
  */
 #include "common.h"
@@ -151,7 +151,7 @@ void RunLr1121() {
         session.RecordPacketError(PacketError::kCrc, current_time);
       } else if ((irq_status & LR11XX_SYSTEM_IRQ_RX_DONE) != 0) {
         lr11xx_radio_rx_buffer_status_t buffer_status = {};
-        lr11xx_radio_pkt_status_lora_t packet_status = {};
+        usp_cpp_bus_driver::Lr11xx::PacketMetrics metrics;
         if (lr1121.Invoke(
                 lr11xx_radio_get_rx_buffer_status, &buffer_status) ==
                 LR11XX_STATUS_OK &&
@@ -160,18 +160,17 @@ void RunLr1121() {
             lr1121.ReadBuffer(buffer_status.buffer_start_pointer,
                 receive_buffer.data(),
                 buffer_status.pld_len_in_bytes) &&
-            lr1121.Invoke(
-                lr11xx_radio_get_lora_pkt_status, &packet_status) ==
-                LR11XX_STATUS_OK) {
+            lr1121.ReadLoraPacketMetrics(&metrics)) {
           session.RecordPacket(receive_buffer.data(),
               buffer_status.pld_len_in_bytes,
               {
-                  .packet_rssi_dbm = static_cast<float>(
-                      packet_status.rssi_pkt_in_dbm),
-                  .signal_rssi_dbm = static_cast<float>(
-                      packet_status.signal_rssi_pkt_in_dbm),
+                  .packet_rssi_dbm =
+                      static_cast<float>(metrics.rssi_quarter_dbm) / 4.0F,
+                  .signal_rssi_dbm =
+                      static_cast<float>(metrics.signal_rssi_quarter_dbm) /
+                      4.0F,
                   .snr_db =
-                      static_cast<float>(packet_status.snr_pkt_in_db),
+                      static_cast<float>(metrics.snr_quarter_db) / 4.0F,
                   .has_signal_rssi = true,
               },
               current_time);

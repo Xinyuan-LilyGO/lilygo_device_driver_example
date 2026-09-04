@@ -2,7 +2,7 @@
  * @Description: 使用 ST25R3916 和 STSW-ST25RFAL002 执行 NFC 轮询发现的示例
  * @Author: LILYGO_L
  * @Date: 2026-07-28 13:59:02
- * @LastEditTime: 2026-07-28 14:05:30
+ * @LastEditTime: 2026-09-03 16:57:00
  * @License: GPL 3.0
  */
 #include <algorithm>
@@ -1467,8 +1467,8 @@ std::unique_ptr<stsw::St25r3916x> CreateNfcDriver() {
   auto spi_bus = std::make_shared<cpp_bus_driver::HardwareSpi>(
       board_driver.bus().sx1262_spi_bus, 1);
   return std::make_unique<stsw::St25r3916x>(spi_bus,
-      common::board::keyboard::gpio::t_mix_rf::st25r3916::kInt,
-      common::board::keyboard::gpio::t_mix_rf::st25r3916::kCs);
+      common::board::keyboard_expansion::gpio::t_mix_rf::st25r3916::kInt,
+      common::board::keyboard_expansion::gpio::t_mix_rf::st25r3916::kCs);
 }
 #elif defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR)
 #else

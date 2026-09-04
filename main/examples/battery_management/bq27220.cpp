@@ -2,7 +2,7 @@
  * @Description: BQ27220 电量计配置与电池状态监测实现
  * @Author: LILYGO_L
  * @Date: 2026-07-28 13:59:02
- * @LastEditTime: 2026-07-28 14:05:30
+ * @LastEditTime: 2026-09-03 16:57:00
  * @License: GPL 3.0
  */
 #include "battery_management.h"
@@ -71,7 +71,7 @@ void RunBq27220Example() {
 
     printf("\nBQ27220 snapshot\n");
     PrintSeparator();
-    printf("Device ID: 0x%04X\n", bq27220->GetDeviceId());
+    printf("Chip ID: 0x%04X\n", bq27220->GetChipId());
     printf("Firmware version: 0x%04X\n", bq27220->GetFirmwareVersion());
     printf("Hardware version: 0x%04X\n", bq27220->GetHardwareVersion());
 

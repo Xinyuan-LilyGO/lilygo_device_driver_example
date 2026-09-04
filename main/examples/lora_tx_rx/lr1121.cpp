@@ -2,7 +2,7 @@
  * @Description: LR1121 LoRa 数据发送与接收实现
  * @Author: LILYGO_L
  * @Date: 2026-07-28 13:59:02
- * @LastEditTime: 2026-07-29 18:00:58
+ * @LastEditTime: 2026-09-03 16:57:00
  * @License: GPL 3.0
  */
 #include "common.h"
@@ -174,7 +174,7 @@ void RunLr1121() {
                  (irq_status & (LR11XX_SYSTEM_IRQ_HEADER_ERROR |
                                    LR11XX_SYSTEM_IRQ_CRC_ERROR)) == 0) {
         lr11xx_radio_rx_buffer_status_t buffer_status = {};
-        lr11xx_radio_pkt_status_lora_t packet_status = {};
+        usp_cpp_bus_driver::Lr11xx::PacketMetrics metrics;
         std::array<uint8_t, 255> receive_buffer = {};
         if (lr1121.Invoke(
                 lr11xx_radio_get_rx_buffer_status, &buffer_status) ==
@@ -182,11 +182,10 @@ void RunLr1121() {
             buffer_status.pld_len_in_bytes > 0 &&
             lr1121.ReadBuffer(buffer_status.buffer_start_pointer,
                 receive_buffer.data(), buffer_status.pld_len_in_bytes) &&
-            lr1121.Invoke(
-                lr11xx_radio_get_lora_pkt_status, &packet_status) ==
-                LR11XX_STATUS_OK) {
-          printf("LR1121 receive RSSI: %d dBm, SNR: %d dB\n",
-              packet_status.rssi_pkt_in_dbm, packet_status.snr_pkt_in_db);
+            lr1121.ReadLoraPacketMetrics(&metrics)) {
+          printf("LR1121 receive RSSI: %.2f dBm, SNR: %.2f dB\n",
+              static_cast<double>(metrics.rssi_quarter_dbm) / 4.0,
+              static_cast<double>(metrics.snr_quarter_db) / 4.0);
           for (size_t index = 0;
                index < static_cast<size_t>(
                            buffer_status.pld_len_in_bytes);

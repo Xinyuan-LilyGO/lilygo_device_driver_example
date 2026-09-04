@@ -2,7 +2,7 @@
  * @Description: 实现 SX1262 的 LoRa 接收灵敏度测试
  * @Author: LILYGO_L
  * @Date: 2026-07-29 15:09:12
- * @LastEditTime: 2026-07-29 18:00:58
+ * @LastEditTime: 2026-09-03 16:57:00
  * @License: GPL 3.0
  */
 #include "common.h"
@@ -103,10 +103,12 @@ void RunSx1262() {
           session.RecordPacket(receive_buffer.data(), received_size,
               {
                   .packet_rssi_dbm =
-                      static_cast<float>(metrics.rssi_dbm),
+                      static_cast<float>(metrics.rssi_quarter_dbm) / 4.0F,
                   .signal_rssi_dbm =
-                      static_cast<float>(metrics.signal_rssi_dbm),
-                  .snr_db = static_cast<float>(metrics.snr_db),
+                      static_cast<float>(metrics.signal_rssi_quarter_dbm) /
+                      4.0F,
+                  .snr_db =
+                      static_cast<float>(metrics.snr_quarter_db) / 4.0F,
                   .has_signal_rssi = true,
               },
               current_time);

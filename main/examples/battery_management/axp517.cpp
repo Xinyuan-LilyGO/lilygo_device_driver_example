@@ -2,7 +2,7 @@
  * @Description: AXP517 充电、电池状态、ADC 与中断监测实现
  * @Author: LILYGO_L
  * @Date: 2026-07-28 13:59:02
- * @LastEditTime: 2026-07-28 14:05:30
+ * @LastEditTime: 2026-09-03 16:57:00
  * @License: GPL 3.0
  */
 #include "battery_management.h"
@@ -234,7 +234,7 @@ void PrintBc12Info(cpp_bus_driver::Axp517& axp517) {
 
 void PrintPowerInfo(cpp_bus_driver::Axp517& axp517) {
   printf("\n========== AXP517 power info ==========\n");
-  printf("device id: %#X\n", axp517.GetDeviceId());
+  printf("chip id: %#X\n", axp517.GetChipId());
   PrintChipStatus(axp517);
   PrintBatteryGauge(axp517);
 

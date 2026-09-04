@@ -2,7 +2,7 @@
  * @Description: RTC 时钟、定时器与闹钟中断测试
  * @Author: LILYGO_L
  * @Date: 2026-07-28 13:59:02
- * @LastEditTime: 2026-07-28 14:05:30
+ * @LastEditTime: 2026-09-03 16:57:00
  * @License: GPL 3.0
  */
 #include "common.h"
@@ -79,7 +79,8 @@ extern "C" void app_main(void) {
 
   if (!tool.InitGpioInterrupt(common::board::gpio::xl9535::kInt,
           cpp_bus_driver::Tool::InterruptMode::kFalling,
-          RtcInterruptCallback)) {
+          RtcInterruptCallback, nullptr,
+          cpp_bus_driver::Tool::GpioStatus::kPullup)) {
     printf("RTC interrupt initialization failed\n");
     return;
   }
