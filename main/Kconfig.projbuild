@@ -18,6 +18,12 @@ menu "Example Configuration"
             help
                 Dedicated conducted LoRa receiver sensitivity and PER test
                 for use with a LoRa-capable RF signal generator.
+        config EXAMPLE_BUILD_GFSK_TX_RX
+            bool "gfsk_tx_rx"
+            depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4
+        config EXAMPLE_BUILD_ENHANCED_SHOCKBURST_TX_RX
+            bool "enhanced_shockburst_tx_rx"
+            depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4
         config EXAMPLE_BUILD_RTC
             bool "rtc"
             depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4
@@ -54,8 +60,11 @@ menu "Example Configuration"
             bool "st25r3916"
         config EXAMPLE_BUILD_SLEEP
             bool "sleep"
-        config EXAMPLE_BUILD_XL9535
-            bool "xl9535"
+        config EXAMPLE_BUILD_TCA8418
+            bool "tca8418"
+            depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4
+        config EXAMPLE_BUILD_XL95X5
+            bool "xl95x5"
     endchoice
 
 endmenu

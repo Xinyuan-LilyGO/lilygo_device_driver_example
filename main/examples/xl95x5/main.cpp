@@ -1,5 +1,5 @@
 /*
- * @Description: 控制 XL9535 GPIO 扩展器全部引脚高低电平切换的示例
+ * @Description: 控制 XL95x5 GPIO 扩展器全部引脚高低电平切换的示例
  * @Author: LILYGO_L
  * @Date: 2026-07-28 13:59:02
  * @LastEditTime: 2026-07-28 14:05:30
@@ -8,7 +8,7 @@
 #include "common.h"
 
 extern "C" void app_main(void) {
-  printf("XL9535 example on %s\n", common::kBoardName);
+  printf("XL95x5 example on %s\n", common::kBoardName);
   auto& driver = common::GetDriver();
 #if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR)
   if (!common::InitMinimalDriver() || !driver.InitXl9535()) {
@@ -32,11 +32,11 @@ extern "C" void app_main(void) {
   while (true) {
     xl9535->GpioWrite(Pin::kIoPort0, 0xFF);
     xl9535->GpioWrite(Pin::kIoPort1, 0xFF);
-    printf("XL9535 all pins high\n");
+    printf("XL95x5 all pins high\n");
     vTaskDelay(pdMS_TO_TICKS(1000));
     xl9535->GpioWrite(Pin::kIoPort0, 0x00);
     xl9535->GpioWrite(Pin::kIoPort1, 0x00);
-    printf("XL9535 all pins low\n");
+    printf("XL95x5 all pins low\n");
     vTaskDelay(pdMS_TO_TICKS(1000));
   }
 }
