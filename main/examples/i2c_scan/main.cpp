@@ -13,14 +13,14 @@
 namespace {
 
 void Scan(const char* name,
-    const std::shared_ptr<cpp_bus_driver::HardwareI2c1>& bus) {
+    const std::shared_ptr<cpp_bus_driver::HardwareI2c>& bus) {
   if (bus == nullptr) {
     printf("%s is not available\n", name);
     return;
   }
 
   std::vector<uint8_t> addresses;
-  if (!bus->Scan7bitAddress(&addresses)) {
+  if (!bus->Scan7BitAddress(&addresses)) {
     printf("%s scan failed\n", name);
     return;
   }

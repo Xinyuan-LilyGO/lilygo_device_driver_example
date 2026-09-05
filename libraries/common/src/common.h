@@ -2,14 +2,14 @@
  * @Description: Common board helpers for device driver examples
  * @Author: LILYGO_L
  * @Date: 2026-07-11 16:22:23
- * @LastEditTime: 2026-09-03 17:56:33
+ * @LastEditTime: 2026-09-04 16:58:18
  * @License: GPL 3.0
  */
 #pragma once
 
 #include <cstdint>
 
-#include "lilygo_device_driver_library.h"
+#include "lilygo_device_driver.h"
 
 namespace common {
 
@@ -18,18 +18,18 @@ namespace common {
 using DeviceDriver = lilygo_device_driver::TDisplayP4Driver;
 // 当前构建使用的板级命名空间
 namespace board = lilygo_device_driver::t_display_p4;
-// 当前构建的板卡名称
-inline constexpr const char* kBoardName = "T-Display-P4";
 #elif defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR)
 // 当前构建使用的设备驱动类型
 using DeviceDriver = lilygo_device_driver::TDisplayP4AirDriver;
 // 当前构建使用的板级命名空间
 namespace board = lilygo_device_driver::t_display_p4_air;
-// 当前构建的板卡名称
-inline constexpr const char* kBoardName = "T-Display-P4-Air";
 #else
 #error "These examples support T-Display-P4 and T-Display-P4-Air only"
 #endif
+
+// 当前构建的设备型号名称
+inline constexpr const char* kBoardName =
+    board::device::kDeviceModelInfo.name;
 
 /**
  * @brief 获取当前板卡的设备驱动单例

@@ -23,7 +23,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
 #include "freertos/task.h"
-#include "lilygo_device_driver_library.h"
+#include "lilygo_device_driver.h"
 
 namespace {
 
@@ -504,10 +504,10 @@ extern "C" void app_main(void) {
     return;
   }
 
-  auto tool = std::make_unique<cpp_bus_driver::Tool>();
-  if (!tool->SetGpioMode(board::gpio::button::kEsp32p4Boot,
-          cpp_bus_driver::Tool::GpioMode::kInput,
-          cpp_bus_driver::Tool::GpioStatus::kPullup)) {
+  cpp_bus_driver::PlatformHal platform_hal;
+  if (!platform_hal.SetGpioMode(board::gpio::button::kEsp32p4Boot,
+          cpp_bus_driver::PlatformHal::GpioMode::kInput,
+          cpp_bus_driver::PlatformHal::GpioStatus::kPullup)) {
     printf("BOOT button initialization failed\n");
     return;
   }
@@ -523,7 +523,7 @@ extern "C" void app_main(void) {
   TickType_t press_start_tick = 0;
   while (true) {
     const bool is_pressed =
-        tool->GpioRead(board::gpio::button::kEsp32p4Boot) == 0;
+        platform_hal.GpioRead(board::gpio::button::kEsp32p4Boot) == 0;
     if (is_pressed && !was_pressed) {
       press_start_tick = xTaskGetTickCount();
     } else if (!is_pressed && was_pressed) {

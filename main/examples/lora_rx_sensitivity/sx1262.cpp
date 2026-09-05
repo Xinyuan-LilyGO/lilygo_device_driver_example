@@ -10,13 +10,15 @@
 
 #include <array>
 
+#include "esp_log.h"
+
 #if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4)
 
 namespace lora_rx_sensitivity {
 namespace {
 
-bool ButtonPressed(cpp_bus_driver::Tool& tool) {
-  return tool.GpioRead(common::BootButtonGpio()) == 0;
+bool ButtonPressed(cpp_bus_driver::PlatformHal& platform_hal) {
+  return platform_hal.GpioRead(common::BootButtonGpio()) == 0;
 }
 
 }  // namespace
@@ -35,10 +37,10 @@ void RunSx1262() {
     return;
   }
 
-  cpp_bus_driver::Tool tool;
-  if (!tool.SetGpioMode(common::BootButtonGpio(),
-          cpp_bus_driver::Tool::GpioMode::kInput,
-          cpp_bus_driver::Tool::GpioStatus::kPullup)) {
+  cpp_bus_driver::PlatformHal platform_hal;
+  if (!platform_hal.SetGpioMode(common::BootButtonGpio(),
+          cpp_bus_driver::PlatformHal::GpioMode::kInput,
+          cpp_bus_driver::PlatformHal::GpioStatus::kPullup)) {
     printf("BOOT button initialization failed\n");
     return;
   }
@@ -69,10 +71,10 @@ void RunSx1262() {
   bool button_was_pressed = false;
 
   while (true) {
-    const bool button_pressed = ButtonPressed(tool);
+    const bool button_pressed = ButtonPressed(platform_hal);
     if (button_pressed && !button_was_pressed) {
       vTaskDelay(pdMS_TO_TICKS(30));
-      if (ButtonPressed(tool)) {
+      if (ButtonPressed(platform_hal)) {
         if (!sx1262.ClearIrqStatus(SX126X_IRQ_ALL) ||
             !sx1262.StartReceive()) {
           printf("SX1262 button restart receive failed\n");

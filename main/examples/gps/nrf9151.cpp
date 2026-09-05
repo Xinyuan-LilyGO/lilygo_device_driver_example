@@ -1,8 +1,8 @@
 /*
- * @Description: T-Display-P4-Air 的 nRF9151 GNSS 定位示例实现
+ * @Description: nRF9151 GNSS 定位数据读取示例实现
  * @Author: LILYGO_L
  * @Date: 2026-07-29 00:22:40
- * @LastEditTime: 2026-07-29 00:22:40
+ * @LastEditTime: 2026-09-04 17:45:00
  * @License: GPL 3.0
  */
 #include "common.h"
@@ -18,7 +18,7 @@ namespace gps {
 namespace {
 
 constexpr uint32_t kCommandTimeoutMs = 5000;
-constexpr size_t kPendingDataLimit = 8192;
+constexpr size_t kLineBufferLimit = 8192;
 
 bool SendCommand(cpp_bus_driver::Nrf9151& nrf9151, const char* command) {
   std::string response;
@@ -97,28 +97,21 @@ std::string TrimLineEndings(const std::string& value) {
   return value.substr(begin, end - begin);
 }
 
-void ProcessUartLine(const std::string& raw_line, GnssParser& parser) {
+void ProcessUartLine(const std::string& raw_line) {
   const std::string line = TrimLineEndings(raw_line);
   if (line.empty()) {
     return;
   }
 
   printf("\n[nRF9151][UART] %s\n", line.c_str());
-  if (line.front() == '$') {
-    GnssParser::Info info;
-    if (parser.ParseInfo(reinterpret_cast<const uint8_t*>(line.data()),
-            line.size(), info)) {
-      PrintGnssInfo("nRF9151", info);
-    } else {
-      printf("[nRF9151][NMEA] unsupported or invalid sentence\n");
-    }
-  } else if (line.rfind("#XGNSS:", 0) == 0) {
+  if (line.rfind("#XGNSS:", 0) == 0) {
     PrintCustomGnssLine(line);
   }
 }
 
 void ReadGnssOutput(cpp_bus_driver::HardwareUart& uart,
-    std::string& pending_data, GnssParser& parser) {
+    std::string& line_buffer, NmeaParser& parser,
+    const NmeaParser::Update& update) {
   const size_t available = uart.GetRxBufferLength();
   if (available == 0) {
     vTaskDelay(pdMS_TO_TICKS(20));
@@ -134,24 +127,32 @@ void ReadGnssOutput(cpp_bus_driver::HardwareUart& uart,
     return;
   }
 
-  pending_data.append(reinterpret_cast<const char*>(buffer.data()),
-      static_cast<size_t>(bytes_read));
+  const size_t received_length = static_cast<size_t>(bytes_read);
+  const NmeaParser::FeedResult parse_result =
+      parser.Feed(buffer.data(), received_length);
+  if (update.HasData()) {
+    PrintNmeaUpdate("nRF9151", update);
+  }
+  PrintNmeaDiagnostics("nRF9151", parse_result);
+
+  line_buffer.append(
+      reinterpret_cast<const char*>(buffer.data()), received_length);
   while (true) {
-    const size_t line_end = pending_data.find('\n');
+    const size_t line_end = line_buffer.find('\n');
     if (line_end == std::string::npos) {
       break;
     }
 
-    ProcessUartLine(pending_data.substr(0, line_end + 1), parser);
-    pending_data.erase(0, line_end + 1);
+    ProcessUartLine(line_buffer.substr(0, line_end + 1));
+    line_buffer.erase(0, line_end + 1);
   }
 
-  if (pending_data.size() > kPendingDataLimit) {
+  if (line_buffer.size() > kLineBufferLimit) {
     printf("\n[nRF9151][UART] oversized partial frame (%u bytes):\n",
-        static_cast<unsigned int>(pending_data.size()));
-    fwrite(pending_data.data(), 1, pending_data.size(), stdout);
+        static_cast<unsigned int>(line_buffer.size()));
+    fwrite(line_buffer.data(), 1, line_buffer.size(), stdout);
     printf("\n[nRF9151][UART] partial frame cleared\n");
-    pending_data.clear();
+    line_buffer.clear();
   }
 }
 
@@ -200,10 +201,17 @@ void RunNrf9151() {
   printf("[nRF9151] logging raw NMEA, custom #XGNSS fixes/status, and "
          "parsed navigation fields\n");
 
-  GnssParser parser;
-  std::string pending_data;
+  NmeaParser parser;
+  if (!parser.IsReady()) {
+    printf("[nRF9151] NMEA parser storage allocation failed\n");
+    SendCommand(nrf9151, "AT#XGNSS=0");
+    SendCommand(nrf9151, "AT#XGNSSNMEA=0");
+    return;
+  }
+  const NmeaParser::Update& update = *parser.update();
+  std::string line_buffer;
   while (true) {
-    ReadGnssOutput(uart, pending_data, parser);
+    ReadGnssOutput(uart, line_buffer, parser, update);
   }
 }
 

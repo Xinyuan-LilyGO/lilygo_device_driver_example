@@ -85,6 +85,13 @@ idf_component_register(
     REQUIRES ${example_requires}
 )
 
+if(CONFIG_EXAMPLE_BUILD_SCREEN_CAMERA)
+    idf_component_optional_requires(PRIVATE
+        esp_driver_ppa
+        esp_mm
+    )
+endif()
+
 if(CONFIG_EXAMPLE_BUILD_SLEEP)
     idf_component_optional_requires(PRIVATE
         esp_driver_uart

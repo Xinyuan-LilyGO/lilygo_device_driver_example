@@ -30,7 +30,7 @@ extern "C" void app_main(void) {
 
   auto& xl9535 = *driver.chip().xl9535;
   auto& rtc = *driver.chip().pcf8563;
-  cpp_bus_driver::Tool tool;
+  cpp_bus_driver::PlatformHal platform_hal;
 
   cpp_bus_driver::Pcf8563x::Time time = {
       .second = 55,
@@ -77,10 +77,10 @@ extern "C" void app_main(void) {
     return;
   }
 
-  if (!tool.InitGpioInterrupt(common::board::gpio::xl9535::kInt,
-          cpp_bus_driver::Tool::InterruptMode::kFalling,
+  if (!platform_hal.InitGpioInterrupt(common::board::gpio::xl9535::kInt,
+          cpp_bus_driver::PlatformHal::InterruptMode::kFalling,
           RtcInterruptCallback, nullptr,
-          cpp_bus_driver::Tool::GpioStatus::kPullup)) {
+          cpp_bus_driver::PlatformHal::GpioStatus::kPullup)) {
     printf("RTC interrupt initialization failed\n");
     return;
   }

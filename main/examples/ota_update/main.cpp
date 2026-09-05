@@ -989,10 +989,10 @@ void ConfirmRunningMainFirmware() {
  */
 void OtaTask(void* task_parameter) {
   static_cast<void>(task_parameter);
-  auto tool = std::make_unique<cpp_bus_driver::Tool>();
-  if (!tool->SetGpioMode(common::BootButtonGpio(),
-          cpp_bus_driver::Tool::GpioMode::kInput,
-          cpp_bus_driver::Tool::GpioStatus::kPullup)) {
+  cpp_bus_driver::PlatformHal platform_hal;
+  if (!platform_hal.SetGpioMode(common::BootButtonGpio(),
+          cpp_bus_driver::PlatformHal::GpioMode::kInput,
+          cpp_bus_driver::PlatformHal::GpioStatus::kPullup)) {
     printf("BOOT button initialization failed\n");
     vTaskDelete(nullptr);
     return;
@@ -1019,7 +1019,8 @@ void OtaTask(void* task_parameter) {
   bool was_pressed = false;
   TickType_t press_start_tick = 0;
   while (true) {
-    const bool is_pressed = tool->GpioRead(common::BootButtonGpio()) == 0;
+    const bool is_pressed =
+        platform_hal.GpioRead(common::BootButtonGpio()) == 0;
     if (is_pressed && !was_pressed) {
       press_start_tick = xTaskGetTickCount();
     } else if (!is_pressed && was_pressed) {

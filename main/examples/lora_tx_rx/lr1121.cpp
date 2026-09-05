@@ -48,12 +48,12 @@ bool ReadAndClearIrq(usp_cpp_bus_driver::Lr11xx& lr1121,
          LR11XX_STATUS_OK;
 }
 
-bool WaitForIrq(cpp_bus_driver::Tool& tool,
+bool WaitForIrq(cpp_bus_driver::PlatformHal& platform_hal,
     usp_cpp_bus_driver::Lr11xx& lr1121,
     lr11xx_system_irq_mask_t& irq_status, uint32_t timeout_ms) {
-  const int64_t deadline_ms = tool.GetSystemTimeMs() + timeout_ms;
-  while (tool.GetSystemTimeMs() < deadline_ms) {
-    if (tool.GpioRead(common::board::gpio::lr1121::kInt)) {
+  const int64_t deadline_ms = platform_hal.GetSystemTimeMs() + timeout_ms;
+  while (platform_hal.GetSystemTimeMs() < deadline_ms) {
+    if (platform_hal.GpioRead(common::board::gpio::lr1121::kInt)) {
       return ReadAndClearIrq(lr1121, irq_status);
     }
     vTaskDelay(pdMS_TO_TICKS(1));
@@ -65,8 +65,8 @@ bool StartReceive(usp_cpp_bus_driver::Lr11xx& lr1121) {
   return SetPayloadLength(lr1121, 255) && lr1121.StartReceive(0);
 }
 
-bool ButtonPressed(cpp_bus_driver::Tool& tool) {
-  return tool.GpioRead(common::BootButtonGpio()) == 0;
+bool ButtonPressed(cpp_bus_driver::PlatformHal& platform_hal) {
+  return platform_hal.GpioRead(common::BootButtonGpio()) == 0;
 }
 
 }  // namespace
@@ -80,10 +80,10 @@ void RunLr1121() {
     return;
   }
 
-  cpp_bus_driver::Tool tool;
-  if (!tool.SetGpioMode(common::BootButtonGpio(),
-          cpp_bus_driver::Tool::GpioMode::kInput,
-          cpp_bus_driver::Tool::GpioStatus::kPullup)) {
+  cpp_bus_driver::PlatformHal platform_hal;
+  if (!platform_hal.SetGpioMode(common::BootButtonGpio(),
+          cpp_bus_driver::PlatformHal::GpioMode::kInput,
+          cpp_bus_driver::PlatformHal::GpioStatus::kPullup)) {
     printf("BOOT button initialization failed\n");
     return;
   }
@@ -136,10 +136,10 @@ void RunLr1121() {
   printf("LR1121 LoRa receive started\n");
   bool button_was_pressed = false;
   while (true) {
-    const bool button_pressed = ButtonPressed(tool);
+    const bool button_pressed = ButtonPressed(platform_hal);
     if (button_pressed && !button_was_pressed) {
       vTaskDelay(pdMS_TO_TICKS(30));
-      if (ButtonPressed(tool)) {
+      if (ButtonPressed(platform_hal)) {
         printf("LR1121 send started\n");
         lr11xx_system_irq_mask_t irq_status = LR11XX_SYSTEM_IRQ_NONE;
         const bool transmit_started =
@@ -150,7 +150,7 @@ void RunLr1121() {
             lr1121.WriteBuffer(kTestPayload.data(), kTestPayload.size()) &&
             lr1121.StartTransmit(5000);
         if (!transmit_started ||
-            !WaitForIrq(tool, lr1121, irq_status, 6000) ||
+            !WaitForIrq(platform_hal, lr1121, irq_status, 6000) ||
             (irq_status & LR11XX_SYSTEM_IRQ_TX_DONE) == 0) {
           printf("LR1121 send failed (IRQ: 0x%08lX)\n",
               static_cast<unsigned long>(irq_status));
@@ -166,7 +166,7 @@ void RunLr1121() {
     }
     button_was_pressed = button_pressed;
 
-    if (tool.GpioRead(common::board::gpio::lr1121::kInt)) {
+    if (platform_hal.GpioRead(common::board::gpio::lr1121::kInt)) {
       lr11xx_system_irq_mask_t irq_status = LR11XX_SYSTEM_IRQ_NONE;
       if (!ReadAndClearIrq(lr1121, irq_status)) {
         printf("LR1121 read IRQ failed\n");

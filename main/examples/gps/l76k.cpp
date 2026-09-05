@@ -1,8 +1,8 @@
 /*
- * @Description: T-Display-P4 的 L76K GPS 定位示例实现
+ * @Description: L76K GNSS 定位数据读取示例实现
  * @Author: LILYGO_L
  * @Date: 2026-07-29 00:22:40
- * @LastEditTime: 2026-07-29 00:22:40
+ * @LastEditTime: 2026-09-04 17:42:00
  * @License: GPL 3.0
  */
 #include "common.h"
@@ -41,6 +41,12 @@ void RunL76k() {
       static_cast<unsigned int>(l76k->GetBaudRate()),
       static_cast<unsigned int>(l76k->update_interval_ms()));
   l76k->ClearRxBufferData();
+  NmeaParser parser;
+  if (!parser.IsReady()) {
+    printf("[%s] NMEA parser storage allocation failed\n", kSource);
+    return;
+  }
+  const NmeaParser::Update& update = *parser.update();
 
   while (true) {
     std::unique_ptr<uint8_t[]> buffer;
@@ -52,12 +58,12 @@ void RunL76k() {
     }
 
     PrintRawBlock(kSource, buffer.get(), buffer_length);
-    GnssParser::Info info;
-    if (l76k->ParseInfo(buffer.get(), buffer_length, info)) {
-      PrintGnssInfo(kSource, info);
-    } else {
-      printf("[%s] no supported NMEA sentence could be parsed\n", kSource);
+    const NmeaParser::FeedResult result =
+        parser.Feed(buffer.get(), buffer_length);
+    if (update.HasData()) {
+      PrintNmeaUpdate(kSource, update);
     }
+    PrintNmeaDiagnostics(kSource, result);
   }
 }
 

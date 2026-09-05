@@ -10,6 +10,8 @@
 
 #include <array>
 
+#include "esp_log.h"
+
 #if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4)
 
 namespace lora_rx_sensitivity {
@@ -85,8 +87,8 @@ bool CalibrateFrontEnd(usp_cpp_bus_driver::Lr20xx& lr2021) {
   return false;
 }
 
-bool ButtonPressed(cpp_bus_driver::Tool& tool) {
-  return tool.GpioRead(common::BootButtonGpio()) == 0;
+bool ButtonPressed(cpp_bus_driver::PlatformHal& platform_hal) {
+  return platform_hal.GpioRead(common::BootButtonGpio()) == 0;
 }
 
 }  // namespace
@@ -100,10 +102,10 @@ void RunLr2021() {
     return;
   }
 
-  cpp_bus_driver::Tool tool;
-  if (!tool.SetGpioMode(common::BootButtonGpio(),
-          cpp_bus_driver::Tool::GpioMode::kInput,
-          cpp_bus_driver::Tool::GpioStatus::kPullup)) {
+  cpp_bus_driver::PlatformHal platform_hal;
+  if (!platform_hal.SetGpioMode(common::BootButtonGpio(),
+          cpp_bus_driver::PlatformHal::GpioMode::kInput,
+          cpp_bus_driver::PlatformHal::GpioStatus::kPullup)) {
     printf("BOOT button initialization failed\n");
     return;
   }
@@ -171,10 +173,10 @@ void RunLr2021() {
   bool button_was_pressed = false;
 
   while (true) {
-    const bool button_pressed = ButtonPressed(tool);
+    const bool button_pressed = ButtonPressed(platform_hal);
     if (button_pressed && !button_was_pressed) {
       vTaskDelay(pdMS_TO_TICKS(30));
-      if (ButtonPressed(tool)) {
+      if (ButtonPressed(platform_hal)) {
         if (lr2021.Invoke(lr20xx_system_clear_irq_status,
                 LR20XX_SYSTEM_IRQ_ALL_MASK) != LR20XX_STATUS_OK ||
             !StartReceive(lr2021)) {

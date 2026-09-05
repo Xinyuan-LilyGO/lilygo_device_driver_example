@@ -83,8 +83,8 @@ bool CalibrateFrontEnd(usp_cpp_bus_driver::Lr20xx& lr2021) {
   return false;
 }
 
-bool ButtonPressed(cpp_bus_driver::Tool& tool) {
-  return tool.GpioRead(common::BootButtonGpio()) == 0;
+bool ButtonPressed(cpp_bus_driver::PlatformHal& platform_hal) {
+  return platform_hal.GpioRead(common::BootButtonGpio()) == 0;
 }
 
 }  // namespace
@@ -98,10 +98,10 @@ void RunLr2021() {
     return;
   }
 
-  cpp_bus_driver::Tool tool;
-  if (!tool.SetGpioMode(common::BootButtonGpio(),
-          cpp_bus_driver::Tool::GpioMode::kInput,
-          cpp_bus_driver::Tool::GpioStatus::kPullup)) {
+  cpp_bus_driver::PlatformHal platform_hal;
+  if (!platform_hal.SetGpioMode(common::BootButtonGpio(),
+          cpp_bus_driver::PlatformHal::GpioMode::kInput,
+          cpp_bus_driver::PlatformHal::GpioStatus::kPullup)) {
     printf("BOOT button initialization failed\n");
     return;
   }
@@ -170,10 +170,10 @@ void RunLr2021() {
   printf("LR2021 LoRa receive started\n");
 
   while (true) {
-    const bool button_pressed = ButtonPressed(tool);
+    const bool button_pressed = ButtonPressed(platform_hal);
     if (button_pressed && !button_was_pressed && !transmitting) {
       vTaskDelay(pdMS_TO_TICKS(30));
-      if (ButtonPressed(tool)) {
+      if (ButtonPressed(platform_hal)) {
         printf("LR2021 send started\n");
         const bool transmit_started =
             lr2021.Invoke(lr20xx_system_clear_irq_status,

@@ -15,7 +15,7 @@
 #include <new>
 
 #include "common.h"
-#include "stsw_st25rfal002_cpp_bus_driver_library.h"
+#include "stsw_st25rfal002_cpp_bus_driver.h"
 
 namespace stsw = stsw_st25rfal002_cpp_bus_driver;
 

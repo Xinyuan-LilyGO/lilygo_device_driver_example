@@ -24,7 +24,7 @@ constexpr size_t kPcmBufferSize = 8 * 1024;
 const std::string kMp3FilePath =
     std::string(common::board::device::sd::kBasePath) + "/music.mp3";
 
-cpp_bus_driver::Tool g_tool;
+cpp_bus_driver::PlatformHal g_platform_hal;
 
 bool PlayMp3File(const char* path) {
   common::audio::Mp3Metadata metadata;
@@ -133,13 +133,13 @@ bool PlayMp3File(const char* path) {
 }
 
 bool InitBootButton() {
-  return g_tool.SetGpioMode(common::BootButtonGpio(),
-      cpp_bus_driver::Tool::GpioMode::kInput,
-      cpp_bus_driver::Tool::GpioStatus::kPullup);
+  return g_platform_hal.SetGpioMode(common::BootButtonGpio(),
+      cpp_bus_driver::PlatformHal::GpioMode::kInput,
+      cpp_bus_driver::PlatformHal::GpioStatus::kPullup);
 }
 
 bool BootButtonPressed() {
-  return g_tool.GpioRead(common::BootButtonGpio()) == 0;
+  return g_platform_hal.GpioRead(common::BootButtonGpio()) == 0;
 }
 
 }  // namespace
