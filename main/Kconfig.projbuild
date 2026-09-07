@@ -4,8 +4,10 @@ menu "Example Configuration"
         default EXAMPLE_BUILD_SCREEN_LVGL
         config EXAMPLE_BUILD_HAPTIC_FEEDBACK
             bool "haptic_feedback"
+            depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 || LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR
         config EXAMPLE_BUILD_IMU
             bool "imu"
+            depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 || LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR
         config EXAMPLE_BUILD_GPS
             bool "gps"
             depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 || LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR
@@ -15,9 +17,6 @@ menu "Example Configuration"
         config EXAMPLE_BUILD_LORA_RX_SENSITIVITY
             bool "lora_rx_sensitivity"
             depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 || LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR
-            help
-                Dedicated conducted LoRa receiver sensitivity and PER test
-                for use with a LoRa-capable RF signal generator.
         config EXAMPLE_BUILD_GFSK_TX_RX
             bool "gfsk_tx_rx"
             depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4
@@ -29,42 +28,57 @@ menu "Example Configuration"
             depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4
         config EXAMPLE_BUILD_BATTERY_MANAGEMENT
             bool "battery_management"
+            depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 || LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR
         config EXAMPLE_BUILD_MICROPHONE_SPEAKER_LOOPBACK
             bool "microphone_speaker_loopback"
+            depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 || LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR
         config EXAMPLE_BUILD_SD_MP3
             bool "sd_mp3"
+            depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 || LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR
         config EXAMPLE_BUILD_WIFI_MP3
             bool "wifi_mp3"
+            depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 || LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR
             select MBEDTLS_CERTIFICATE_BUNDLE
         config EXAMPLE_BUILD_WIFI_SCAN_CONNECT_TIME
             bool "wifi_scan_connect_time"
+            depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 || LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR
         config EXAMPLE_BUILD_COPROCESSOR_DOWNLOAD_MODE
             bool "coprocessor_download_mode"
             depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 || LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR
         config EXAMPLE_BUILD_NETWORK_ADAPTER_UPDATE
             bool "network_adapter_update"
+            depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4
         config EXAMPLE_BUILD_OTA_UPDATE
             bool "ota_update"
+            depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 || LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR
             select MBEDTLS_CERTIFICATE_BUNDLE
         config EXAMPLE_BUILD_I2C_SCAN
             bool "i2c_scan"
+            depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 || LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR
         config EXAMPLE_BUILD_SCREEN_CAMERA
             bool "screen_camera"
+            depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 || LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR
         config EXAMPLE_BUILD_SCREEN_LVGL
             bool "screen_lvgl"
+            depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 || LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR || LILYGO_DEVICE_DRIVER_T_GLASSES_P4
         config EXAMPLE_BUILD_SCREEN_LVGL_TOUCH_DRAW
             bool "screen_lvgl_touch_draw"
+            depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 || LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR
         config EXAMPLE_BUILD_SGM38121
             bool "sgm38121"
+            depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 || LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR
         config EXAMPLE_BUILD_ST25R3916
             bool "st25r3916"
+            depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 || LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR
         config EXAMPLE_BUILD_SLEEP
             bool "sleep"
+            depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 || LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR
         config EXAMPLE_BUILD_TCA8418
             bool "tca8418"
             depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4
         config EXAMPLE_BUILD_XL95X5
             bool "xl95x5"
+            depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 || LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR
     endchoice
 
 endmenu

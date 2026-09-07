@@ -13,7 +13,7 @@ dependencies:
   espressif/esp_video:
     override_path: "../libraries/esp-video-components/esp_video"
     matches:
-      - if: "$CONFIG{EXAMPLE_BUILD_SCREEN_CAMERA} == True"
+      - if: "($CONFIG{LILYGO_DEVICE_DRIVER_T_DISPLAY_P4} == True || $CONFIG{LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR} == True) && $CONFIG{EXAMPLE_BUILD_SCREEN_CAMERA} == True"
 
   usp_cpp_bus_driver:
     path: "../libraries/usp_cpp_bus_driver"
@@ -24,39 +24,39 @@ dependencies:
   stsw-st25rfal002_cpp_bus_driver:
     path: "../libraries/stsw-st25rfal002_cpp_bus_driver"
     matches:
-      - if: "$CONFIG{EXAMPLE_BUILD_ST25R3916} == True"
+      - if: "($CONFIG{LILYGO_DEVICE_DRIVER_T_DISPLAY_P4} == True || $CONFIG{LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR} == True) && $CONFIG{EXAMPLE_BUILD_ST25R3916} == True"
       - if: "$CONFIG{LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR} == True"
 
   lvgl/lvgl:
     version: "9.5.0"
     matches:
-      - if: "$CONFIG{EXAMPLE_BUILD_SCREEN_LVGL} == True"
-      - if: "$CONFIG{EXAMPLE_BUILD_SCREEN_LVGL_TOUCH_DRAW} == True"
+      - if: "(($CONFIG{LILYGO_DEVICE_DRIVER_T_DISPLAY_P4} == True || $CONFIG{LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR} == True) || $CONFIG{LILYGO_DEVICE_DRIVER_T_GLASSES_P4} == True) && $CONFIG{EXAMPLE_BUILD_SCREEN_LVGL} == True"
+      - if: "($CONFIG{LILYGO_DEVICE_DRIVER_T_DISPLAY_P4} == True || $CONFIG{LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR} == True) && $CONFIG{EXAMPLE_BUILD_SCREEN_LVGL_TOUCH_DRAW} == True"
 
   espressif/esp_hosted:
     override_path: "../libraries/esp_hosted"
     matches:
-      - if: "$CONFIG{EXAMPLE_BUILD_WIFI_MP3} == True"
-      - if: "$CONFIG{EXAMPLE_BUILD_WIFI_SCAN_CONNECT_TIME} == True"
-      - if: "$CONFIG{EXAMPLE_BUILD_NETWORK_ADAPTER_UPDATE} == True"
-      - if: "$CONFIG{EXAMPLE_BUILD_OTA_UPDATE} == True"
+      - if: "($CONFIG{LILYGO_DEVICE_DRIVER_T_DISPLAY_P4} == True || $CONFIG{LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR} == True) && $CONFIG{EXAMPLE_BUILD_WIFI_MP3} == True"
+      - if: "($CONFIG{LILYGO_DEVICE_DRIVER_T_DISPLAY_P4} == True || $CONFIG{LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR} == True) && $CONFIG{EXAMPLE_BUILD_WIFI_SCAN_CONNECT_TIME} == True"
+      - if: "$CONFIG{LILYGO_DEVICE_DRIVER_T_DISPLAY_P4} == True && $CONFIG{EXAMPLE_BUILD_NETWORK_ADAPTER_UPDATE} == True"
+      - if: "($CONFIG{LILYGO_DEVICE_DRIVER_T_DISPLAY_P4} == True || $CONFIG{LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR} == True) && $CONFIG{EXAMPLE_BUILD_OTA_UPDATE} == True"
 
   espressif/esp_wifi_remote:
     version: ">=1.6.1,<2.0"
     matches:
-      - if: "$CONFIG{EXAMPLE_BUILD_WIFI_MP3} == True"
-      - if: "$CONFIG{EXAMPLE_BUILD_WIFI_SCAN_CONNECT_TIME} == True"
-      - if: "$CONFIG{EXAMPLE_BUILD_NETWORK_ADAPTER_UPDATE} == True"
-      - if: "$CONFIG{EXAMPLE_BUILD_OTA_UPDATE} == True"
+      - if: "($CONFIG{LILYGO_DEVICE_DRIVER_T_DISPLAY_P4} == True || $CONFIG{LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR} == True) && $CONFIG{EXAMPLE_BUILD_WIFI_MP3} == True"
+      - if: "($CONFIG{LILYGO_DEVICE_DRIVER_T_DISPLAY_P4} == True || $CONFIG{LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR} == True) && $CONFIG{EXAMPLE_BUILD_WIFI_SCAN_CONNECT_TIME} == True"
+      - if: "$CONFIG{LILYGO_DEVICE_DRIVER_T_DISPLAY_P4} == True && $CONFIG{EXAMPLE_BUILD_NETWORK_ADAPTER_UPDATE} == True"
+      - if: "($CONFIG{LILYGO_DEVICE_DRIVER_T_DISPLAY_P4} == True || $CONFIG{LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR} == True) && $CONFIG{EXAMPLE_BUILD_OTA_UPDATE} == True"
 
   espressif/esp_audio_codec:
     version: "2.4.1"
     matches:
-      - if: "$CONFIG{EXAMPLE_BUILD_SD_MP3} == True"
-      - if: "$CONFIG{EXAMPLE_BUILD_WIFI_MP3} == True"
+      - if: "($CONFIG{LILYGO_DEVICE_DRIVER_T_DISPLAY_P4} == True || $CONFIG{LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR} == True) && $CONFIG{EXAMPLE_BUILD_SD_MP3} == True"
+      - if: "($CONFIG{LILYGO_DEVICE_DRIVER_T_DISPLAY_P4} == True || $CONFIG{LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR} == True) && $CONFIG{EXAMPLE_BUILD_WIFI_MP3} == True"
 
   joltwallet/littlefs:
     version: ">=1.21.0,<2.0.0"
     matches:
-      - if: "$CONFIG{EXAMPLE_BUILD_NETWORK_ADAPTER_UPDATE} == True"
-      - if: "$CONFIG{EXAMPLE_BUILD_OTA_UPDATE} == True"
+      - if: "$CONFIG{LILYGO_DEVICE_DRIVER_T_DISPLAY_P4} == True && $CONFIG{EXAMPLE_BUILD_NETWORK_ADAPTER_UPDATE} == True"
+      - if: "($CONFIG{LILYGO_DEVICE_DRIVER_T_DISPLAY_P4} == True || $CONFIG{LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR} == True) && $CONFIG{EXAMPLE_BUILD_OTA_UPDATE} == True"
