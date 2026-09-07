@@ -17,22 +17,24 @@ static lv_style_t style_bullet;
 static lv_obj_t *scale1;
 static const lv_font_t *font_normal = &lv_font_montserrat_26;
 
-static lv_obj_t *create_scale_box(lv_obj_t *parent, const char *text1, const char *text2, const char *text3)
+static lv_obj_t *create_scale_box(lv_obj_t *parent, const char *text1, const char *text2, const char *text3, bool compact)
 {
     lv_obj_t *scale = lv_scale_create(parent);
     lv_obj_center(scale);
-    lv_obj_set_size(scale, 600, 600);
+    lv_obj_set_size(scale, compact ? 336 : 600, compact ? 336 : 600);
     lv_scale_set_mode(scale, LV_SCALE_MODE_ROUND_OUTER);
     lv_scale_set_label_show(scale, false);
     lv_scale_set_post_draw(scale, true);
-    lv_obj_set_width(scale, LV_PCT(100));
-    lv_obj_set_style_pad_all(scale, 30, 0);
+    if (!compact) {
+        lv_obj_set_width(scale, LV_PCT(100));
+    }
+    lv_obj_set_style_pad_all(scale, compact ? 20 : 30, 0);
 
     lv_obj_t *bullet1 = lv_obj_create(parent);
     lv_obj_set_size(bullet1, 13, 13);
     lv_obj_remove_style(bullet1, NULL, LV_PART_SCROLLBAR);
     lv_obj_add_style(bullet1, &style_bullet, 0);
-    lv_obj_set_style_bg_color(bullet1, lv_palette_main(LV_PALETTE_RED), 0);
+    lv_obj_set_style_bg_color(bullet1, lv_palette_main(compact ? LV_PALETTE_BLUE : LV_PALETTE_RED), 0);
     lv_obj_t *label1 = lv_label_create(parent);
     lv_label_set_text(label1, text1);
 
@@ -40,7 +42,7 @@ static lv_obj_t *create_scale_box(lv_obj_t *parent, const char *text1, const cha
     lv_obj_set_size(bullet2, 13, 13);
     lv_obj_remove_style(bullet2, NULL, LV_PART_SCROLLBAR);
     lv_obj_add_style(bullet2, &style_bullet, 0);
-    lv_obj_set_style_bg_color(bullet2, lv_palette_main(LV_PALETTE_BLUE), 0);
+    lv_obj_set_style_bg_color(bullet2, lv_palette_main(compact ? LV_PALETTE_RED : LV_PALETTE_BLUE), 0);
     lv_obj_t *label2 = lv_label_create(parent);
     lv_label_set_text(label2, text2);
 
@@ -51,6 +53,24 @@ static lv_obj_t *create_scale_box(lv_obj_t *parent, const char *text1, const cha
     lv_obj_set_style_bg_color(bullet3, lv_palette_main(LV_PALETTE_GREEN), 0);
     lv_obj_t *label3 = lv_label_create(parent);
     lv_label_set_text(label3, text3);
+
+    if (compact) {
+        static int32_t compact_columns[] = {336, 13, LV_GRID_FR(1), LV_GRID_TEMPLATE_LAST};
+        static int32_t compact_rows[] = {LV_GRID_FR(1), LV_GRID_CONTENT, LV_GRID_CONTENT, LV_GRID_CONTENT, LV_GRID_FR(1), LV_GRID_TEMPLATE_LAST};
+        lv_obj_set_style_pad_all(parent, 16, 0);
+        lv_obj_set_style_pad_column(parent, 12, 0);
+        lv_obj_set_style_pad_row(parent, 16, 0);
+        lv_obj_remove_flag(parent, LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_set_grid_dsc_array(parent, compact_columns, compact_rows);
+        lv_obj_set_grid_cell(scale, LV_GRID_ALIGN_CENTER, 0, 1, LV_GRID_ALIGN_CENTER, 0, 5);
+        lv_obj_set_grid_cell(bullet1, LV_GRID_ALIGN_CENTER, 1, 1, LV_GRID_ALIGN_CENTER, 1, 1);
+        lv_obj_set_grid_cell(bullet2, LV_GRID_ALIGN_CENTER, 1, 1, LV_GRID_ALIGN_CENTER, 2, 1);
+        lv_obj_set_grid_cell(bullet3, LV_GRID_ALIGN_CENTER, 1, 1, LV_GRID_ALIGN_CENTER, 3, 1);
+        lv_obj_set_grid_cell(label1, LV_GRID_ALIGN_STRETCH, 2, 1, LV_GRID_ALIGN_CENTER, 1, 1);
+        lv_obj_set_grid_cell(label2, LV_GRID_ALIGN_STRETCH, 2, 1, LV_GRID_ALIGN_CENTER, 2, 1);
+        lv_obj_set_grid_cell(label3, LV_GRID_ALIGN_STRETCH, 2, 1, LV_GRID_ALIGN_CENTER, 3, 1);
+        return scale;
+    }
 
     static int32_t grid_col_dsc[] = {LV_GRID_CONTENT, LV_GRID_FR(1), LV_GRID_TEMPLATE_LAST};
     static int32_t grid_row_dsc[] = {LV_GRID_CONTENT, LV_GRID_CONTENT, LV_GRID_CONTENT, LV_GRID_CONTENT, LV_GRID_CONTENT, LV_GRID_TEMPLATE_LAST};
@@ -105,7 +125,9 @@ void example_lvgl_demo_ui(lv_display_t *disp)
     lv_obj_t *parent = lv_display_get_screen_active(disp);
 
     // create scale widget
-    scale1 = create_scale_box(parent, "Revenue", "Sales", "Costs");
+    const bool compact = lv_display_get_horizontal_resolution(disp) == 640 &&
+                         lv_display_get_vertical_resolution(disp) == 400;
+    scale1 = create_scale_box(parent, "Revenue", "Sales", "Costs", compact);
 
     // create arc indicators
     lv_obj_t *arc;

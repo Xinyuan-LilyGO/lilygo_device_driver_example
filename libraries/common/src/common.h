@@ -8,6 +8,8 @@
 #pragma once
 
 #include <cstdint>
+#include <cstdio>
+#include <cstdio>
 
 #include "lilygo_device_driver.h"
 
@@ -23,8 +25,13 @@ namespace board = lilygo_device_driver::t_display_p4;
 using DeviceDriver = lilygo_device_driver::TDisplayP4AirDriver;
 // 当前构建使用的板级命名空间
 namespace board = lilygo_device_driver::t_display_p4_air;
+#elif defined(CONFIG_LILYGO_DEVICE_DRIVER_T_GLASSES_P4)
+// 当前构建使用的设备驱动类型
+using DeviceDriver = lilygo_device_driver::TGlassesP4Driver;
+// 当前构建使用的板级命名空间
+namespace board = lilygo_device_driver::t_glasses_p4;
 #else
-#error "These examples support T-Display-P4 and T-Display-P4-Air only"
+#error "These examples support T-Display-P4, T-Display-P4-Air and T-Glasses-P4 only"
 #endif
 
 // 当前构建的设备型号名称
@@ -85,8 +92,10 @@ inline constexpr int BootButtonGpio() {
 inline bool IsHi8561Screen() {
 #if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4)
   return GetDriver().screen_type() == board::device::ScreenType::kHi8561;
-#else
+#elif defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR)
   return true;
+#else
+  return false;
 #endif
 }
 
@@ -114,6 +123,11 @@ inline bool IsRm69a10Screen() {
 inline bool SendScreen(
     int x_start, int y_start, int x_end, int y_end, const void* data) {
   auto& driver = GetDriver();
+#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_GLASSES_P4)
+  return driver.IsScreenReady() && driver.bus().screen_mipi_bus != nullptr &&
+         driver.bus().screen_mipi_bus->Write(
+             x_start, y_start, x_end, y_end, data);
+#else
   if (IsHi8561Screen() && driver.IsHi8561Ready()) {
     return driver.chip().hi8561->SendColorStreamCoordinate(
         x_start, y_start, x_end, y_end, data);
@@ -125,6 +139,7 @@ inline bool SendScreen(
   }
 #endif
   return false;
+#endif
 }
 
 /**
@@ -145,11 +160,26 @@ inline void StartBacklight() {
       vTaskDelay(pdMS_TO_TICKS(10));
     }
   }
-#else
+#elif defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR)
   if (driver.IsSy7200aReady()) {
     driver.chip().sy7200a->FadeTo(
         {.value = 1, .scale = 1}, 500,
         cpp_bus_driver::Pwm::FadeMode::kWaitForCompletion);
+  }
+#elif defined(CONFIG_LILYGO_DEVICE_DRIVER_T_GLASSES_P4)
+  if (driver.IsS023msafjf10111e1Ready()) {
+    // 逐步点亮屏幕至目标亮度增益。
+    constexpr uint16_t kFadeSteps = 32;
+    constexpr uint16_t kTargetBrightnessGain = 256;
+    for (uint16_t step = 0; step <= kFadeSteps; ++step) {
+      const uint16_t gain =
+          kTargetBrightnessGain * step / kFadeSteps;
+      if (!driver.chip().s023msafjf10111e1->SetBrightnessGain(gain)) {
+        printf("Screen brightness gain update failed\n");
+        return;
+      }
+      vTaskDelay(pdMS_TO_TICKS(15));
+    }
   }
 #endif
 }
