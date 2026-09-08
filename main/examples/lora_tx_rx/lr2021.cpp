@@ -10,7 +10,8 @@
 
 #include <array>
 
-#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4)
+#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) || \
+    defined(CONFIG_LILYGO_DEVICE_DRIVER_T_GLASSES_P4)
 
 namespace lora_tx_rx {
 namespace {
@@ -87,11 +88,27 @@ bool ButtonPressed(cpp_bus_driver::PlatformHal& platform_hal) {
   return platform_hal.GpioRead(common::BootButtonGpio()) == 0;
 }
 
+bool RadioIrqAsserted() {
+#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_GLASSES_P4)
+  cpp_bus_driver::PlatformHal platform_hal;
+  return platform_hal.GpioRead(common::board::gpio::lr2021::kInt);
+#else
+  return common::GetDriver().chip().xl9535->GpioRead(
+             common::board::gpio::xl9535::kRadioDio1) == 1;
+#endif
+}
+
 }  // namespace
 
 void RunLr2021() {
   auto& driver = common::GetDriver();
-  if (!driver.IsXl9535Ready() || !driver.IsLr2021Ready() ||
+#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4)
+  if (!driver.IsXl9535Ready()) {
+    printf("Radio GPIO expander initialization failed\n");
+    return;
+  }
+#endif
+  if (!driver.IsLr2021Ready() ||
       !driver.SetLr2021OperatingMode(
           common::DeviceDriver::Lr2021OperatingMode::kStandby)) {
     printf("LR2021 initialization or wake-up failed\n");
@@ -106,7 +123,6 @@ void RunLr2021() {
     return;
   }
 
-  auto& xl9535 = *driver.chip().xl9535;
   auto& lr2021 = *driver.chip().lr2021;
   const usp_cpp_bus_driver::Lr20xx::LoraConfig lora_config = {
       .frequency_hz = kFrequencyHz,
@@ -197,7 +213,7 @@ void RunLr2021() {
     }
     button_was_pressed = button_pressed;
 
-    if (xl9535.GpioRead(common::board::gpio::xl9535::kRadioDio1) == 1) {
+    if (RadioIrqAsserted()) {
       lr20xx_system_irq_mask_t irq_status = LR20XX_SYSTEM_IRQ_NONE;
       if (!ReadAndClearIrq(lr2021, irq_status)) {
         printf("LR2021 read IRQ failed\n");
