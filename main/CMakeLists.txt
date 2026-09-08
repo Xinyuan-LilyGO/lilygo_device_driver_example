@@ -93,6 +93,7 @@ idf_component_register(
 
 if(CONFIG_EXAMPLE_BUILD_SCREEN_CAMERA)
     idf_component_optional_requires(PRIVATE
+        esp_video
         esp_driver_ppa
         esp_mm
     )

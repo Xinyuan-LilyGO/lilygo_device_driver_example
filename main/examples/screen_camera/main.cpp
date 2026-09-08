@@ -12,6 +12,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cerrno>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -39,6 +40,7 @@ size_t g_cache_line_size = 0;
 int g_video_fd = -1;
 bool g_video_initialized = false;
 bool g_streaming = false;
+bool g_camera_power_enabled = false;
 std::array<void*, kCameraBufferCount> g_frame_buffers = {};
 std::array<size_t, kCameraBufferCount> g_frame_buffer_sizes = {};
 uint32_t g_frame_width = 0;
@@ -190,6 +192,13 @@ void DeinitializeCamera() {
     esp_video_deinit();
     g_video_initialized = false;
   }
+  if (g_camera_power_enabled) {
+    if (!common::GetDriver().SetCameraPowerEnabled(false)) {
+      printf("Camera power off failed\n");
+    } else {
+      g_camera_power_enabled = false;
+    }
+  }
   if (g_ppa_handle != nullptr) {
     ppa_unregister_client(g_ppa_handle);
     g_ppa_handle = nullptr;
@@ -209,10 +218,28 @@ bool InitializeCamera() {
   }
 
   auto& driver = common::GetDriver();
+#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_GLASSES_P4)
+  // 摄像头 SCCB 与屏幕共享 SENSOR 总线。
+  const auto& camera_i2c_bus = driver.bus().screen_i2c_bus;
+#else
+  const auto& camera_i2c_bus = driver.bus().sgm38121_i2c_bus;
+#endif
+  if (!driver.IsSgm38121Ready() || camera_i2c_bus == nullptr ||
+      camera_i2c_bus->bus_handle() == nullptr) {
+    printf("Camera power controller or SCCB bus not ready\n");
+    return false;
+  }
+  // 上电中途失败时也需要尝试关闭摄像头独立电源。
+  g_camera_power_enabled = true;
+  if (!driver.SetCameraPowerEnabled(true)) {
+    printf("Camera power on failed\n");
+    return false;
+  }
+  vTaskDelay(pdMS_TO_TICKS(10));
+
   esp_video_init_csi_config_t csi_config = {};
   csi_config.sccb_config.init_sccb = false;
-  csi_config.sccb_config.i2c_handle =
-      driver.bus().sgm38121_i2c_bus->bus_handle();
+  csi_config.sccb_config.i2c_handle = camera_i2c_bus->bus_handle();
   csi_config.sccb_config.freq = 100000;
   csi_config.reset_pin = GPIO_NUM_NC;
   csi_config.pwdn_pin = GPIO_NUM_NC;
@@ -313,16 +340,27 @@ void RunCameraPreview() {
     buffer.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
     buffer.memory = V4L2_MEMORY_MMAP;
     if (ioctl(g_video_fd, VIDIOC_DQBUF, &buffer) != 0) {
-      vTaskDelay(pdMS_TO_TICKS(10));
-      continue;
+      if (errno == EAGAIN || errno == EINTR) {
+        vTaskDelay(pdMS_TO_TICKS(kCameraFrameIntervalMs));
+        continue;
+      }
+      printf("VIDIOC_DQBUF failed (errno: %d)\n", errno);
+      return;
     }
 
-    if (buffer.index < kCameraBufferCount) {
-      RenderCameraFrame(static_cast<uint8_t*>(g_frame_buffers[buffer.index]),
-          g_frame_width, g_frame_height);
+    if (buffer.index >= kCameraBufferCount) {
+      printf("Camera returned invalid buffer index: %lu\n",
+          static_cast<unsigned long>(buffer.index));
+      return;
     }
+    const bool rendered = RenderCameraFrame(
+        static_cast<uint8_t*>(g_frame_buffers[buffer.index]),
+        g_frame_width, g_frame_height);
     if (ioctl(g_video_fd, VIDIOC_QBUF, &buffer) != 0) {
       printf("VIDIOC_QBUF failed while streaming\n");
+      return;
+    }
+    if (!rendered) {
       return;
     }
     vTaskDelay(pdMS_TO_TICKS(kCameraFrameIntervalMs));
