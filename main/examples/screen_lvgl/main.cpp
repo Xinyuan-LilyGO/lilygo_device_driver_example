@@ -325,8 +325,11 @@ void RunBootScreenTests(common::LvglPort& lvgl_port) {
 
 extern "C" void app_main(void) {
   printf("LVGL screen example on %s\n", common::kBoardName);
+  if (!common::InitDriver()) {
+    printf("Device driver initialization completed with errors\n");
+  }
 #if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_GLASSES_P4)
-  if (!common::InitMinimalDriver() || !RunScreenInternalTests()) {
+  if (!RunScreenInternalTests()) {
     printf("Screen internal tests failed\n");
     return;
   }
@@ -334,10 +337,6 @@ extern "C" void app_main(void) {
   if (!common::GetDriver().InitScreen()) {
     printf("Screen device initialization failed\n");
     return;
-  }
-#else
-  if (!common::InitDriver()) {
-    printf("Device driver initialization completed with errors\n");
   }
 #endif
   if (!common::GetDriver().IsScreenReady()) {

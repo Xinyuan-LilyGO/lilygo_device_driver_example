@@ -99,6 +99,12 @@ if(CONFIG_EXAMPLE_BUILD_SCREEN_CAMERA)
     )
 endif()
 
+if(CONFIG_EXAMPLE_BUILD_SD_MP3)
+    idf_component_optional_requires(PRIVATE
+        esp_audio_codec
+    )
+endif()
+
 if(CONFIG_EXAMPLE_BUILD_SLEEP)
     idf_component_optional_requires(PRIVATE
         esp_driver_uart

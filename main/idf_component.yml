@@ -52,7 +52,7 @@ dependencies:
   espressif/esp_audio_codec:
     version: "2.4.1"
     matches:
-      - if: "($CONFIG{LILYGO_DEVICE_DRIVER_T_DISPLAY_P4} == True || $CONFIG{LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR} == True) && $CONFIG{EXAMPLE_BUILD_SD_MP3} == True"
+      - if: "$CONFIG{EXAMPLE_BUILD_SD_MP3} == True"
       - if: "($CONFIG{LILYGO_DEVICE_DRIVER_T_DISPLAY_P4} == True || $CONFIG{LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR} == True) && $CONFIG{EXAMPLE_BUILD_WIFI_MP3} == True"
 
   joltwallet/littlefs:

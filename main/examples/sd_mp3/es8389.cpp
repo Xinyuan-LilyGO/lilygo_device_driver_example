@@ -8,7 +8,8 @@
 #include "common.h"
 #include "sd_mp3.h"
 
-#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR)
+#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR) || \
+    defined(CONFIG_LILYGO_DEVICE_DRIVER_T_GLASSES_P4)
 
 namespace {
 
