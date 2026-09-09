@@ -64,7 +64,8 @@ inline bool InitDriver() {
  * @return 设置成功返回 true，否则返回 false
  */
 inline bool SetWifiCoprocessorPowerEnabled(bool enabled) {
-#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4)
+#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) && \
+    !defined(CONFIG_LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
   return GetDriver().SetEsp32c6PowerEnabled(enabled);
 #else
   return GetDriver().SetEsp32c5PowerEnabled(enabled);
@@ -148,12 +149,21 @@ inline bool SendScreen(
 inline void StartBacklight() {
   auto& driver = GetDriver();
 #if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4)
+#if defined(CONFIG_LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
+  if (IsHi8561Screen() && driver.IsSy7200aReady()) {
+    driver.chip().sy7200a->FadeTo(
+        {.value = 1, .scale = 1}, 500,
+        cpp_bus_driver::Pwm::FadeMode::kWaitForCompletion);
+    return;
+  }
+#else
   if (IsHi8561Screen() && driver.IsPt4103Ready()) {
     driver.chip().pt4103->FadeTo(
         {.value = 1, .scale = 1}, 500,
         cpp_bus_driver::Pwm::FadeMode::kWaitForCompletion);
     return;
   }
+#endif
   if (IsRm69a10Screen() && driver.IsRm69a10Ready()) {
     for (uint16_t brightness = 0; brightness < 255; brightness += 5) {
       driver.chip().rm69a10->SetBrightness(static_cast<uint8_t>(brightness));

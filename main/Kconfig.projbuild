@@ -1,84 +1,139 @@
 menu "Example Configuration"
     choice
         prompt "Select the example to build"
+        default EXAMPLE_BUILD_BATTERY_MANAGEMENT if LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 && LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2
         default EXAMPLE_BUILD_SCREEN_LVGL
         config EXAMPLE_BUILD_HAPTIC_FEEDBACK
             bool "haptic_feedback"
+            depends on !(LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 && LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
             depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 || LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR
         config EXAMPLE_BUILD_IMU
             bool "imu"
+            depends on !(LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 && LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
             depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 || LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR
         config EXAMPLE_BUILD_GPS
             bool "gps"
+            depends on !(LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 && LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
             depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 || LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR
         config EXAMPLE_BUILD_LORA_TX_RX
             bool "lora_tx_rx"
+            depends on !(LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 && LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
             depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 || LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR || LILYGO_DEVICE_DRIVER_T_GLASSES_P4
         config EXAMPLE_BUILD_LORA_RX_SENSITIVITY
             bool "lora_rx_sensitivity"
+            depends on !(LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 && LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
             depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 || LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR || LILYGO_DEVICE_DRIVER_T_GLASSES_P4
         config EXAMPLE_BUILD_GFSK_TX_RX
             bool "gfsk_tx_rx"
+            depends on !(LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 && LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
             depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4
         config EXAMPLE_BUILD_ENHANCED_SHOCKBURST_TX_RX
             bool "enhanced_shockburst_tx_rx"
+            depends on !(LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 && LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
             depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4
         config EXAMPLE_BUILD_RTC
             bool "rtc"
+            depends on !(LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 && LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
             depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4
         config EXAMPLE_BUILD_BATTERY_MANAGEMENT
             bool "battery_management"
             depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 || LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR
         config EXAMPLE_BUILD_MICROPHONE_SPEAKER_LOOPBACK
             bool "microphone_speaker_loopback"
+            depends on !(LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 && LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
             depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 || LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR
         config EXAMPLE_BUILD_SD_MP3
             bool "sd_mp3"
+            depends on !(LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 && LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
             depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 || LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR || LILYGO_DEVICE_DRIVER_T_GLASSES_P4
         config EXAMPLE_BUILD_WIFI_MP3
             bool "wifi_mp3"
+            depends on !(LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 && LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
             depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 || LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR
             select MBEDTLS_CERTIFICATE_BUNDLE
         config EXAMPLE_BUILD_WIFI_SCAN_CONNECT_TIME
             bool "wifi_scan_connect_time"
+            depends on !(LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 && LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
             depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 || LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR
         config EXAMPLE_BUILD_COPROCESSOR_DOWNLOAD_MODE
             bool "coprocessor_download_mode"
+            depends on !(LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 && LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
             depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 || LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR
         config EXAMPLE_BUILD_NETWORK_ADAPTER_UPDATE
             bool "network_adapter_update"
+            depends on !(LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 && LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
             depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4
         config EXAMPLE_BUILD_OTA_UPDATE
             bool "ota_update"
+            depends on !(LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 && LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
             depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 || LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR
             select MBEDTLS_CERTIFICATE_BUNDLE
         config EXAMPLE_BUILD_I2C_SCAN
             bool "i2c_scan"
+            depends on !(LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 && LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
             depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 || LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR
         config EXAMPLE_BUILD_SCREEN_CAMERA
             bool "screen_camera"
+            depends on !(LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 && LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
             depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 || LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR || LILYGO_DEVICE_DRIVER_T_GLASSES_P4
         config EXAMPLE_BUILD_SCREEN_LVGL
             bool "screen_lvgl"
+            depends on !(LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 && LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
             depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 || LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR || LILYGO_DEVICE_DRIVER_T_GLASSES_P4
         config EXAMPLE_BUILD_SCREEN_LVGL_TOUCH_DRAW
             bool "screen_lvgl_touch_draw"
+            depends on !(LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 && LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
             depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 || LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR
         config EXAMPLE_BUILD_SGM38121
             bool "sgm38121"
+            depends on !(LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 && LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
             depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 || LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR
         config EXAMPLE_BUILD_ST25R3916
             bool "st25r3916"
+            depends on !(LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 && LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
             depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 || LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR
         config EXAMPLE_BUILD_SLEEP
             bool "sleep"
+            depends on !(LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 && LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
             depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 || LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR
         config EXAMPLE_BUILD_TCA8418
             bool "tca8418"
+            depends on !(LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 && LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
             depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4
         config EXAMPLE_BUILD_XL95X5
             bool "xl95x5"
+            depends on !(LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 && LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
             depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 || LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR
     endchoice
+
+    # 构建和依赖清单共用示例名称，避免读取被设备条件隐藏的 choice 选项。
+    config EXAMPLE_BUILD_NAME
+        string
+        default "haptic_feedback" if EXAMPLE_BUILD_HAPTIC_FEEDBACK
+        default "imu" if EXAMPLE_BUILD_IMU
+        default "gps" if EXAMPLE_BUILD_GPS
+        default "lora_tx_rx" if EXAMPLE_BUILD_LORA_TX_RX
+        default "lora_rx_sensitivity" if EXAMPLE_BUILD_LORA_RX_SENSITIVITY
+        default "gfsk_tx_rx" if EXAMPLE_BUILD_GFSK_TX_RX
+        default "enhanced_shockburst_tx_rx" if EXAMPLE_BUILD_ENHANCED_SHOCKBURST_TX_RX
+        default "rtc" if EXAMPLE_BUILD_RTC
+        default "battery_management" if EXAMPLE_BUILD_BATTERY_MANAGEMENT
+        default "microphone_speaker_loopback" if EXAMPLE_BUILD_MICROPHONE_SPEAKER_LOOPBACK
+        default "sd_mp3" if EXAMPLE_BUILD_SD_MP3
+        default "wifi_mp3" if EXAMPLE_BUILD_WIFI_MP3
+        default "wifi_scan_connect_time" if EXAMPLE_BUILD_WIFI_SCAN_CONNECT_TIME
+        default "coprocessor_download_mode" if EXAMPLE_BUILD_COPROCESSOR_DOWNLOAD_MODE
+        default "network_adapter_update" if EXAMPLE_BUILD_NETWORK_ADAPTER_UPDATE
+        default "ota_update" if EXAMPLE_BUILD_OTA_UPDATE
+        default "i2c_scan" if EXAMPLE_BUILD_I2C_SCAN
+        default "screen_camera" if EXAMPLE_BUILD_SCREEN_CAMERA
+        default "screen_lvgl" if EXAMPLE_BUILD_SCREEN_LVGL
+        default "screen_lvgl_touch_draw" if EXAMPLE_BUILD_SCREEN_LVGL_TOUCH_DRAW
+        default "sgm38121" if EXAMPLE_BUILD_SGM38121
+        default "st25r3916" if EXAMPLE_BUILD_ST25R3916
+        default "sleep" if EXAMPLE_BUILD_SLEEP
+        default "tca8418" if EXAMPLE_BUILD_TCA8418
+        default "xl95x5" if EXAMPLE_BUILD_XL95X5
+        default "none"
 
 endmenu

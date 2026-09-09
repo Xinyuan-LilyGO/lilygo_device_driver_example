@@ -8,7 +8,8 @@
 #include "battery_management.h"
 #include "common.h"
 
-#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4)
+#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) && \
+    !defined(CONFIG_LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
 
 namespace {
 constexpr uint16_t kBatteryCapacityMah = 1000;

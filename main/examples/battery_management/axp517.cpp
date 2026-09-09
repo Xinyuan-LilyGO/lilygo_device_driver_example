@@ -8,7 +8,9 @@
 #include "battery_management.h"
 #include "common.h"
 
-#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR)
+#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR) || \
+    (defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) && \
+        defined(CONFIG_LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2))
 
 const char* ChargeStatusName(cpp_bus_driver::Axp517::ChargeStatus status) {
   switch (status) {
@@ -274,9 +276,11 @@ void RunAxp517Example() {
       .ts_value_measure = true,
       .battery_voltage_measure = true,
   };
-  axp517->SetAdcChannel(adc_channel);
-  axp517->SetBc12DetectEnable(true);
-  axp517->ClearAllIrq();
+  if (!axp517->SetAdcChannel(adc_channel) ||
+      !axp517->SetBc12DetectEnable(true) || !axp517->ClearAllIrq()) {
+    printf("AXP517 measurement configuration failed\n");
+    return;
+  }
 
   while (1) {
     PrintPowerInfo(*axp517);

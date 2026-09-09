@@ -1,88 +1,49 @@
+set(example_name "${CONFIG_EXAMPLE_BUILD_NAME}")
+set(example_path "examples/${example_name}")
 set(example_requires "common")
 
-if(CONFIG_EXAMPLE_BUILD_HAPTIC_FEEDBACK)
-    set(example_name "haptic_feedback")
-elseif(CONFIG_EXAMPLE_BUILD_IMU)
-    set(example_name "imu")
+if(example_name STREQUAL "imu")
     set(example_extra_sources
-        "examples/imu/bhi260ap_qmc6310n.cpp"
-        "examples/imu/icm20948.cpp")
-elseif(CONFIG_EXAMPLE_BUILD_GPS)
-    set(example_name "gps")
+        "${example_path}/bhi260ap_qmc6310n.cpp"
+        "${example_path}/icm20948.cpp")
+elseif(example_name STREQUAL "gps")
     set(example_extra_sources
-        "examples/gps/gps.cpp"
-        "examples/gps/l76k.cpp"
-        "examples/gps/nrf9151.cpp")
-elseif(CONFIG_EXAMPLE_BUILD_LORA_RX_SENSITIVITY)
-    set(example_name "lora_rx_sensitivity")
+        "${example_path}/gps.cpp"
+        "${example_path}/l76k.cpp"
+        "${example_path}/nrf9151.cpp")
+elseif(example_name STREQUAL "lora_rx_sensitivity")
     set(example_extra_sources
-        "examples/lora_rx_sensitivity/lora_rx_sensitivity.cpp"
-        "examples/lora_rx_sensitivity/lr2021.cpp"
-        "examples/lora_rx_sensitivity/lr1121.cpp"
-        "examples/lora_rx_sensitivity/sx1262.cpp")
-elseif(CONFIG_EXAMPLE_BUILD_LORA_TX_RX)
-    set(example_name "lora_tx_rx")
+        "${example_path}/lora_rx_sensitivity.cpp"
+        "${example_path}/lr2021.cpp"
+        "${example_path}/lr1121.cpp"
+        "${example_path}/sx1262.cpp")
+elseif(example_name STREQUAL "lora_tx_rx")
     set(example_extra_sources
-        "examples/lora_tx_rx/lr2021.cpp"
-        "examples/lora_tx_rx/lr1121.cpp"
-        "examples/lora_tx_rx/sx1262.cpp")
-elseif(CONFIG_EXAMPLE_BUILD_GFSK_TX_RX)
-    set(example_name "gfsk_tx_rx")
-elseif(CONFIG_EXAMPLE_BUILD_ENHANCED_SHOCKBURST_TX_RX)
-    set(example_name "enhanced_shockburst_tx_rx")
-elseif(CONFIG_EXAMPLE_BUILD_RTC)
-    set(example_name "rtc")
-elseif(CONFIG_EXAMPLE_BUILD_BATTERY_MANAGEMENT)
-    set(example_name "battery_management")
+        "${example_path}/lr2021.cpp"
+        "${example_path}/lr1121.cpp"
+        "${example_path}/sx1262.cpp")
+elseif(example_name STREQUAL "battery_management")
     set(example_extra_sources
-        "examples/battery_management/bq27220.cpp"
-        "examples/battery_management/axp517.cpp")
-elseif(CONFIG_EXAMPLE_BUILD_MICROPHONE_SPEAKER_LOOPBACK)
-    set(example_name "microphone_speaker_loopback")
+        "${example_path}/bq27220.cpp"
+        "${example_path}/axp517.cpp")
+elseif(example_name STREQUAL "microphone_speaker_loopback")
     set(example_extra_sources
-        "examples/microphone_speaker_loopback/es8311.cpp"
-        "examples/microphone_speaker_loopback/es8389.cpp")
-elseif(CONFIG_EXAMPLE_BUILD_SD_MP3)
-    set(example_name "sd_mp3")
+        "${example_path}/es8311.cpp"
+        "${example_path}/es8389.cpp")
+elseif(example_name STREQUAL "sd_mp3")
     set(example_extra_sources
-        "examples/sd_mp3/es8311.cpp"
-        "examples/sd_mp3/es8389.cpp")
-elseif(CONFIG_EXAMPLE_BUILD_WIFI_MP3)
-    set(example_name "wifi_mp3")
+        "${example_path}/es8311.cpp"
+        "${example_path}/es8389.cpp")
+elseif(example_name STREQUAL "wifi_mp3")
     set(example_extra_sources
-        "examples/wifi_mp3/es8311.cpp"
-        "examples/wifi_mp3/es8389.cpp")
-elseif(CONFIG_EXAMPLE_BUILD_WIFI_SCAN_CONNECT_TIME)
-    set(example_name "wifi_scan_connect_time")
-elseif(CONFIG_EXAMPLE_BUILD_COPROCESSOR_DOWNLOAD_MODE)
-    set(example_name "coprocessor_download_mode")
-elseif(CONFIG_EXAMPLE_BUILD_NETWORK_ADAPTER_UPDATE)
-    set(example_name "network_adapter_update")
-elseif(CONFIG_EXAMPLE_BUILD_OTA_UPDATE)
-    set(example_name "ota_update")
-elseif(CONFIG_EXAMPLE_BUILD_I2C_SCAN)
-    set(example_name "i2c_scan")
-elseif(CONFIG_EXAMPLE_BUILD_SCREEN_CAMERA)
-    set(example_name "screen_camera")
-elseif(CONFIG_EXAMPLE_BUILD_SCREEN_LVGL)
-    set(example_name "screen_lvgl")
-    set(example_extra_sources "examples/screen_lvgl/lvgl_demo_ui.c")
-elseif(CONFIG_EXAMPLE_BUILD_SCREEN_LVGL_TOUCH_DRAW)
-    set(example_name "screen_lvgl_touch_draw")
-elseif(CONFIG_EXAMPLE_BUILD_SGM38121)
-    set(example_name "sgm38121")
-elseif(CONFIG_EXAMPLE_BUILD_ST25R3916)
-    set(example_name "st25r3916")
+        "${example_path}/es8311.cpp"
+        "${example_path}/es8389.cpp")
+elseif(example_name STREQUAL "screen_lvgl")
+    set(example_extra_sources "${example_path}/lvgl_demo_ui.c")
+elseif(example_name STREQUAL "st25r3916")
     list(APPEND example_requires "stsw-st25rfal002_cpp_bus_driver")
-elseif(CONFIG_EXAMPLE_BUILD_SLEEP)
-    set(example_name "sleep")
-elseif(CONFIG_EXAMPLE_BUILD_TCA8418)
-    set(example_name "tca8418")
-elseif(CONFIG_EXAMPLE_BUILD_XL95X5)
-    set(example_name "xl95x5")
 endif()
 
-set(example_path "examples/${example_name}")
 set(example_sources "${example_path}/main.cpp" ${example_extra_sources})
 
 idf_component_register(
@@ -91,7 +52,7 @@ idf_component_register(
     REQUIRES ${example_requires}
 )
 
-if(CONFIG_EXAMPLE_BUILD_SCREEN_CAMERA)
+if(example_name STREQUAL "screen_camera")
     idf_component_optional_requires(PRIVATE
         esp_video
         esp_driver_ppa
@@ -99,20 +60,20 @@ if(CONFIG_EXAMPLE_BUILD_SCREEN_CAMERA)
     )
 endif()
 
-if(CONFIG_EXAMPLE_BUILD_SD_MP3)
+if(example_name STREQUAL "sd_mp3")
     idf_component_optional_requires(PRIVATE
         esp_audio_codec
     )
 endif()
 
-if(CONFIG_EXAMPLE_BUILD_SLEEP)
+if(example_name STREQUAL "sleep")
     idf_component_optional_requires(PRIVATE
         esp_driver_uart
         esp_hw_support
     )
 endif()
 
-if(CONFIG_EXAMPLE_BUILD_OTA_UPDATE)
+if(example_name STREQUAL "ota_update")
     idf_component_optional_requires(PRIVATE
         app_update
         esp_app_format
@@ -126,7 +87,7 @@ if(CONFIG_EXAMPLE_BUILD_OTA_UPDATE)
     )
 endif()
 
-if(CONFIG_EXAMPLE_BUILD_WIFI_MP3)
+if(example_name STREQUAL "wifi_mp3")
     idf_component_optional_requires(PRIVATE
         esp_event
         esp_http_client
@@ -137,7 +98,7 @@ if(CONFIG_EXAMPLE_BUILD_WIFI_MP3)
     )
 endif()
 
-if(CONFIG_EXAMPLE_BUILD_NETWORK_ADAPTER_UPDATE)
+if(example_name STREQUAL "network_adapter_update")
     idf_component_optional_requires(PRIVATE
         bootloader_support
         esp_app_format

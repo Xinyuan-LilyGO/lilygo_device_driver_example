@@ -9,11 +9,15 @@
 #include "common.h"
 
 extern "C" void app_main(void) {
-  printf("Battery management example on %s\n", common::kBoardName);
+  printf("Battery management example on %s %s\n", common::kBoardName,
+      common::GetDriver().device_model_info().version);
 
-#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4)
+#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) && \
+    !defined(CONFIG_LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
   RunBq27220Example();
-#elif defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR)
+#elif defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR) || \
+    (defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) && \
+        defined(CONFIG_LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2))
   RunAxp517Example();
 #endif
 }
