@@ -5,6 +5,8 @@
  * @LastEditTime: 2026-07-30 15:10:29
  * @License: GPL 3.0
  */
+#include <cstdio>
+
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
@@ -17,18 +19,72 @@ namespace {
  * @return 初始化成功返回 true，否则返回 false
  */
 bool InitCoprocessorControlHardware() {
-  auto& driver = common::GetDriver();
-  if (!driver.InitMinimal()) {
-    return false;
-  }
-#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR)
-  return driver.InitXl9535();
-#else
-  return true;
-#endif
+  return common::GetDriver().InitMinimal();
 }
 
 #if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR)
+/**
+ * @brief 切换外部串口连接目标并输出切换日志
+ * @param target 目标处理器
+ * @return 切换成功返回 true，否则返回 false
+ */
+bool SwitchUartTarget(common::DeviceDriver::UartTarget target) {
+  const char* name = target == common::DeviceDriver::UartTarget::kEsp32c5
+                         ? "ESP32-C5"
+                         : "ESP32-P4";
+  printf("UART switching to %s\n", name);
+  // 切离 P4 前刷新日志，并留出串口发送时间。
+  fflush(stdout);
+  vTaskDelay(pdMS_TO_TICKS(100));
+  if (!common::GetDriver().SetUartTarget(target)) {
+    printf("UART switch to %s failed\n", name);
+    return false;
+  }
+  printf("UART connected to %s\n", name);
+  return true;
+}
+
+/**
+ * @brief 通过 BOOT 按键切换外部串口连接目标
+ * @note 按下消抖后切换一次，长按不重复触发。
+ */
+void RunBootUartSwitch() {
+  cpp_bus_driver::PlatformHal platform_hal;
+  if (!platform_hal.SetGpioMode(common::BootButtonGpio(),
+          cpp_bus_driver::PlatformHal::GpioMode::kInput,
+          cpp_bus_driver::PlatformHal::GpioStatus::kPullup)) {
+    printf("BOOT button initialization failed\n");
+    return;
+  }
+
+  using UartTarget = common::DeviceDriver::UartTarget;
+  UartTarget target = UartTarget::kEsp32c5;
+  // 启动时已按住的按键需要先释放。
+  bool sampled = !platform_hal.GpioRead(common::BootButtonGpio());
+  bool stable = sampled;
+  int64_t changed_ms = platform_hal.GetSystemTimeMs();
+  while (true) {
+    const bool pressed = !platform_hal.GpioRead(common::BootButtonGpio());
+    const int64_t now_ms = platform_hal.GetSystemTimeMs();
+    if (pressed != sampled) {
+      sampled = pressed;
+      changed_ms = now_ms;
+    }
+    if (sampled != stable && now_ms - changed_ms >= 30) {
+      stable = sampled;
+      if (stable) {
+        const auto next = target == UartTarget::kEsp32c5
+                              ? UartTarget::kEsp32p4
+                              : UartTarget::kEsp32c5;
+        if (SwitchUartTarget(next)) {
+          target = next;
+        }
+      }
+    }
+    vTaskDelay(pdMS_TO_TICKS(10));
+  }
+}
+
 /**
  * @brief 为外部调试器开启 nRF9151 电源
  * @return 电源控制成功返回 true，否则返回 false
@@ -66,18 +122,24 @@ bool PrepareCoprocessors() {
     printf("Failed to enable nRF9151 programming power\n");
     return false;
   }
-  if (!driver.SetUartTarget(common::DeviceDriver::UartTarget::kEsp32c5)) {
-    printf("Failed to route the UART to ESP32-C5\n");
-    return false;
-  }
   if (!driver.EnterEsp32c5DownloadMode()) {
     printf("Failed to place ESP32-C5 into download mode\n");
     return false;
   }
 
   printf("ESP32-C5 entered download mode\n");
-  printf("The external UART is connected to ESP32-C5\n");
   printf("nRF9151 power is enabled for external SWD programming\n");
+  printf("BOOT GPIO %d toggles the UART between ESP32-P4 and ESP32-C5\n",
+      common::BootButtonGpio());
+  return SwitchUartTarget(common::DeviceDriver::UartTarget::kEsp32c5);
+#elif defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) && \
+    defined(CONFIG_LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
+  if (!driver.EnterEsp32c5DownloadMode()) {
+    printf("Failed to place ESP32-C5 into download mode\n");
+    return false;
+  }
+
+  printf("ESP32-C5 download-mode control sequence completed\n");
   return true;
 #elif defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4)
   auto* io_expander = driver.chip().xl9535.get();
@@ -104,7 +166,8 @@ bool PrepareCoprocessors() {
 }  // namespace
 
 extern "C" void app_main(void) {
-  printf("Coprocessor download-mode helper on %s\n", common::kBoardName);
+  printf("Coprocessor download-mode helper on %s %s\n", common::kBoardName,
+      common::GetDriver().device_model_info().version);
 
   if (!InitCoprocessorControlHardware()) {
     printf("Coprocessor control hardware initialization failed\n");
@@ -112,6 +175,9 @@ extern "C" void app_main(void) {
     printf("Coprocessor preparation failed\n");
   } else {
     printf("Coprocessor preparation completed\n");
+#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR)
+    RunBootUartSwitch();
+#endif
   }
 
   while (true) {
