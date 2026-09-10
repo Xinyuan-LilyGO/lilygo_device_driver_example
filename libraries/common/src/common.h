@@ -2,7 +2,7 @@
  * @Description: Common board helpers for device driver examples
  * @Author: LILYGO_L
  * @Date: 2026-07-11 16:22:23
- * @LastEditTime: 2026-09-04 16:58:18
+ * @LastEditTime: 2026-09-10 15:50:26
  * @License: GPL 3.0
  */
 #pragma once
@@ -144,10 +144,25 @@ inline bool SendScreen(
 }
 
 /**
- * @brief 启动当前屏幕的渐变背光效果
+ * @brief 唤醒当前屏幕并启动亮度渐变
  */
 inline void StartBacklight() {
   auto& driver = GetDriver();
+#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) || \
+    defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR)
+  if (IsHi8561Screen()) {
+    if (!driver.IsHi8561Ready()) {
+      printf("Screen is not ready\n");
+      return;
+    }
+    auto* screen = driver.chip().hi8561.get();
+    // 初始化后屏幕处于睡眠和关屏状态，开启背光前先恢复显示。
+    if (!screen->SetSleep(false) || !screen->SetScreenOff(false)) {
+      printf("Screen wake-up failed\n");
+      return;
+    }
+  }
+#endif
 #if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4)
 #if defined(CONFIG_LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
   if (IsHi8561Screen() && driver.IsSy7200aReady()) {
@@ -165,8 +180,17 @@ inline void StartBacklight() {
   }
 #endif
   if (IsRm69a10Screen() && driver.IsRm69a10Ready()) {
-    for (uint16_t brightness = 0; brightness < 255; brightness += 5) {
-      driver.chip().rm69a10->SetBrightness(static_cast<uint8_t>(brightness));
+    auto* screen = driver.chip().rm69a10.get();
+    // 初始化后屏幕处于睡眠和关屏状态，调节亮度前先恢复显示。
+    if (!screen->SetSleep(false) || !screen->SetScreenOff(false)) {
+      printf("Screen wake-up failed\n");
+      return;
+    }
+    for (uint16_t brightness = 0; brightness <= 255; brightness += 5) {
+      if (!screen->SetBrightness(static_cast<uint8_t>(brightness))) {
+        printf("Screen brightness update failed\n");
+        return;
+      }
       vTaskDelay(pdMS_TO_TICKS(10));
     }
   }

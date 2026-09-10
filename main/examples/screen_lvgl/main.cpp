@@ -74,6 +74,7 @@ bool RunScreenInternalTests() {
   }
   return result && cleaned_up;
 }
+#endif
 
 /**
  * @brief 通过 LVGL 绘制软件彩条并发送到屏幕
@@ -103,12 +104,17 @@ bool RunScreenSoftwareColorBars(lv_display_t* display) {
     lv_obj_set_style_bg_opa(bar, LV_OPA_COVER, 0);
   }
   lv_refr_now(display);
+#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_GLASSES_P4)
   auto* screen = common::GetDriver().chip().s023msafjf10111e1.get();
   const bool result =
       screen != nullptr &&
       screen->SetBrightnessGain(
           cpp_bus_driver::S023msafjf10111e1::kDefaultBrightnessGain);
-  printf("[S023MSAFJF10111E1] Software color bars: %s\n",
+#else
+  common::StartBacklight();
+  const bool result = true;
+#endif
+  printf("Software color bars: %s\n",
       result ? "displaying" : "failed");
   if (result) {
     vTaskDelay(pdMS_TO_TICKS(1000));
@@ -116,7 +122,6 @@ bool RunScreenSoftwareColorBars(lv_display_t* display) {
   lv_obj_clean(root);
   return result;
 }
-#endif
 
 // 每个按键步骤只应用一次配置，不在步骤内部循环演示。
 struct ScreenTestStep {
@@ -349,13 +354,11 @@ extern "C" void app_main(void) {
     printf("LVGL init failed\n");
     return;
   }
-#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_GLASSES_P4)
   if (!RunScreenSoftwareColorBars(lvgl_port.display())) {
     printf("Screen software color bars failed\n");
     return;
   }
   printf("Screen mode: LVGL\n");
-#endif
   example_lvgl_demo_ui(lvgl_port.display());
   // 提交界面首帧后启动持续刷新。
   lv_refr_now(lvgl_port.display());
@@ -364,8 +367,5 @@ extern "C" void app_main(void) {
     return;
   }
 
-#if !defined(CONFIG_LILYGO_DEVICE_DRIVER_T_GLASSES_P4)
-  common::StartBacklight();
-#endif
   RunBootScreenTests(lvgl_port);
 }

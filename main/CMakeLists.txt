@@ -2,6 +2,27 @@ set(example_name "${CONFIG_EXAMPLE_BUILD_NAME}")
 set(example_path "examples/${example_name}")
 set(example_requires "common")
 
+if(CONFIG_ESP_WIFI_REMOTE_ENABLED)
+    if(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR OR
+       (CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 AND
+        CONFIG_LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2))
+        set(expected_wifi_target "esp32c5")
+        set(wifi_target_matches ${CONFIG_SLAVE_IDF_TARGET_ESP32C5})
+    elseif(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 AND
+           CONFIG_LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V1)
+        set(expected_wifi_target "esp32c6")
+        set(wifi_target_matches ${CONFIG_SLAVE_IDF_TARGET_ESP32C6})
+    endif()
+
+    if(DEFINED expected_wifi_target AND NOT wifi_target_matches)
+        message(WARNING
+            "The selected board uses ${expected_wifi_target}, but sdkconfig selects "
+            "another Wi-Fi coprocessor. Run idf.py menuconfig and select "
+            "${expected_wifi_target} under Component config > Wi-Fi Remote > "
+            "choose slave target.")
+    endif()
+endif()
+
 if(example_name STREQUAL "imu")
     set(example_extra_sources
         "${example_path}/bhi260ap_qmc6310n.cpp"

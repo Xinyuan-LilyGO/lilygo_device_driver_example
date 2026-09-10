@@ -1,3 +1,9 @@
+# Project defaults precede the Wi-Fi Remote component defaults.
+choice SLAVE_IDF_TARGET
+    default SLAVE_IDF_TARGET_ESP32C5 if LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR || (LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 && LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
+    default SLAVE_IDF_TARGET_ESP32C6 if LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 && LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V1
+endchoice
+
 menu "Example Configuration"
     choice
         prompt "Select the example to build"
@@ -68,15 +74,12 @@ menu "Example Configuration"
             depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 || LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR
         config EXAMPLE_BUILD_SCREEN_CAMERA
             bool "screen_camera"
-            depends on !(LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 && LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
             depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 || LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR || LILYGO_DEVICE_DRIVER_T_GLASSES_P4
         config EXAMPLE_BUILD_SCREEN_LVGL
             bool "screen_lvgl"
-            depends on !(LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 && LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
             depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 || LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR || LILYGO_DEVICE_DRIVER_T_GLASSES_P4
         config EXAMPLE_BUILD_SCREEN_LVGL_TOUCH_DRAW
             bool "screen_lvgl_touch_draw"
-            depends on !(LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 && LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
             depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 || LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR
         config EXAMPLE_BUILD_ST25R3916
             bool "st25r3916"

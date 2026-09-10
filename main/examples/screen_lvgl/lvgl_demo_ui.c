@@ -26,7 +26,14 @@ static lv_obj_t *create_scale_box(lv_obj_t *parent, const char *text1, const cha
     lv_scale_set_label_show(scale, false);
     lv_scale_set_post_draw(scale, true);
     if (!compact) {
-        lv_obj_set_width(scale, LV_PCT(100));
+        // 为圆角屏幕预留边距，保持仪表为正方形。
+        const int32_t width = lv_display_get_horizontal_resolution(lv_obj_get_display(parent));
+        const int32_t diameter = LV_MIN(600, width - 96);
+        lv_obj_set_size(scale, diameter, diameter);
+        lv_obj_set_style_pad_all(parent, 48, 0);
+        lv_obj_set_style_pad_column(parent, 16, 0);
+        lv_obj_set_style_pad_row(parent, 16, 0);
+        lv_obj_remove_flag(parent, LV_OBJ_FLAG_SCROLLABLE);
     }
     lv_obj_set_style_pad_all(scale, compact ? 20 : 30, 0);
 
@@ -75,7 +82,7 @@ static lv_obj_t *create_scale_box(lv_obj_t *parent, const char *text1, const cha
     static int32_t grid_col_dsc[] = {LV_GRID_CONTENT, LV_GRID_FR(1), LV_GRID_TEMPLATE_LAST};
     static int32_t grid_row_dsc[] = {LV_GRID_CONTENT, LV_GRID_CONTENT, LV_GRID_CONTENT, LV_GRID_CONTENT, LV_GRID_CONTENT, LV_GRID_TEMPLATE_LAST};
     lv_obj_set_grid_dsc_array(parent, grid_col_dsc, grid_row_dsc);
-    lv_obj_set_grid_cell(scale, LV_GRID_ALIGN_START, 0, 2, LV_GRID_ALIGN_START, 1, 1);
+    lv_obj_set_grid_cell(scale, LV_GRID_ALIGN_CENTER, 0, 2, LV_GRID_ALIGN_START, 1, 1);
     lv_obj_set_grid_cell(bullet1, LV_GRID_ALIGN_START, 0, 1, LV_GRID_ALIGN_START, 2, 1);
     lv_obj_set_grid_cell(bullet2, LV_GRID_ALIGN_START, 0, 1, LV_GRID_ALIGN_START, 3, 1);
     lv_obj_set_grid_cell(bullet3, LV_GRID_ALIGN_START, 0, 1, LV_GRID_ALIGN_START, 4, 1);
