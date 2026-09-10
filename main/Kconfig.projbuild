@@ -33,8 +33,7 @@ menu "Example Configuration"
             depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4
         config EXAMPLE_BUILD_RTC
             bool "rtc"
-            depends on !(LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 && LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
-            depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4
+            depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 || LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR
         config EXAMPLE_BUILD_BATTERY_MANAGEMENT
             bool "battery_management"
             depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 || LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR
