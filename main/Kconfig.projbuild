@@ -93,10 +93,6 @@ menu "Example Configuration"
             bool "tca8418"
             depends on !(LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 && LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
             depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4
-        config EXAMPLE_BUILD_XL95X5
-            bool "xl95x5"
-            depends on !(LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 && LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
-            depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 || LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR
     endchoice
 
     # 构建和依赖清单共用示例名称，避免读取被设备条件隐藏的 choice 选项。
@@ -125,7 +121,6 @@ menu "Example Configuration"
         default "st25r3916" if EXAMPLE_BUILD_ST25R3916
         default "sleep" if EXAMPLE_BUILD_SLEEP
         default "tca8418" if EXAMPLE_BUILD_TCA8418
-        default "xl95x5" if EXAMPLE_BUILD_XL95X5
         default "none"
 
 endmenu

@@ -207,9 +207,8 @@ void DeinitializeCamera() {
 }
 
 bool InitializeCamera() {
-  const ppa_client_config_t ppa_config = {
-      .oper_type = PPA_OPERATION_SRM,
-  };
+  ppa_client_config_t ppa_config = {};
+  ppa_config.oper_type = PPA_OPERATION_SRM;
   if (ppa_register_client(&ppa_config, &g_ppa_handle) != ESP_OK ||
       esp_cache_get_alignment(MALLOC_CAP_SPIRAM, &g_cache_line_size) !=
           ESP_OK) {
