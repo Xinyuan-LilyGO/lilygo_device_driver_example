@@ -145,7 +145,8 @@ bool BootButtonPressed() {
 }  // namespace
 
 extern "C" void app_main(void) {
-  printf("SD MP3 example on %s\n", common::kBoardName);
+  printf("SD MP3 example on %s %s\n", common::kBoardName,
+      common::GetDriver().device_model_info().version);
   if (!common::InitDriver()) {
     printf("Device driver initialization completed with errors\n");
   }
