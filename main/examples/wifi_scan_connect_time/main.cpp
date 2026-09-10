@@ -26,6 +26,9 @@ constexpr char kWifiSsid[] = "LilyGo-AABB";
 constexpr char kWifiPassword[] = "xinyuandianzi";
 constexpr char kNtpServer[] = "pool.ntp.org";
 constexpr EventBits_t kWifiConnectedBit = BIT0;
+constexpr EventBits_t kWifiStartedBit = BIT1;
+constexpr EventBits_t kWifiScanDoneBit = BIT2;
+constexpr EventBits_t kWifiScanFailedBit = BIT3;
 constexpr uint16_t kMaxScanResults = 64;
 constexpr uint32_t kTimeFetchIntervalMs = 20000;
 
@@ -96,6 +99,14 @@ void WifiEventHandler(
     printf("Connected to %s, IP: " IPSTR "\n", kWifiSsid,
         IP2STR(&event->ip_info.ip));
     xEventGroupSetBits(g_wifi_events, kWifiConnectedBit);
+  } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
+    // Registered after the default handler, which performs MAC/netif setup.
+    xEventGroupSetBits(g_wifi_events, kWifiStartedBit);
+  } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_SCAN_DONE) {
+    const auto* event = static_cast<const wifi_event_sta_scan_done_t*>(event_data);
+    xEventGroupSetBits(g_wifi_events,
+        event != nullptr && event->status == 0 ? kWifiScanDoneBit
+                                             : kWifiScanFailedBit);
   } else if (event_base == WIFI_EVENT &&
              event_id == WIFI_EVENT_STA_DISCONNECTED) {
     xEventGroupClearBits(g_wifi_events, kWifiConnectedBit);
@@ -104,27 +115,68 @@ void WifiEventHandler(
   }
 }
 
-void InitWifiStation() {
+bool InitWifiStation() {
   ESP_ERROR_CHECK(esp_netif_init());
   ESP_ERROR_CHECK(esp_event_loop_create_default());
-  assert(esp_netif_create_default_wifi_sta() != nullptr);
+  // Creation must also run when assertions are disabled.
+  esp_netif_t* station = esp_netif_create_default_wifi_sta();
+  if (station == nullptr) {
+    printf("Create Wi-Fi station interface failed\n");
+    return false;
+  }
 
   g_wifi_events = xEventGroupCreate();
   assert(g_wifi_events != nullptr);
 
   wifi_init_config_t init_config = WIFI_INIT_CONFIG_DEFAULT();
+  init_config.nvs_enable = false;
   ESP_ERROR_CHECK(esp_wifi_init(&init_config));
+  ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
   ESP_ERROR_CHECK(esp_event_handler_instance_register(
       WIFI_EVENT, ESP_EVENT_ANY_ID, WifiEventHandler, nullptr, nullptr));
   ESP_ERROR_CHECK(esp_event_handler_instance_register(
       IP_EVENT, IP_EVENT_STA_GOT_IP, WifiEventHandler, nullptr, nullptr));
   ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
+  wifi_config_t empty_config = {};
+  ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &empty_config));
   ESP_ERROR_CHECK(esp_wifi_start());
+  const EventBits_t bits = xEventGroupWaitBits(g_wifi_events, kWifiStartedBit,
+      pdFALSE, pdTRUE, pdMS_TO_TICKS(15000));
+  if ((bits & kWifiStartedBit) == 0) {
+    printf("Timed out waiting for Wi-Fi station start; scan/connect cancelled\n");
+    return false;
+  }
+  // The default handler can return early on a Hosted GetMAC RPC error.
+  uint8_t mac[6] = {};
+  if (esp_netif_get_mac(station, mac) != ESP_OK ||
+      std::all_of(mac, mac + sizeof(mac),
+          [](uint8_t byte) { return byte == 0; })) {
+    printf("Wi-Fi station MAC setup failed; scan/connect cancelled\n");
+    return false;
+  }
+  return true;
 }
 
-void ScanWifi() {
+bool ScanWifi() {
   printf("Scanning Wi-Fi...\n");
-  ESP_ERROR_CHECK(esp_wifi_scan_start(nullptr, true));
+  xEventGroupClearBits(g_wifi_events, kWifiScanDoneBit | kWifiScanFailedBit);
+  // A blocking coprocessor scan can delay other Hosted RPC responses.
+  const esp_err_t result = esp_wifi_scan_start(nullptr, false);
+  if (result != ESP_OK) {
+    printf("Wi-Fi scan start failed: %s\n", esp_err_to_name(result));
+    return false;
+  }
+  const EventBits_t bits = xEventGroupWaitBits(g_wifi_events,
+      kWifiScanDoneBit | kWifiScanFailedBit, pdTRUE, pdFALSE,
+      pdMS_TO_TICKS(30000));
+  if ((bits & kWifiScanDoneBit) == 0 || (bits & kWifiScanFailedBit) != 0) {
+    printf("Wi-Fi scan %s; connection cancelled\n",
+        (bits & kWifiScanFailedBit) != 0 ? "failed" : "timed out");
+    if (esp_wifi_scan_stop() == ESP_OK) {
+      esp_wifi_clear_ap_list();
+    }
+    return false;
+  }
 
   uint16_t access_point_count = 0;
   ESP_ERROR_CHECK(esp_wifi_scan_get_ap_num(&access_point_count));
@@ -136,6 +188,7 @@ void ScanWifi() {
         esp_wifi_scan_get_ap_records(&access_point_count, records.data()));
   }
 
+  records.resize(access_point_count);
   std::sort(records.begin(), records.end(),
       [](const wifi_ap_record_t& left, const wifi_ap_record_t& right) {
         return left.rssi > right.rssi;
@@ -167,6 +220,7 @@ void ScanWifi() {
       "------------------------------------------------------------------------"
       "--------------------------------------------------\n");
   ESP_ERROR_CHECK(esp_wifi_clear_ap_list());
+  return true;
 }
 
 void ConnectWifi() {
@@ -213,8 +267,11 @@ bool FetchAndPrintRealTime() {
 }  // namespace
 
 extern "C" void app_main(void) {
-  printf("Wi-Fi scan, connect, and time example on %s\n", common::kBoardName);
-  common::InitDriver();
+  printf("Wi-Fi scan, connect, and time example on %s %s\n", common::kBoardName,
+      common::GetDriver().device_model_info().version);
+  if (!common::InitDriver()) {
+    printf("Device driver initialization completed with errors\n");
+  }
   if (!common::SetWifiCoprocessorPowerEnabled(true)) {
     printf("Wi-Fi coprocessor power enable failed\n");
     return;
@@ -230,8 +287,9 @@ extern "C" void app_main(void) {
     return;
   }
 
-  InitWifiStation();
-  ScanWifi();
+  if (!InitWifiStation() || !ScanWifi()) {
+    return;
+  }
   ConnectWifi();
 
   setenv("TZ", "CST-8", 1);

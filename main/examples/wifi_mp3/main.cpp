@@ -2,7 +2,7 @@
  * @Description: 通过无线网络获取、解码并播放 MP3 音频流
  * @Author: LILYGO_L
  * @Date: 2026-07-28 13:59:02
- * @LastEditTime: 2026-07-30 16:40:27
+ * @LastEditTime: 2026-09-10 11:34:14
  * @License: GPL 3.0
  */
 #include "common.h"
@@ -19,12 +19,13 @@
 #include "esp_event.h"
 #include "esp_hosted.h"
 #include "esp_http_client.h"
+#include "esp_timer.h"
 #include "esp_wifi.h"
 #include "freertos/event_groups.h"
 
 namespace {
 
-constexpr char kWifiSsid[] = "LilyGo-AABB-5G";
+constexpr char kWifiSsid[] = "LilyGo-AABB";
 constexpr char kWifiPassword[] = "xinyuandianzi";
 constexpr char kMp3Url[] =
     "https://s9.imslp.org/files/imglnks/usimg/b/ba/"
@@ -102,11 +103,10 @@ void CleanupStream(
 void HttpStreamPlayTask(void*) {
   printf("Starting MP3 stream playback: %s\n", kMp3Url);
 
-  esp_http_client_config_t config = {
-      .url = kMp3Url,
-      .timeout_ms = 15000,
-      .crt_bundle_attach = esp_crt_bundle_attach,
-  };
+  esp_http_client_config_t config = {};
+  config.url = kMp3Url;
+  config.timeout_ms = 15000;
+  config.crt_bundle_attach = esp_crt_bundle_attach;
   esp_http_client_handle_t client = esp_http_client_init(&config);
   if (client == nullptr || esp_http_client_open(client, 0) != ESP_OK) {
     printf("HTTP connection failed\n");
@@ -281,7 +281,8 @@ void InitWifiStation() {
 }  // namespace
 
 extern "C" void app_main(void) {
-  printf("Wi-Fi MP3 example on %s\n", common::kBoardName);
+  printf("Wi-Fi MP3 example on %s %s\n", common::kBoardName,
+      common::GetDriver().device_model_info().version);
   if (!common::InitDriver()) {
     printf("Device driver initialization completed with errors\n");
   }

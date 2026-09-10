@@ -19,6 +19,12 @@ void Scan(const char* name,
     return;
   }
 
+  // 扫描只需要总线，不依赖总线上某个芯片初始化成功。
+  if (bus->bus_handle() == nullptr && !bus->Init()) {
+    printf("%s bus initialization failed\n", name);
+    return;
+  }
+
   std::vector<uint8_t> addresses;
   if (!bus->Scan7BitAddress(&addresses)) {
     printf("%s scan failed\n", name);

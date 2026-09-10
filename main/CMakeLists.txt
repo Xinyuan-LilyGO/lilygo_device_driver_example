@@ -87,8 +87,17 @@ if(example_name STREQUAL "ota_update")
     )
 endif()
 
+if(example_name STREQUAL "wifi_scan_connect_time")
+    idf_component_optional_requires(PRIVATE
+        esp_event
+        esp_netif
+        esp_wifi
+    )
+endif()
+
 if(example_name STREQUAL "wifi_mp3")
     idf_component_optional_requires(PRIVATE
+        esp_audio_codec
         esp_event
         esp_http_client
         esp_netif

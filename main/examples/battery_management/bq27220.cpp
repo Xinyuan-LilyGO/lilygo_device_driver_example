@@ -45,7 +45,7 @@ void RunBq27220Example() {
     return;
   }
 
-  if (!driver.IsBq27220Ready()) {
+  if (!driver.InitBq27220()) {
     printf("BQ27220 init failed\n");
     return;
   }
