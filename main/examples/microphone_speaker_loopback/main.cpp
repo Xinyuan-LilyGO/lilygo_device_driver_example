@@ -9,15 +9,19 @@
 #include "microphone_speaker_loopback.h"
 
 extern "C" void app_main(void) {
-  printf("Microphone speaker loopback example on %s\n", common::kBoardName);
+  printf("Microphone speaker loopback example on %s %s\n", common::kBoardName,
+      common::GetDriver().device_model_info().version);
 
   if (!common::InitDriver()) {
     printf("Device driver initialization completed with errors\n");
   }
 
-#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4)
+#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) && \
+    !defined(CONFIG_LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
   RunEs8311MicrophoneSpeakerLoopback();
-#elif defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR)
+#elif defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR) || \
+    (defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) && \
+        defined(CONFIG_LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2))
   RunEs8389MicrophoneSpeakerLoopback();
 #endif
 }

@@ -10,7 +10,9 @@
 
 #include <memory>
 
-#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR)
+#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR) || \
+    (defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) && \
+        defined(CONFIG_LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2))
 
 namespace {
 
