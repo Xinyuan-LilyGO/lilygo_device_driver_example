@@ -28,7 +28,7 @@ inline constexpr uint32_t kFrequencyHz = kFrequency868MHz;
 ```
 
 At 433, 868, or 915 MHz, LR2021 and LR1121 automatically use the Sub-GHz RF
-path and 125 kHz bandwidth. At 2400 MHz, LR2021 uses 250 kHz and LR1121 uses
+path and 125 kHz bandwidth. At 2400 MHz, LR2021 uses 500 kHz and LR1121 uses
 approximately 406 kHz on the HF RF path. SX1262 does not support 2400 MHz; if it is
 automatically detected, the program reports the unsupported frequency and
 stops the test.
@@ -45,7 +45,7 @@ safe and consistent with the TX/RX example.
 The program uses the LoRa sensitivity conditions defined in the Semtech
 datasheets:
 
-- Bandwidth: 125 kHz for Sub-GHz; at 2400 MHz, 250 kHz for LR2021 and
+- Bandwidth: 125 kHz for Sub-GHz; at 2400 MHz, 500 kHz for LR2021 and
   approximately 406 kHz for LR1121 (SX1262 does not support 2400 MHz)
 - Spreading factor: Set by `kSpreadingFactor`, default SF7
 - Coding rate: 4/5
@@ -90,7 +90,7 @@ match the receiver:
 | --- | --- |
 | Frequency | Match the radio frequency in the table above |
 | Spreading Factor | Match `kSpreadingFactor`, default SF7 |
-| Bandwidth | 125 kHz for Sub-GHz; 250 kHz for LR2021 HF or approximately 406 kHz for LR1121 HF |
+| Bandwidth | 125 kHz for Sub-GHz; 500 kHz for LR2021 HF or approximately 406 kHz for LR1121 HF |
 | Coding Rate | 4/5 |
 | Preamble Length | 8 |
 | Header | Explicit |

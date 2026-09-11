@@ -19,7 +19,7 @@ namespace lora_rx_sensitivity {
 namespace {
 
 constexpr lr20xx_radio_lora_bw_t kLoraBandwidth =
-    kUseHighFrequencyPath ? LR20XX_RADIO_LORA_BW_250
+    kUseHighFrequencyPath ? LR20XX_RADIO_LORA_BW_500
                           : LR20XX_RADIO_LORA_BW_125;
 constexpr lr20xx_radio_common_rx_path_t kReceivePath =
     kUseHighFrequencyPath ? LR20XX_RADIO_COMMON_RX_PATH_HF

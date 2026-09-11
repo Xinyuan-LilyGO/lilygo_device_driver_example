@@ -24,7 +24,7 @@ inline constexpr uint32_t kFrequencyHz = kFrequency868MHz;
 ```
 
 选择433、868或915 MHz时，LR2021和LR1121自动使用Sub-GHz射频通路及
-125 kHz带宽；选择2400 MHz时，LR2021的HF带宽为250 kHz，LR1121约为
+125 kHz带宽；选择2400 MHz时，LR2021的HF带宽为500 kHz，LR1121约为
 406 kHz。SX1262
 不支持2400 MHz，如果自动检测到SX1262，程序会输出频率不支持并停止测试。
 
@@ -37,7 +37,7 @@ Sub-GHz仍配置为 `+22 dBm`。本接收灵敏度示例不会主动发射，该
 
 程序使用 Semtech 数据手册的 LoRa 灵敏度条件：
 
-- 带宽：Sub-GHz为125 kHz；2400 MHz时LR2021为250 kHz、LR1121约为406 kHz
+- 带宽：Sub-GHz为125 kHz；2400 MHz时LR2021为500 kHz、LR1121约为406 kHz
   （SX1262不支持2400 MHz）
 - 扩频因子：由 `kSpreadingFactor` 设置，默认为SF12
 - 编码率：4/5
@@ -77,7 +77,7 @@ CRC、Header、长度、Payload 内容和读取错误均不会计入正确包。
 | --- | --- |
 | Frequency | 与上表对应的芯片频率一致 |
 | Spreading Factor | 与 `kSpreadingFactor` 一致，默认SF7 |
-| Bandwidth | Sub-GHz设置125 kHz；2400 MHz时LR2021设置250 kHz、LR1121设置约406 kHz |
+| Bandwidth | Sub-GHz设置125 kHz；2400 MHz时LR2021设置500 kHz、LR1121设置约406 kHz |
 | Coding Rate | 4/5 |
 | Preamble Length | 8 |
 | Header | Explicit |

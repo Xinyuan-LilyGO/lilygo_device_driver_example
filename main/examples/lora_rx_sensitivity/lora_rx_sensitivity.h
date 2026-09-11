@@ -136,6 +136,10 @@ class TestSession {
   void RecordDriverError();
 
  private:
+  /**
+   * @brief 输出当前无线芯片和射频测试参数
+   */
+  void PrintConfiguration() const;
   // 保存一项信号质量数据的样本数量、总和与范围
   struct MetricStatistics {
     uint32_t count = 0;     // 已累计的有效样本数

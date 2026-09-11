@@ -52,20 +52,17 @@ float TestSession::MetricStatistics::Average() const {
 TestSession::TestSession(const char* radio_name, uint32_t frequency_hz)
     : radio_name_(radio_name), frequency_hz_(frequency_hz) {}
 
-void TestSession::PrintSetup() const {
-  printf("\n");
-  printf("============================================================\n");
-  printf("LoRa RX sensitivity test\n");
-  printf("Radio: %s\n", radio_name_);
-  printf("Frequency: %lu Hz\n",
-      static_cast<unsigned long>(frequency_hz_));
+void TestSession::PrintConfiguration() const {
   const unsigned long bandwidth_khz =
       (kUseHighFrequencyPath && std::strcmp(radio_name_, "LR1121") == 0)
-          ? 406UL : static_cast<unsigned long>(kBandwidthKhz);
+          ? 406UL
+          : (kUseHighFrequencyPath && std::strcmp(radio_name_, "LR2021") == 0)
+                ? 500UL : static_cast<unsigned long>(kBandwidthKhz);
+  printf("Frequency: %lu Hz\n", static_cast<unsigned long>(frequency_hz_));
   printf("Modulation: LoRa, SF%u, BW %lu kHz, CR 4/5\n",
-      static_cast<unsigned int>(kSpreadingFactor),
-      bandwidth_khz);
-  printf("Packet: explicit header, preamble 8, payload 64 bytes\n");
+      static_cast<unsigned int>(kSpreadingFactor), bandwidth_khz);
+  printf("Packet: explicit header, preamble 8, payload %u bytes\n",
+      static_cast<unsigned int>(kPayloadLength));
   printf("Payload CRC: on, IQ: standard, private sync word: 0x%02X\n",
       static_cast<unsigned int>(kSyncWord));
   printf("Low data rate optimization: on, receiver gain: boosted\n");
@@ -73,6 +70,14 @@ void TestSession::PrintSetup() const {
       static_cast<unsigned long>(kExpectedPacketCount));
   printf("Pass criterion: PER <= %.1f%%\n", kPassingPerPercent);
   printf("RF generator data source: All 1\n");
+}
+
+void TestSession::PrintSetup() const {
+  printf("\n");
+  printf("============================================================\n");
+  printf("LoRa RX sensitivity test\n");
+  printf("Radio: %s\n", radio_name_);
+  PrintConfiguration();
   printf("Expected payload data:\n");
   for (size_t index = 0; index < kExpectedPayload.size(); ++index) {
     printf("%02X%s", static_cast<unsigned int>(kExpectedPayload[index]),
@@ -137,6 +142,7 @@ void TestSession::Finish(
   printf("============================================================\n");
   printf("[PER] FINAL RESULT\n");
   printf("Radio: %s\n", radio_name_);
+  PrintConfiguration();
   printf("Finish reason: %s\n", reason);
   printf("Elapsed: %lu ms\n", static_cast<unsigned long>(elapsed_ms));
   printf("Expected packets: %lu\n",
