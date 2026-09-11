@@ -33,7 +33,7 @@ inline constexpr uint32_t kBandwidthKhz =
     kUseHighFrequencyPath ? 203U : 125U;
 // LoRa公共网络同步字
 inline constexpr uint8_t kSyncWord =
-    LR20XX_RADIO_LORA_SYNCWORD_LORAWAN_PUBLIC_NETWORK;
+    LR20XX_RADIO_LORA_SYNCWORD_LORAWAN_PRIVATE_NETWORK;
 // LoRa发送与接收测试载荷
 inline constexpr std::array<uint8_t, 9> kTestPayload = {
     1, 2, 3, 4, 5, 6, 7, 8, 9};

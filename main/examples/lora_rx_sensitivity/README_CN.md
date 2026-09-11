@@ -46,7 +46,7 @@ Sub-GHz仍配置为 `+22 dBm`。本接收灵敏度示例不会主动发射，该
 - Payload：64 bytes
 - Payload CRC：开启
 - IQ：Standard
-- Sync Mode：Public，对应 `0x34`
+- Sync Mode：Private，对应 `0x12`
 - 低数据率优化：根据SF和带宽自动选择
 - 接收增益：Boosted
 - 通过条件：PER 不大于 1%
@@ -84,7 +84,7 @@ CRC、Header、长度、Payload 内容和读取错误均不会计入正确包。
 | Data Source | All 1 |
 | Payload Length | 64 bytes |
 | Payload CRC | On |
-| Sync Mode | Public，必须对应 `0x34` |
+| Sync Mode | Private，必须对应 `0x12` |
 | IQ | Standard |
 | Payload Reduced Coding Mode | On |
 | Packet/Sequence Count | 1000 |

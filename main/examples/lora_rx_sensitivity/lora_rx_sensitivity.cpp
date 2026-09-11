@@ -66,7 +66,7 @@ void TestSession::PrintSetup() const {
       static_cast<unsigned int>(kSpreadingFactor),
       bandwidth_khz);
   printf("Packet: explicit header, preamble 8, payload 64 bytes\n");
-  printf("Payload CRC: on, IQ: standard, public sync word: 0x%02X\n",
+  printf("Payload CRC: on, IQ: standard, private sync word: 0x%02X\n",
       static_cast<unsigned int>(kSyncWord));
   printf("Low data rate optimization: on, receiver gain: boosted\n");
   printf("Expected RF generator packet count: %lu\n",
@@ -183,7 +183,11 @@ void TestSession::Finish(
 
   printf("Sensitivity is the lowest calibrated DUT input level that\n");
   printf("still produces PER <= %.1f%%.\n", kPassingPerPercent);
-  printf("The next RF packet stream starts a new input-power point.\n");
+  if (locked_) {
+    printf("Press BOOT to reset and start a new test.\n");
+  } else {
+    printf("The next RF packet stream starts a new input-power point.\n");
+  }
   printf("============================================================\n\n");
 }
 
@@ -194,6 +198,9 @@ void TestSession::Poll(uint32_t current_time_ms) {
   }
 
   if (!running_) {
+    if (locked_) {
+      return;
+    }
     if ((current_time_ms - last_progress_time_ms_) >=
         kProgressPrintIntervalMs) {
       printf("[PER] waiting for the first RF packet; receiver is running\n");

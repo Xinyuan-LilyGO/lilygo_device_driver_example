@@ -48,7 +48,7 @@ static_assert(kSpreadingFactor >= RAL_LORA_SF5 &&
     "LoRa spreading factor must be between SF5 and SF12");
 // LoRa公共网络同步字
 inline constexpr uint8_t kSyncWord =
-    LR20XX_RADIO_LORA_SYNCWORD_LORAWAN_PUBLIC_NETWORK;
+    LR20XX_RADIO_LORA_SYNCWORD_LORAWAN_PRIVATE_NETWORK;
 
 // 信号发生器选择All 1时生成的固定64字节测试Payload
 inline constexpr std::array<uint8_t, kPayloadLength> kExpectedPayload = {

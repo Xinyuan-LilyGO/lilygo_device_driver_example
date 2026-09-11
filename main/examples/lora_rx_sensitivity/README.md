@@ -54,7 +54,7 @@ datasheets:
 - Payload: 64 bytes
 - Payload CRC: Enabled
 - IQ: Standard
-- Sync mode: Public, corresponding to `0x34`
+- Sync mode: Private, corresponding to `0x12`
 - Low data rate optimization: Selected automatically from SF and bandwidth
 - Receiver gain: Boosted
 - Pass criterion: PER no greater than 1%
@@ -97,7 +97,7 @@ match the receiver:
 | Data Source | All 1 |
 | Payload Length | 64 bytes |
 | Payload CRC | On |
-| Sync Mode | Public, corresponding to `0x34` |
+| Sync Mode | Private, corresponding to `0x12` |
 | IQ | Standard |
 | Payload Reduced Coding Mode | On |
 | Packet/Sequence Count | 1000 |
