@@ -25,6 +25,10 @@ void RunL76k() {
   }
 
   auto& l76k = driver.chip().l76k;
+  printf("[%s] enable GPS + BeiDou + GLONASS: %s\n", kSource,
+      l76k->SetGnssConstellation(
+          cpp_bus_driver::L76k::GnssConstellation::kGpsBeidouGlonass)
+          ? "success" : "failed");
   cpp_bus_driver::L76k::NmeaOutputConfig nmea_config;
   nmea_config.rmc = 1;
   nmea_config.gga = 1;
