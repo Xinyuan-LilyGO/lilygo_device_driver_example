@@ -76,7 +76,7 @@ CRC、Header、长度、Payload 内容和读取错误均不会计入正确包。
 | 测试仪器项目 | 设置 |
 | --- | --- |
 | Frequency | 与上表对应的芯片频率一致 |
-| Spreading Factor | 与 `kSpreadingFactor` 一致，默认SF12 |
+| Spreading Factor | 与 `kSpreadingFactor` 一致，默认SF7 |
 | Bandwidth | Sub-GHz设置125 kHz；2400 MHz时LR2021设置250 kHz、LR1121设置约406 kHz |
 | Coding Rate | 4/5 |
 | Preamble Length | 8 |

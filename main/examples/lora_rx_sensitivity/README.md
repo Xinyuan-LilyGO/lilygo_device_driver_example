@@ -47,7 +47,7 @@ datasheets:
 
 - Bandwidth: 125 kHz for Sub-GHz; at 2400 MHz, 250 kHz for LR2021 and
   approximately 406 kHz for LR1121 (SX1262 does not support 2400 MHz)
-- Spreading factor: Set by `kSpreadingFactor`, default SF12
+- Spreading factor: Set by `kSpreadingFactor`, default SF7
 - Coding rate: 4/5
 - Preamble: 8 symbols
 - Header: Explicit
@@ -89,7 +89,7 @@ match the receiver:
 | Instrument setting | Value |
 | --- | --- |
 | Frequency | Match the radio frequency in the table above |
-| Spreading Factor | Match `kSpreadingFactor`, default SF12 |
+| Spreading Factor | Match `kSpreadingFactor`, default SF7 |
 | Bandwidth | 125 kHz for Sub-GHz; 250 kHz for LR2021 HF or approximately 406 kHz for LR1121 HF |
 | Coding Rate | 4/5 |
 | Preamble Length | 8 |
