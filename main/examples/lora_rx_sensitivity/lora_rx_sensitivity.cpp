@@ -59,9 +59,12 @@ void TestSession::PrintSetup() const {
   printf("Radio: %s\n", radio_name_);
   printf("Frequency: %lu Hz\n",
       static_cast<unsigned long>(frequency_hz_));
+  const unsigned long bandwidth_khz =
+      (kUseHighFrequencyPath && std::strcmp(radio_name_, "LR1121") == 0)
+          ? 406UL : static_cast<unsigned long>(kBandwidthKhz);
   printf("Modulation: LoRa, SF%u, BW %lu kHz, CR 4/5\n",
       static_cast<unsigned int>(kSpreadingFactor),
-      static_cast<unsigned long>(kBandwidthKhz));
+      bandwidth_khz);
   printf("Packet: explicit header, preamble 8, payload 64 bytes\n");
   printf("Payload CRC: on, IQ: standard, public sync word: 0x%02X\n",
       static_cast<unsigned int>(kSyncWord));
@@ -111,6 +114,7 @@ void TestSession::Finish(
     return;
   }
   running_ = false;
+  if (std::strcmp(reason, "expected packet events reached") == 0) locked_ = true;
   last_progress_time_ms_ = current_time_ms;
   progress_timer_started_ = true;
 
@@ -217,6 +221,7 @@ void TestSession::Poll(uint32_t current_time_ms) {
 
 void TestSession::Restart(uint32_t current_time_ms) {
   running_ = false;
+  locked_ = false;
   start_time_ms_ = 0;
   last_activity_time_ms_ = current_time_ms;
   last_progress_time_ms_ = current_time_ms;

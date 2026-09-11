@@ -16,7 +16,8 @@ extern "C" void app_main(void) {
     printf("Device driver initialization completed with errors\n");
   }
 
-#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4)
+#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) && \
+    !defined(CONFIG_LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
   auto& driver = common::GetDriver();
   switch (driver.radio_type()) {
     case common::board::device::RadioType::kSx1262:
@@ -29,6 +30,9 @@ extern "C" void app_main(void) {
       printf("No supported LoRa radio was detected\n");
       break;
   }
+#elif defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) && \
+    defined(CONFIG_LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
+  lora_rx_sensitivity::RunLr2021();
 #elif defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR)
   lora_rx_sensitivity::RunLr1121();
 #elif defined(CONFIG_LILYGO_DEVICE_DRIVER_T_GLASSES_P4)

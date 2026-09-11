@@ -12,7 +12,8 @@
 
 #include "esp_log.h"
 
-#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4)
+#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) && \
+    !defined(CONFIG_LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
 
 namespace lora_rx_sensitivity {
 namespace {
@@ -124,7 +125,7 @@ void RunSx1262() {
       }
     }
 
-    if (restart_receive && !sx1262.StartReceive()) {
+    if (restart_receive && !session.IsLocked() && !sx1262.StartReceive()) {
       printf("SX1262 restart receive failed\n");
       return;
     }

@@ -19,7 +19,7 @@ namespace lora_rx_sensitivity {
 namespace {
 
 constexpr lr20xx_radio_lora_bw_t kLoraBandwidth =
-    kUseHighFrequencyPath ? LR20XX_RADIO_LORA_BW_203
+    kUseHighFrequencyPath ? LR20XX_RADIO_LORA_BW_250
                           : LR20XX_RADIO_LORA_BW_125;
 constexpr lr20xx_radio_common_rx_path_t kReceivePath =
     kUseHighFrequencyPath ? LR20XX_RADIO_COMMON_RX_PATH_HF
@@ -93,7 +93,9 @@ bool ButtonPressed(cpp_bus_driver::PlatformHal& platform_hal) {
 }
 
 bool RadioIrqAsserted() {
-#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_GLASSES_P4)
+#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_GLASSES_P4) || \
+    (defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) && \
+     defined(CONFIG_LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2))
   cpp_bus_driver::PlatformHal platform_hal;
   return platform_hal.GpioRead(common::board::gpio::lr2021::kInt);
 #else
@@ -255,7 +257,7 @@ void RunLr2021() {
         session.RecordDriverError();
       }
 
-      if (!StartReceive(lr2021)) {
+      if (!session.IsLocked() && !StartReceive(lr2021)) {
         printf("LR2021 restart receive failed\n");
         return;
       }

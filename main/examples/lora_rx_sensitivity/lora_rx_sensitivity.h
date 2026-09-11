@@ -2,7 +2,7 @@
  * @Description: 声明 LoRa 接收灵敏度与丢包率测试的公共接口
  * @Author: LILYGO_L
  * @Date: 2026-07-29 15:09:12
- * @LastEditTime: 2026-07-29 18:00:58
+ * @LastEditTime: 2026-09-11 10:56:44
  * @License: GPL 3.0
  */
 #pragma once
@@ -28,11 +28,11 @@ static_assert(kFrequencyHz == kFrequency433MHz ||
         kFrequencyHz == kFrequency915MHz ||
         kFrequencyHz == kFrequency2400MHz,
     "Select one of the predefined LoRa frequencies");
-// 2.4 GHz使用HF射频通路和203 kHz带宽，Sub-GHz使用LF通路和125 kHz
+// 公共默认带宽：HF射频通路250 kHz，Sub-GHz使用125 kHz。
 inline constexpr bool kUseHighFrequencyPath =
     kFrequencyHz == kFrequency2400MHz;
 inline constexpr uint32_t kBandwidthKhz =
-    kUseHighFrequencyPath ? 203U : 125U;
+    kUseHighFrequencyPath ? 250U : 125U;
 // Semtech数据手册灵敏度测试使用的Payload长度
 inline constexpr size_t kPayloadLength = 64;
 // 每个输入功率点要求信号发生器发送的总包数
@@ -42,7 +42,7 @@ inline constexpr uint32_t kIdleFinishTimeMs = 10000;
 // 等待首包和测试进行期间周期输出状态日志的时间间隔
 inline constexpr uint32_t kProgressPrintIntervalMs = 5000;
 // 可修改的LoRa扩频因子，LR2021、SX1262和LR1121统一使用该值
-inline constexpr ral_lora_sf_t kSpreadingFactor = RAL_LORA_SF12;
+inline constexpr ral_lora_sf_t kSpreadingFactor = RAL_LORA_SF7;
 static_assert(kSpreadingFactor >= RAL_LORA_SF5 &&
         kSpreadingFactor <= RAL_LORA_SF12,
     "LoRa spreading factor must be between SF5 and SF12");
@@ -104,6 +104,13 @@ class TestSession {
    * @param current_time_ms 当前系统时间，单位为ms
    */
   void Restart(uint32_t current_time_ms);
+
+  /**
+   * @brief 判断测试完成后是否已锁定并等待BOOT按键
+   * @return 已锁定返回true，否则返回false
+   */
+  bool IsLocked() const { return locked_; }
+
 
   /**
    * @brief 校验并统计一个硬件CRC正确的接收数据包
@@ -189,6 +196,7 @@ class TestSession {
   const char* radio_name_;  // 当前无线芯片名称
   uint32_t frequency_hz_;   // 当前测试频率，单位为Hz
   bool running_ = false;    // 当前功率点是否正在统计
+  bool locked_ = false;     // 完成一轮后锁定，等待BOOT
   uint32_t start_time_ms_ = 0;  // 当前测试开始时间，单位为ms
   uint32_t last_activity_time_ms_ = 0;  // 最近包事件时间，单位为ms
   uint32_t last_progress_time_ms_ = 0;  // 最近状态日志输出时间，单位为ms

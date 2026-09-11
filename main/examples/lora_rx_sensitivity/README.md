@@ -28,8 +28,8 @@ inline constexpr uint32_t kFrequencyHz = kFrequency868MHz;
 ```
 
 At 433, 868, or 915 MHz, LR2021 and LR1121 automatically use the Sub-GHz RF
-path and 125 kHz bandwidth. At 2400 MHz, they automatically use the HF RF
-path and 203 kHz bandwidth. SX1262 does not support 2400 MHz; if it is
+path and 125 kHz bandwidth. At 2400 MHz, LR2021 uses 250 kHz and LR1121 uses
+approximately 406 kHz on the HF RF path. SX1262 does not support 2400 MHz; if it is
 automatically detected, the program reports the unsupported frequency and
 stops the test.
 
@@ -45,7 +45,8 @@ safe and consistent with the TX/RX example.
 The program uses the LoRa sensitivity conditions defined in the Semtech
 datasheets:
 
-- Bandwidth: 125 kHz for Sub-GHz, 203 kHz at 2400 MHz
+- Bandwidth: 125 kHz for Sub-GHz; at 2400 MHz, 250 kHz for LR2021 and
+  approximately 406 kHz for LR1121 (SX1262 does not support 2400 MHz)
 - Spreading factor: Set by `kSpreadingFactor`, default SF12
 - Coding rate: 4/5
 - Preamble: 8 symbols
@@ -89,7 +90,7 @@ match the receiver:
 | --- | --- |
 | Frequency | Match the radio frequency in the table above |
 | Spreading Factor | Match `kSpreadingFactor`, default SF12 |
-| Bandwidth | 125 kHz for Sub-GHz, 203 kHz at 2400 MHz |
+| Bandwidth | 125 kHz for Sub-GHz; 250 kHz for LR2021 HF or approximately 406 kHz for LR1121 HF |
 | Coding Rate | 4/5 |
 | Preamble Length | 8 |
 | Header | Explicit |
@@ -160,29 +161,22 @@ known attenuation.
 
 The absolute best sensitivity conditions and commonly compared conditions
 are shown below. The absolute-best conditions use a narrower supported
-bandwidth and can achieve a lower typical sensitivity, but they also increase
-time on air and sensitivity to frequency error and clock drift. They are
-therefore not used as the common default in this example. Official
-sensitivity is the typical DUT input power that meets `PER = 1%` under the
+The table below lists official typical sensitivity under the stated test
+conditions. Official sensitivity is the typical DUT input power that meets `PER = 1%` under the
 stated conditions; it is not an exact RSSI value that must appear in the
 serial log.
 
-| Radio | Absolute best sensitivity condition | Official typical sensitivity | Common comparison condition | Common-condition sensitivity |
-| --- | --- | ---: | --- | ---: |
-| LR2021 | SF12 / BW31 kHz / RX Boost Mode 7 | -147 dBm | SF12 / BW125 kHz / RX Boost Mode 7 | -141.5 dBm |
-| SX1262 | SF12 / BW10.4 kHz / RX Boosted | -148 dBm | SF12 / BW125 kHz / RX Boosted | -137 dBm |
-| LR1121 Sub-GHz | SF12 / BW62.5 kHz / RX Boosted | -144 dBm | SF12 / BW125 kHz / RX Boosted | -141 dBm |
-| LR1121 2.4 GHz | Minimum supported BW203 kHz | No corresponding official SF12 value | BW125 cannot be used | No corresponding figure |
+| Radio | Official test condition | Official typical sensitivity |
+| --- | --- | ---: |
+| SX1262 | SF7 / BW125 kHz / RX Boosted | -124 dBm |
+| LR2021 Sub-GHz | SF7 / BW125 kHz / RX Boost Mode 7 | -127.5 dBm |
+| LR2021 2.4 GHz | SF7 / BW500 kHz / RX Boost Mode 7 | -119 dBm |
+| LR1121 Sub-GHz | SF7 / BW125 kHz / RX Boosted | -127 dBm |
+| LR1121 2.4 GHz | SF7 / BW406 kHz / RX Boosted | -114 dBm |
 
 These values are typical IC RF-port results under the datasheet conditions.
 They exclude losses from RF switches, filters, matching networks, the PCB,
 cables, and adapters, and they are not guaranteed worst-case limits.
-
-The current LR1121 default of 433 MHz/BW125 is a Sub-GHz condition, so
-`-141 dBm` can be used as the official typical IC RF-port reference. The
-LR1121 2.4 GHz row is retained only to describe its high-frequency path:
-the datasheet specifies LoRa bandwidths from 203 kHz to 812 kHz at 2.4 GHz,
-so this example's BW125 setting cannot be used directly at 2.4 GHz.
 
 The following examples show generator settings with no path loss and with a
 20 dB fixed attenuator. The 20 dB value only demonstrates the calculation;

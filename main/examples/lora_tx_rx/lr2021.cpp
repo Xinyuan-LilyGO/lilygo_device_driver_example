@@ -89,7 +89,9 @@ bool ButtonPressed(cpp_bus_driver::PlatformHal& platform_hal) {
 }
 
 bool RadioIrqAsserted() {
-#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_GLASSES_P4)
+#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_GLASSES_P4) || \
+    (defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) && \
+     defined(CONFIG_LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2))
   cpp_bus_driver::PlatformHal platform_hal;
   return platform_hal.GpioRead(common::board::gpio::lr2021::kInt);
 #else

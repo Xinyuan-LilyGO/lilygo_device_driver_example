@@ -24,7 +24,8 @@ inline constexpr uint32_t kFrequencyHz = kFrequency868MHz;
 ```
 
 选择433、868或915 MHz时，LR2021和LR1121自动使用Sub-GHz射频通路及
-125 kHz带宽；选择2400 MHz时自动使用HF射频通路及203 kHz带宽。SX1262
+125 kHz带宽；选择2400 MHz时，LR2021的HF带宽为250 kHz，LR1121约为
+406 kHz。SX1262
 不支持2400 MHz，如果自动检测到SX1262，程序会输出频率不支持并停止测试。
 
 T-Display-P4的LR2021射频通路有额外硬件限制：频率在1 GHz及以上时，发射
@@ -36,7 +37,8 @@ Sub-GHz仍配置为 `+22 dBm`。本接收灵敏度示例不会主动发射，该
 
 程序使用 Semtech 数据手册的 LoRa 灵敏度条件：
 
-- 带宽：Sub-GHz为125 kHz，2400 MHz为203 kHz
+- 带宽：Sub-GHz为125 kHz；2400 MHz时LR2021为250 kHz、LR1121约为406 kHz
+  （SX1262不支持2400 MHz）
 - 扩频因子：由 `kSpreadingFactor` 设置，默认为SF12
 - 编码率：4/5
 - 前导码：8 symbols
@@ -75,7 +77,7 @@ CRC、Header、长度、Payload 内容和读取错误均不会计入正确包。
 | --- | --- |
 | Frequency | 与上表对应的芯片频率一致 |
 | Spreading Factor | 与 `kSpreadingFactor` 一致，默认SF12 |
-| Bandwidth | Sub-GHz设置125 kHz，2400 MHz设置203 kHz |
+| Bandwidth | Sub-GHz设置125 kHz；2400 MHz时LR2021设置250 kHz、LR1121设置约406 kHz |
 | Coding Rate | 4/5 |
 | Preamble Length | 8 |
 | Header | Explicit |
@@ -138,25 +140,19 @@ DUT输入功率 =
 超出规格书的规定电平范围。需要进行可复现的定量测试时，建议加入固定衰减器，
 使仪器本身的输出保持在 `-127 dBm` 以上，再通过衰减得到更低的DUT输入功率。
 
-芯片绝对最佳灵敏度条件与常用对比条件如下。绝对最佳条件使用芯片支持的
-较小带宽，可以取得更低的典型灵敏度，但空中时间更长，对频偏和时钟漂移
-也更敏感，因此不作为本示例的统一默认配置。官方灵敏度表示在规定测试条件下
+下表列出芯片在规定测试条件下的官方典型灵敏度。官方灵敏度表示在规定测试条件下
 满足 `PER = 1%` 的典型DUT输入功率，不是串口RSSI必须精确显示的数值。
 
-| 芯片 | 绝对最佳灵敏度条件 | 官方典型灵敏度 | 常用对比条件 | 常用条件灵敏度 |
-| --- | --- | ---: | --- | ---: |
-| LR2021 | SF12 / BW31 kHz / RX Boost Mode 7 | -147 dBm | SF12 / BW125 kHz / RX Boost Mode 7 | -141.5 dBm |
-| SX1262 | SF12 / BW10.4 kHz / RX Boosted | -148 dBm | SF12 / BW125 kHz / RX Boosted | -137 dBm |
-| LR1121 Sub-GHz | SF12 / BW62.5 kHz / RX Boosted | -144 dBm | SF12 / BW125 kHz / RX Boosted | -141 dBm |
-| LR1121 2.4 GHz | 最小支持BW203 kHz | 没有对应的SF12官方值 | 不能使用BW125 | 无对应指标 |
+| 芯片 | 官方测试条件 | 官方典型灵敏度 |
+| --- | --- | ---: |
+| SX1262 | SF7 / BW125 kHz / RX Boosted | -124 dBm |
+| LR2021 Sub-GHz | SF7 / BW125 kHz / RX Boost Mode 7 | -127.5 dBm |
+| LR2021 2.4 GHz | SF7 / BW500 kHz / RX Boost Mode 7 | -119 dBm |
+| LR1121 Sub-GHz | SF7 / BW125 kHz / RX Boosted | -127 dBm |
+| LR1121 2.4 GHz | SF7 / BW406 kHz / RX Boosted | -114 dBm |
 
 表中数值是数据手册规定条件下的芯片射频端典型值，不包含射频开关、滤波器、
 匹配网络、PCB、线缆和转接头损耗，也不是产品必须保证达到的最差值。
-
-LR1121当前默认433 MHz/BW125组合属于Sub-GHz条件，可将 `-141 dBm`
-作为芯片射频端的官方典型参考值。表中的LR1121 2.4 GHz一行仅用于说明其
-高频通路要求；数据手册规定2.4 GHz LoRa带宽范围为203 kHz至812 kHz，
-不能在2.4 GHz直接使用本示例的BW125配置。
 
 下面给出无线路损和使用20 dB固定衰减器时的仪器设置示例。表中的20 dB仅用于
 说明计算方法，实际测试必须代入实测的衰减器、线缆和转接头总损耗。

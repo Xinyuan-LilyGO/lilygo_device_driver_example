@@ -18,7 +18,7 @@ namespace lora_rx_sensitivity {
 namespace {
 
 constexpr lr11xx_radio_lora_bw_t kLoraBandwidth =
-    kUseHighFrequencyPath ? LR11XX_RADIO_LORA_BW_200
+    kUseHighFrequencyPath ? LR11XX_RADIO_LORA_BW_400
                           : LR11XX_RADIO_LORA_BW_125;
 constexpr lr11xx_system_irq_mask_t kRadioIrqMask =
     LR11XX_SYSTEM_IRQ_RX_DONE | LR11XX_SYSTEM_IRQ_HEADER_ERROR |
@@ -183,7 +183,7 @@ void RunLr1121() {
         session.RecordDriverError();
       }
 
-      if (!StartReceive(lr1121)) {
+      if (!session.IsLocked() && !StartReceive(lr1121)) {
         printf("LR1121 restart receive failed\n");
         return;
       }
