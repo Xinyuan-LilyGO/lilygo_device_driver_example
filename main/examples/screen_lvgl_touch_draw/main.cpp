@@ -8,7 +8,7 @@
 #include <ctime>
 #include <vector>
 
-#include "common_lvgl.h"
+#include "display/lvgl.h"
 #include "lvgl.h"
 
 namespace {

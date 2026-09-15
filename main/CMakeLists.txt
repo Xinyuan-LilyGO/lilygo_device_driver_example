@@ -67,6 +67,11 @@ elseif(example_name STREQUAL "screen_lvgl")
     set(example_extra_sources "${example_path}/lvgl_demo_ui.c")
 elseif(example_name STREQUAL "st25r3916")
     list(APPEND example_requires "stsw-st25rfal002_cpp_bus_driver")
+elseif(example_name MATCHES "^(usb_ethernet_iperf|usb_ethernet_iperf_host_msc|usb_host_msc)$")
+    if(NOT CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 OR
+       NOT CONFIG_LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
+        message(FATAL_ERROR "USB host examples require T-Display-P4 V2.0")
+    endif()
 endif()
 
 set(example_sources "${example_path}/main.cpp" ${example_extra_sources})
@@ -76,6 +81,26 @@ idf_component_register(
     INCLUDE_DIRS ${example_path}
     REQUIRES ${example_requires}
 )
+
+
+# ESP-IDF 提前收集 REQUIRES 时尚无 sdkconfig，条件依赖在组件注册后添加。
+if(example_name MATCHES "^(usb_ethernet_iperf|usb_ethernet_iperf_host_msc|usb_host_msc)$")
+    idf_component_optional_requires(PRIVATE usb)
+    if(NOT example_name STREQUAL "usb_host_msc")
+        idf_component_optional_requires(PRIVATE
+            esp_event
+            esp_netif
+            console
+            espressif__iperf-cmd
+        )
+    endif()
+    if(NOT example_name STREQUAL "usb_ethernet_iperf")
+        idf_component_optional_requires(PRIVATE
+            espressif__usb_host_msc
+            fatfs
+        )
+    endif()
+endif()
 
 if(example_name STREQUAL "screen_camera")
     idf_component_optional_requires(PRIVATE

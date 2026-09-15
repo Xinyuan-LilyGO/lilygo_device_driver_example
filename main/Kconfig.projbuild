@@ -4,11 +4,37 @@ choice SLAVE_IDF_TARGET
     default SLAVE_IDF_TARGET_ESP32C6 if LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 && LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V1
 endchoice
 
+config FATFS_VOLUME_COUNT
+    default 2 if EXAMPLE_BUILD_USB_ETHERNET_IPERF_HOST_MSC || EXAMPLE_BUILD_USB_HOST_MSC
+
+# T-Display-P4 V2.0 的 USB 网卡示例默认使用 USB 主控制台接收 REPL 输入。
+choice ESP_CONSOLE_UART
+    default ESP_CONSOLE_USB_SERIAL_JTAG if LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 && LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2 && (EXAMPLE_BUILD_USB_ETHERNET_IPERF || EXAMPLE_BUILD_USB_ETHERNET_IPERF_HOST_MSC)
+endchoice
+
 menu "Example Configuration"
     choice
         prompt "Select the example to build"
         default EXAMPLE_BUILD_BATTERY_MANAGEMENT if LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 && LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2
         default EXAMPLE_BUILD_SCREEN_LVGL
+        config EXAMPLE_BUILD_USB_ETHERNET_IPERF
+            bool "usb_ethernet_iperf"
+            depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 && LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2
+            select USB_HOST_ENABLE_ENUM_FILTER_CALLBACK
+            select USB_HOST_HUBS_SUPPORTED
+            select USB_HOST_HUB_MULTI_LEVEL
+        config EXAMPLE_BUILD_USB_ETHERNET_IPERF_HOST_MSC
+            bool "usb_ethernet_iperf_host_msc"
+            depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 && LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2
+            select USB_HOST_ENABLE_ENUM_FILTER_CALLBACK
+            select USB_HOST_HUBS_SUPPORTED
+            select USB_HOST_HUB_MULTI_LEVEL
+        config EXAMPLE_BUILD_USB_HOST_MSC
+            bool "usb_host_msc"
+            depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 && LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2
+            select USB_HOST_ENABLE_ENUM_FILTER_CALLBACK
+            select USB_HOST_HUBS_SUPPORTED
+            select USB_HOST_HUB_MULTI_LEVEL
         config EXAMPLE_BUILD_HAPTIC_FEEDBACK
             bool "haptic_feedback"
             depends on !(LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 && LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
@@ -95,6 +121,9 @@ menu "Example Configuration"
     # 构建和依赖清单共用示例名称，避免读取被设备条件隐藏的 choice 选项。
     config EXAMPLE_BUILD_NAME
         string
+        default "usb_ethernet_iperf" if EXAMPLE_BUILD_USB_ETHERNET_IPERF
+        default "usb_ethernet_iperf_host_msc" if EXAMPLE_BUILD_USB_ETHERNET_IPERF_HOST_MSC
+        default "usb_host_msc" if EXAMPLE_BUILD_USB_HOST_MSC
         default "haptic_feedback" if EXAMPLE_BUILD_HAPTIC_FEEDBACK
         default "imu" if EXAMPLE_BUILD_IMU
         default "gps" if EXAMPLE_BUILD_GPS

@@ -5,7 +5,7 @@
  * @LastEditTime: 2026-09-07 15:58:59
  * @License: GPL 3.0
  */
-#include "common_lvgl.h"
+#include "display/lvgl.h"
 #include "esp_lcd_mipi_dsi.h"
 #include "lvgl.h"
 
