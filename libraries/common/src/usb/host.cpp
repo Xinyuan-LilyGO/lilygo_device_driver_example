@@ -67,8 +67,7 @@ bool DisablePower() {
 bool InitPower() {
   auto& driver = lilygo_device_driver::TDisplayP4Driver::GetInstance();
   if (!driver.InitMinimal()) {
-    DisablePower();
-    return false;
+    ESP_LOGW(kTag, "Minimal device driver initialization completed with errors; continuing USB host power setup");
   }
 
   if (!driver.InitUsbHostPower() || !driver.SetUsbHostPowerEnabled(true)) {

@@ -1057,7 +1057,7 @@ void ParseAndPrintNdefMessage(
     const uint8_t tnf = header & 0x07U;
 
     if (offset >= message_length) {
-      std::printf("  [WARNING] Truncated NDEF record header.\n");
+      std::printf("  Truncated NDEF record header.\n");
       return;
     }
     const size_t type_length = message[offset++];
@@ -1065,13 +1065,13 @@ void ParseAndPrintNdefMessage(
     uint32_t payload_length = 0;
     if (short_record) {
       if (offset >= message_length) {
-        std::printf("  [WARNING] Missing short-record payload length.\n");
+        std::printf("  Missing short-record payload length.\n");
         return;
       }
       payload_length = message[offset++];
     } else {
       if (message_length - offset < 4U) {
-        std::printf("  [WARNING] Missing NDEF payload length.\n");
+        std::printf("  Missing NDEF payload length.\n");
         return;
       }
       payload_length = static_cast<uint32_t>(message[offset]) << 24U |
@@ -1084,7 +1084,7 @@ void ParseAndPrintNdefMessage(
     size_t id_length = 0;
     if (id_present) {
       if (offset >= message_length) {
-        std::printf("  [WARNING] Missing NDEF ID length.\n");
+        std::printf("  Missing NDEF ID length.\n");
         return;
       }
       id_length = message[offset++];
@@ -1093,7 +1093,7 @@ void ParseAndPrintNdefMessage(
     const size_t remaining = message_length - offset;
     if (type_length > remaining || id_length > remaining - type_length ||
         payload_length > remaining - type_length - id_length) {
-      std::printf("  [WARNING] NDEF record length exceeds available data.\n");
+      std::printf("  NDEF record length exceeds available data.\n");
       return;
     }
 
@@ -1146,7 +1146,7 @@ void ParseAndPrintNdefMessage(
   }
 
   if (!message_ended) {
-    std::printf("  [WARNING] NDEF message ended without the ME flag.\n");
+    std::printf("  NDEF message ended without the ME flag.\n");
   }
 }
 
@@ -1171,14 +1171,14 @@ void ParseAndPrintType2Tlvs(const uint8_t* data, size_t data_length) {
       break;
     }
     if (offset >= data_length) {
-      std::printf("  [WARNING] TLV length field is missing.\n");
+      std::printf("  TLV length field is missing.\n");
       break;
     }
 
     size_t value_length = data[offset++];
     if (value_length == 0xFFU) {
       if (data_length - offset < 2U) {
-        std::printf("  [WARNING] Extended TLV length is incomplete.\n");
+        std::printf("  Extended TLV length is incomplete.\n");
         break;
       }
       value_length = static_cast<size_t>(data[offset]) << 8U |
@@ -1186,7 +1186,7 @@ void ParseAndPrintType2Tlvs(const uint8_t* data, size_t data_length) {
       offset += 2U;
     }
     if (value_length > data_length - offset) {
-      std::printf("  [WARNING] TLV value exceeds the readable tag memory.\n");
+      std::printf("  TLV value exceeds the readable tag memory.\n");
       break;
     }
 
@@ -1488,9 +1488,8 @@ extern "C" void app_main(void) {
   std::printf("%s\n", kSectionLine);
   std::printf("Initializing board and NFC reader...\n");
   if (!common::InitDriver()) {
-    std::printf("[ERROR] Board initialization failed: %s\n",
+    std::printf("Board initialization completed with errors: %s; continuing example\n",
         common::kBoardName);
-    return;
   }
 
 #if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4)
@@ -1565,7 +1564,7 @@ extern "C" void app_main(void) {
         RememberCard(*device, &last_card);
         last_card_seen_tick = now;
       } else {
-        std::printf("[WARNING] Active NFC device details are unavailable: "
+        std::printf("Active NFC device details are unavailable: "
                     "%s (code %u)\n",
             RfalErrorName(result), static_cast<unsigned int>(result));
       }
@@ -1574,7 +1573,7 @@ extern "C" void app_main(void) {
 
       result = rfalNfcDeactivate(RFAL_NFC_DEACTIVATE_DISCOVERY);
       if (result != RFAL_ERR_NONE) {
-        std::printf("[WARNING] NFC discovery restart failed: %s (code %u)\n",
+        std::printf("NFC discovery restart failed: %s (code %u)\n",
             RfalErrorName(result), static_cast<unsigned int>(result));
         vTaskDelay(pdMS_TO_TICKS(100));
       }

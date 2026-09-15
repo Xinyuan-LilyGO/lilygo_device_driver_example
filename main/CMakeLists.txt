@@ -4,6 +4,7 @@ set(example_requires "common")
 
 if(CONFIG_ESP_WIFI_REMOTE_ENABLED)
     if(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR OR
+       CONFIG_LILYGO_DEVICE_DRIVER_T_GLASSES_P4 OR
        (CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 AND
         CONFIG_LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2))
         set(expected_wifi_target "esp32c5")
@@ -137,7 +138,7 @@ if(example_name STREQUAL "ota_update")
     )
 endif()
 
-if(example_name STREQUAL "wifi_scan_connect_time")
+if(example_name MATCHES "^(wifi_scan_connect_time|wifi_tx_power)$")
     idf_component_optional_requires(PRIVATE
         esp_event
         esp_netif

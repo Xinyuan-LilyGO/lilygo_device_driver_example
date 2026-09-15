@@ -51,11 +51,10 @@ extern "C" void app_main(void) {
   printf("CC1101 GFSK TX/RX example on %s\n", common::kBoardName);
   auto& driver = common::GetDriver();
   if (!common::InitMinimalDriver()) {
-    printf("Minimal device driver initialization failed\n");
-    return;
+    printf("Minimal device driver initialization completed with errors; continuing example\n");
   }
   if (!driver.InitKeyboardExpansion()) {
-    printf("Some keyboard expansion peripherals failed to initialize\n");
+    printf("Some keyboard expansion peripherals failed to initialize; continuing example\n");
   }
   if (!driver.IsXl9555Ready() || !driver.IsCc1101Ready()) {
     printf("Keyboard expansion CC1101 is unavailable\n");

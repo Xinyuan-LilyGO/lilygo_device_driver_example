@@ -170,8 +170,9 @@ extern "C" void app_main(void) {
       common::GetDriver().device_model_info().version);
 
   if (!InitCoprocessorControlHardware()) {
-    printf("Coprocessor control hardware initialization failed\n");
-  } else if (!PrepareCoprocessors()) {
+    printf("Coprocessor control hardware initialization completed with errors; continuing preparation\n");
+  }
+  if (!PrepareCoprocessors()) {
     printf("Coprocessor preparation failed\n");
   } else {
     printf("Coprocessor preparation completed\n");

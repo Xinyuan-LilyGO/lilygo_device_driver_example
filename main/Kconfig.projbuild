@@ -7,6 +7,10 @@ endchoice
 config FATFS_VOLUME_COUNT
     default 2 if EXAMPLE_BUILD_USB_ETHERNET_IPERF_HOST_MSC || EXAMPLE_BUILD_USB_HOST_MSC
 
+config ESP_VIDEO_ENABLE_ISP_PIPELINE_CONTROLLER
+    bool
+    default y if EXAMPLE_BUILD_SCREEN_CAMERA && ESP_VIDEO_ENABLE_ISP_VIDEO_DEVICE
+
 # T-Display-P4 V2.0 的 USB 网卡示例默认使用 USB 主控制台接收 REPL 输入。
 choice ESP_CONSOLE_UART
     default ESP_CONSOLE_USB_SERIAL_JTAG if LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 && LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2 && (EXAMPLE_BUILD_USB_ETHERNET_IPERF || EXAMPLE_BUILD_USB_ETHERNET_IPERF_HOST_MSC)
@@ -38,7 +42,7 @@ menu "Example Configuration"
         config EXAMPLE_BUILD_HAPTIC_FEEDBACK
             bool "haptic_feedback"
             depends on !(LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 && LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
-            depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 || LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR
+            depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 || LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR || LILYGO_DEVICE_DRIVER_T_GLASSES_P4
         config EXAMPLE_BUILD_IMU
             bool "imu"
             depends on !(LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 && LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
@@ -76,6 +80,9 @@ menu "Example Configuration"
             bool "wifi_mp3"
             depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 || LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR
             select MBEDTLS_CERTIFICATE_BUNDLE
+        config EXAMPLE_BUILD_WIFI_TX_POWER
+            bool "wifi_tx_power"
+            depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 || LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR || LILYGO_DEVICE_DRIVER_T_GLASSES_P4
         config EXAMPLE_BUILD_WIFI_SCAN_CONNECT_TIME
             bool "wifi_scan_connect_time"
             depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 || LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR
@@ -136,6 +143,7 @@ menu "Example Configuration"
         default "microphone_speaker_loopback" if EXAMPLE_BUILD_MICROPHONE_SPEAKER_LOOPBACK
         default "sd_mp3" if EXAMPLE_BUILD_SD_MP3
         default "wifi_mp3" if EXAMPLE_BUILD_WIFI_MP3
+        default "wifi_tx_power" if EXAMPLE_BUILD_WIFI_TX_POWER
         default "wifi_scan_connect_time" if EXAMPLE_BUILD_WIFI_SCAN_CONNECT_TIME
         default "coprocessor_download_mode" if EXAMPLE_BUILD_COPROCESSOR_DOWNLOAD_MODE
         default "network_adapter_update" if EXAMPLE_BUILD_NETWORK_ADAPTER_UPDATE

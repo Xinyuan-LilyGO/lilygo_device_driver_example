@@ -21,7 +21,9 @@ extern "C" void app_main(void) {
   printf("Haptic feedback example on %s\n", common::kBoardName);
 
   auto& driver = common::GetDriver();
-  common::InitDriver();
+  if (!common::InitDriver()) {
+    printf("Device driver initialization completed with errors; continuing example\n");
+  }
   if (!driver.IsAw86224Ready()) {
     printf("AW86224 init failed\n");
     return;

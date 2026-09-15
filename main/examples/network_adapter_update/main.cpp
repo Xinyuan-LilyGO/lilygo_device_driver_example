@@ -495,8 +495,11 @@ extern "C" void app_main(void) {
 
   printf("%s network adapter update example\n", kCoprocessorName);
   auto& driver = lilygo_device_driver::TDisplayP4Driver::GetInstance();
-  if (!driver.InitMinimal() || !driver.SetEsp32c6PowerEnabled(true)) {
-    printf("Board and %s power initialization failed\n", kCoprocessorName);
+  if (!driver.InitMinimal()) {
+    printf("Minimal device driver initialization completed with errors; continuing example\n");
+  }
+  if (!driver.SetEsp32c6PowerEnabled(true)) {
+    printf("%s power initialization failed\n", kCoprocessorName);
     return;
   }
 

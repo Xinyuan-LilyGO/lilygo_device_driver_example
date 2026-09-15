@@ -31,7 +31,7 @@ extern "C" void app_main(void) {
   printf("RTC example on %s %s\n", common::kBoardName,
       common::GetDriver().device_model_info().version);
   if (!common::InitDriver()) {
-    printf("Device driver initialization completed with errors\n");
+    printf("Device driver initialization completed with errors; continuing example\n");
   }
   if (!g_platform_hal.SetGpioMode(common::BootButtonGpio(),
           cpp_bus_driver::PlatformHal::GpioMode::kInput,

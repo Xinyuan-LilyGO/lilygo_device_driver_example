@@ -148,7 +148,7 @@ extern "C" void app_main(void) {
   printf("SD MP3 example on %s %s\n", common::kBoardName,
       common::GetDriver().device_model_info().version);
   if (!common::InitDriver()) {
-    printf("Device driver initialization completed with errors\n");
+    printf("Device driver initialization completed with errors; continuing example\n");
   }
 
   auto& driver = common::GetDriver();

@@ -151,7 +151,7 @@ void ClearCanvasTimer(lv_timer_t*) {
 extern "C" void app_main(void) {
   printf("LVGL touch drawing example on %s\n", common::kBoardName);
   if (!common::InitDriver()) {
-    printf("Device driver initialization completed with errors\n");
+    printf("Device driver initialization completed with errors; continuing example\n");
   }
   if (!TouchReady()) {
     printf("Screen or touch init failed\n");

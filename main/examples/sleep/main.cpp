@@ -36,7 +36,7 @@ extern "C" void app_main(void) {
 
   auto& driver = common::GetDriver();
   if (!driver.Init(common::DeviceDriver::InitMode::kSync)) {
-    printf("Device initialization reported a failure; continue shutdown\n");
+    printf("Device initialization reported a failure; continuing shutdown\n");
   }
 
   if (!driver.PrepareDriversForPowerOff()) {

@@ -41,8 +41,7 @@ extern "C" void app_main(void) {
   printf("I2C scan example on %s\n", common::kBoardName);
   auto& driver = common::GetDriver();
   if (!common::InitMinimalDriver()) {
-    printf("Minimal device driver initialization failed\n");
-    return;
+    printf("Minimal device driver initialization completed with errors; continuing example\n");
   }
 
   while (true) {

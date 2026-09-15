@@ -83,11 +83,10 @@ extern "C" void app_main(void) {
   printf("NRF24L01 Enhanced ShockBurst TX/RX example on %s\n", common::kBoardName);
   auto& driver = common::GetDriver();
   if (!common::InitMinimalDriver()) {
-    printf("Minimal device driver initialization failed\n");
-    return;
+    printf("Minimal device driver initialization completed with errors; continuing example\n");
   }
   if (!driver.InitKeyboardExpansion()) {
-    printf("Some keyboard expansion peripherals failed to initialize\n");
+    printf("Some keyboard expansion peripherals failed to initialize; continuing example\n");
   }
   if (!driver.IsXl9555Ready() || !driver.IsNrf24l01Ready()) {
     printf("Keyboard expansion NRF24L01 is unavailable\n");

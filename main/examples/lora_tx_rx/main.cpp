@@ -17,7 +17,7 @@ extern "C" void app_main(void) {
       static_cast<unsigned int>(lora_tx_rx::kSyncWord));
 
   if (!common::InitDriver()) {
-    printf("Device driver initialization completed with errors\n");
+    printf("Device driver initialization completed with errors; continuing example\n");
   }
 
 #if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) && \

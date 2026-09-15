@@ -41,8 +41,7 @@ void RunBq27220Example() {
 
   auto& driver = common::GetDriver();
   if (!common::InitMinimalDriver()) {
-    printf("Minimal device driver initialization failed\n");
-    return;
+    printf("Minimal device driver initialization completed with errors; continuing example\n");
   }
 
   if (!driver.InitBq27220()) {

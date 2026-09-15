@@ -1048,8 +1048,7 @@ extern "C" void app_main(void) {
   printf(
       "ESP32-P4 BOOT-triggered HTTPS OTA example on %s\n", common::kBoardName);
   if (!common::InitDriver()) {
-    printf("Board driver initialization failed\n");
-    return;
+    printf("Board driver initialization completed with errors; continuing example\n");
   }
 
   if (!MountStorage()) {

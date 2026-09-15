@@ -14,11 +14,12 @@ extern "C" void app_main(void) {
 
   auto& driver = common::GetDriver();
   if (!common::InitMinimalDriver()) {
-    printf("Minimal device driver initialization failed\n");
-    return;
+    printf("Minimal device driver initialization completed with errors; continuing example\n");
   }
   // The expansion initializer creates the TCA8418 driver and handles its reset.
-  driver.InitKeyboardExpansion();
+  if (!driver.InitKeyboardExpansion()) {
+    printf("Some keyboard expansion peripherals failed to initialize; continuing example\n");
+  }
   if (!driver.IsTca8418Ready()) {
     printf("TCA8418 initialization failed\n");
     return;

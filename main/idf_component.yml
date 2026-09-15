@@ -23,12 +23,12 @@ dependencies:
   espressif/esp_hosted:
     override_path: "../libraries/esp_hosted"
     matches:
-      - if: '$CONFIG{EXAMPLE_BUILD_NAME} in ["wifi_mp3", "wifi_scan_connect_time", "network_adapter_update", "ota_update"]'
+      - if: '$CONFIG{EXAMPLE_BUILD_NAME} in ["wifi_mp3", "wifi_scan_connect_time", "wifi_tx_power", "network_adapter_update", "ota_update"]'
 
   espressif/esp_wifi_remote:
     version: ">=1.6.1,<2.0"
     matches:
-      - if: '$CONFIG{EXAMPLE_BUILD_NAME} in ["wifi_mp3", "wifi_scan_connect_time", "network_adapter_update", "ota_update"]'
+      - if: '$CONFIG{EXAMPLE_BUILD_NAME} in ["wifi_mp3", "wifi_scan_connect_time", "wifi_tx_power", "network_adapter_update", "ota_update"]'
 
   espressif/esp_audio_codec:
     version: "2.4.1"
