@@ -41,7 +41,6 @@ menu "Example Configuration"
             select USB_HOST_HUB_MULTI_LEVEL
         config EXAMPLE_BUILD_HAPTIC_FEEDBACK
             bool "haptic_feedback"
-            depends on !(LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 && LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
             depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 || LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR || LILYGO_DEVICE_DRIVER_T_GLASSES_P4
         config EXAMPLE_BUILD_IMU
             bool "imu"
