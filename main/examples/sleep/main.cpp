@@ -12,11 +12,14 @@
 namespace {
 
 /**
- * @brief 等待控制台发送完成，避免最后一行日志被深度睡眠截断
+ * @brief 刷新控制台输出，并在 UART 控制台下等待发送完成
  */
 void WaitForConsoleTxIdle() {
+  fflush(stdout);
+#if defined(CONFIG_ESP_CONSOLE_UART)
   uart_wait_tx_idle_polling(
       static_cast<uart_port_t>(CONFIG_ESP_CONSOLE_UART_NUM));
+#endif
 }
 
 /**
@@ -40,7 +43,8 @@ extern "C" void app_main(void) {
   }
 
   if (!driver.PrepareDriversForPowerOff()) {
-    printf("Device sleep preparation reported a failure\n");
+    printf("Device sleep preparation failed; deep sleep cancelled\n");
+    return;
   }
 
   ConfigureDeepSleepGpioIsolation();

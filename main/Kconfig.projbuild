@@ -116,7 +116,6 @@ menu "Example Configuration"
             depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 || LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR
         config EXAMPLE_BUILD_SLEEP
             bool "sleep"
-            depends on !(LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 && LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
             depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 || LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR
         config EXAMPLE_BUILD_TCA8418
             bool "tca8418"
