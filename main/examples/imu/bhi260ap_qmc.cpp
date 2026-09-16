@@ -1,5 +1,5 @@
 /*
- * @Description: BHI260AP 与 QMC6310N 姿态角读取实现
+ * @Description: BHI260AP 与 QMC6309/QMC6310N 姿态角读取实现
  * @Author: LILYGO_L
  * @Date: 2026-07-28 13:59:02
  * @LastEditTime: 2026-07-28 14:05:30
@@ -10,7 +10,9 @@
 
 #include <cmath>
 
-#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR)
+#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR) || \
+    (defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) && \
+        defined(CONFIG_LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2))
 
 #include "bhy2_parse.h"
 
@@ -32,7 +34,7 @@ constexpr uint32_t kReportLatencyMs = 0;
 constexpr uint32_t kLogIntervalMs = 500;
 
 Bhi2xy* g_bhi260ap = nullptr;
-SensorQMC6310* g_qmc6310n = nullptr;
+MagnetometerBase* g_magnetometer = nullptr;
 float g_acceleration[3] = {0.0f, 0.0f, 0.0f};
 float g_magnetic_field[3] = {0.0f, 0.0f, 0.0f};
 bool g_acceleration_ready = false;
@@ -119,27 +121,42 @@ bool ConfigureBhi260ap() {
   return true;
 }
 
-bool GetQmc6310n() {
+bool GetMagnetometer() {
   auto& driver = common::GetDriver();
+#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4)
+  if (!driver.IsQmc6309Ready() || !driver.SetQmc6309Sleep(false)) {
+    printf("QMC6309 is not ready\n");
+    return false;
+  }
+  g_magnetometer = driver.chip().qmc6309.get();
+#else
   if (!driver.IsQmc6310nReady() || !driver.SetQmc6310nSleep(false)) {
     printf("QMC6310N is not ready\n");
     return false;
   }
 
-  g_qmc6310n = driver.chip().qmc6310n.get();
-  return g_qmc6310n != nullptr;
+  g_magnetometer = driver.chip().qmc6310n.get();
+#endif
+  return g_magnetometer != nullptr;
 }
 
 }  // namespace
 
-void RunBhi260apQmc6310nImuExample() {
-  if (!ConfigureBhi260ap() || !GetQmc6310n()) {
+void RunBhi260apQmcImuExample() {
+  if (!GetMagnetometer() || !ConfigureBhi260ap()) {
+    auto& driver = common::GetDriver();
+    driver.SetBhi260apSleep(true);
+#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4)
+    driver.SetQmc6309Sleep(true);
+#else
+    driver.SetQmc6310nSleep(true);
+#endif
     printf("IMU initialization failed\n");
     return;
   }
 
   TickType_t last_log_tick = xTaskGetTickCount();
-  printf("IMU orientation output started\n");
+  printf("IMU orientation output started without sensor calibration\n");
 
   while (true) {
     if (!g_bhi260ap->ProcessFifo()) {
@@ -147,14 +164,16 @@ void RunBhi260apQmc6310nImuExample() {
           g_bhi260ap->last_error());
     }
 
-    if (g_qmc6310n->isDataReady()) {
-      MagnetometerData data;
-      if (g_qmc6310n->readData(data)) {
-        g_magnetic_field[0] = data.magnetic_field.x;
-        g_magnetic_field[1] = data.magnetic_field.y;
-        g_magnetic_field[2] = data.magnetic_field.z;
-        g_magnetic_field_ready = true;
-      }
+    // QMC6309 的 DRDY/OVFL 在读状态寄存器后清除，readData 内部已检查。
+    MagnetometerData data{};
+    const bool magnetic_data_read = g_magnetometer->readData(data);
+    if (data.overflow) {
+      g_magnetic_field_ready = false;
+    } else if (magnetic_data_read) {
+      g_magnetic_field[0] = data.magnetic_field.x;
+      g_magnetic_field[1] = data.magnetic_field.y;
+      g_magnetic_field[2] = data.magnetic_field.z;
+      g_magnetic_field_ready = true;
     }
 
     const TickType_t now = xTaskGetTickCount();

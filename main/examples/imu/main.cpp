@@ -15,9 +15,12 @@ extern "C" void app_main(void) {
     printf("Device driver initialization completed with errors; continuing example\n");
   }
 
-#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4)
+#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) && \
+    !defined(CONFIG_LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
   RunIcm20948ImuExample();
-#elif defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR)
-  RunBhi260apQmc6310nImuExample();
+#elif defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR) || \
+    (defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) && \
+        defined(CONFIG_LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2))
+  RunBhi260apQmcImuExample();
 #endif
 }

@@ -7,5 +7,5 @@
  */
 #pragma once
 
-void RunBhi260apQmc6310nImuExample();
+void RunBhi260apQmcImuExample();
 void RunIcm20948ImuExample();
