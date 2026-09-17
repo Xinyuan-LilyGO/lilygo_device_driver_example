@@ -1457,24 +1457,6 @@ rfalNfcDiscoverParam CreateDiscoveryParameters() {
   return parameters;
 }
 
-#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4)
-/**
- * @brief 使用键盘扩展板上的 SPI、INT 和 CS 引脚创建 ST25R3916 驱动
- * @return ST25R3916 驱动所有权
- */
-std::unique_ptr<stsw::St25r3916x> CreateNfcDriver() {
-  auto& board_driver = common::GetDriver();
-  auto spi_bus = std::make_shared<cpp_bus_driver::HardwareSpi>(
-      board_driver.bus().sx1262_spi_bus, 1);
-  return std::make_unique<stsw::St25r3916x>(spi_bus,
-      common::board::keyboard_expansion::gpio::t_mix_rf::st25r3916::kInt,
-      common::board::keyboard_expansion::gpio::t_mix_rf::st25r3916::kCs);
-}
-#elif defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR)
-#else
-#error "Unsupported board for the ST25R3916 example"
-#endif
-
 }  // namespace
 
 extern "C" void app_main(void) {
@@ -1493,24 +1475,23 @@ extern "C" void app_main(void) {
   }
 
 #if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4)
-  auto nfc_owner = CreateNfcDriver();
-  auto* nfc = nfc_owner.get();
-  ReturnCode result = nfc->Init();
-  if (result != RFAL_ERR_NONE) {
-    const stsw::PlatformError platform_error = nfc->platform_error();
-    std::printf("[ERROR] ST25R3916 initialization failed\n");
-    std::printf("        RFAL     : %s (code %u)\n", RfalErrorName(result),
-        static_cast<unsigned int>(result));
-    std::printf("        Platform : %s (code %u)\n",
-        PlatformErrorName(platform_error),
-        static_cast<unsigned int>(platform_error));
+  auto& board_driver = common::GetDriver();
+  if (!board_driver.InitKeyboardExpansion()) {
+    std::printf("Some keyboard expansion peripherals failed to initialize; continuing example\n");
+  }
+  auto* nfc = board_driver.chip().st25r3916.get();
+  if (!board_driver.IsSt25r3916Ready() ||
+      !board_driver.SetSt25r3916OperatingMode(
+          common::DeviceDriver::St25r3916OperatingMode::kActive)) {
+    std::printf("[ERROR] Keyboard expansion ST25R3916 initialization or wake-up failed\n");
     return;
   }
+  ReturnCode result = RFAL_ERR_NONE;
 #else
   auto& board_driver = common::GetDriver();
   auto* nfc = board_driver.chip().st25r3916.get();
   if (nfc == nullptr || !board_driver.IsSt25r3916Ready()) {
-    const auto& status = board_driver.status().st25r3916;
+    const auto& status = board_driver.chip_status().st25r3916;
     std::printf("[ERROR] ST25R3916 initialization failed\n");
     std::printf("        RFAL     : %s (code %u)\n",
         RfalErrorName(status.result),

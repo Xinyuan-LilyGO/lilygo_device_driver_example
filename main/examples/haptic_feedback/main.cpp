@@ -31,7 +31,7 @@ extern "C" void app_main(void) {
   auto& aw86224 = driver.chip().aw86224;
 
   while (true) {
-    const auto& info = driver.status().aw86224.ram_waveform_info;
+    const auto& info = driver.chip_status().aw86224.ram_waveform_info;
     if (info.data == nullptr || info.waveform_count == 0) {
       printf("AW86224 RAM waveform init failed\n");
       vTaskDelay(pdMS_TO_TICKS(1000));

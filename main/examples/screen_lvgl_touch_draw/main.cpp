@@ -21,11 +21,7 @@ bool g_needs_clear = false;
 
 bool TouchReady() {
   auto& driver = common::GetDriver();
-#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4)
   return driver.IsScreenReady() && driver.IsTouchReady();
-#else
-  return driver.IsScreenReady() && driver.IsHi8561TouchReady();
-#endif
 }
 
 template <typename Touch>

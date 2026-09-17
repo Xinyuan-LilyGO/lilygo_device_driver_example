@@ -113,6 +113,18 @@ inline bool IsRm69a10Screen() {
 }
 
 /**
+ * @brief 查询当前板卡的屏幕是否已就绪
+ * @return 屏幕芯片和显示总线均已就绪时返回 true
+ */
+inline bool IsScreenReady() {
+#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_GLASSES_P4)
+  return GetDriver().IsS023msafjf10111e1Ready();
+#else
+  return GetDriver().IsScreenReady();
+#endif
+}
+
+/**
  * @brief 向当前屏幕写入指定区域的像素数据
  * @param x_start 区域起始 X 坐标
  * @param y_start 区域起始 Y 坐标
@@ -125,16 +137,17 @@ inline bool SendScreen(
     int x_start, int y_start, int x_end, int y_end, const void* data) {
   auto& driver = GetDriver();
 #if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_GLASSES_P4)
-  return driver.IsScreenReady() && driver.bus().screen_mipi_bus != nullptr &&
+  return driver.IsS023msafjf10111e1Ready() &&
+         driver.bus().screen_mipi_bus != nullptr &&
          driver.bus().screen_mipi_bus->Write(
              x_start, y_start, x_end, y_end, data);
 #else
-  if (IsHi8561Screen() && driver.IsHi8561Ready()) {
+  if (IsHi8561Screen() && driver.IsScreenReady()) {
     return driver.chip().hi8561->SendColorStreamCoordinate(
         x_start, y_start, x_end, y_end, data);
   }
 #if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4)
-  if (IsRm69a10Screen() && driver.IsRm69a10Ready()) {
+  if (IsRm69a10Screen() && driver.IsScreenReady()) {
     return driver.chip().rm69a10->SendColorStreamCoordinate(
         x_start, y_start, x_end, y_end, data);
   }
@@ -151,7 +164,7 @@ inline void StartBacklight() {
 #if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) || \
     defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR)
   if (IsHi8561Screen()) {
-    if (!driver.IsHi8561Ready()) {
+    if (!driver.IsScreenReady()) {
       printf("Screen is not ready\n");
       return;
     }
@@ -165,21 +178,21 @@ inline void StartBacklight() {
 #endif
 #if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4)
 #if defined(CONFIG_LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
-  if (IsHi8561Screen() && driver.IsSy7200aReady()) {
+  if (IsHi8561Screen() && driver.IsScreenBacklightReady()) {
     driver.chip().sy7200a->FadeTo(
         {.value = 1, .scale = 1}, 500,
         cpp_bus_driver::Pwm::FadeMode::kWaitForCompletion);
     return;
   }
 #else
-  if (IsHi8561Screen() && driver.IsPt4103Ready()) {
+  if (IsHi8561Screen() && driver.IsScreenBacklightReady()) {
     driver.chip().pt4103->FadeTo(
         {.value = 1, .scale = 1}, 500,
         cpp_bus_driver::Pwm::FadeMode::kWaitForCompletion);
     return;
   }
 #endif
-  if (IsRm69a10Screen() && driver.IsRm69a10Ready()) {
+  if (IsRm69a10Screen() && driver.IsScreenReady()) {
     auto* screen = driver.chip().rm69a10.get();
     // 初始化后屏幕处于睡眠和关屏状态，调节亮度前先恢复显示。
     if (!screen->SetSleep(false) || !screen->SetScreenOff(false)) {
@@ -195,7 +208,7 @@ inline void StartBacklight() {
     }
   }
 #elif defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR)
-  if (driver.IsSy7200aReady()) {
+  if (driver.IsScreenBacklightReady()) {
     driver.chip().sy7200a->FadeTo(
         {.value = 1, .scale = 1}, 500,
         cpp_bus_driver::Pwm::FadeMode::kWaitForCompletion);

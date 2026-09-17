@@ -110,9 +110,17 @@ void RunLr2021() {
     return;
   }
 #endif
+#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) && \
+    !defined(CONFIG_LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
+  if (driver.radio_type() != common::board::device::RadioType::kLr2021 ||
+      !driver.IsRadioReady() ||
+      !driver.SetRadioOperatingMode(
+          common::DeviceDriver::RadioOperatingMode::kStandby)) {
+#else
   if (!driver.IsLr2021Ready() ||
       !driver.SetLr2021OperatingMode(
           common::DeviceDriver::Lr2021OperatingMode::kStandby)) {
+#endif
     printf("LR2021 initialization or wake-up failed\n");
     return;
   }

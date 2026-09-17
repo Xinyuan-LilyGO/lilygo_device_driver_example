@@ -71,9 +71,11 @@ void RunSx1262() {
   }
 
   auto& driver = common::GetDriver();
-  if (!driver.IsXl9535Ready() || !driver.IsSx1262Ready() ||
-      !driver.SetSx1262OperatingMode(
-          common::DeviceDriver::Sx1262OperatingMode::kStandby)) {
+  if (!driver.IsXl9535Ready() ||
+      driver.radio_type() != common::board::device::RadioType::kSx1262 ||
+      !driver.IsRadioReady() ||
+      !driver.SetRadioOperatingMode(
+          common::DeviceDriver::RadioOperatingMode::kStandby)) {
     printf("SX1262 initialization or wake-up failed\n");
     return;
   }

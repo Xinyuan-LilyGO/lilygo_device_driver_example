@@ -373,7 +373,7 @@ extern "C" void app_main(void) {
   if (!common::InitDriver()) {
     printf("Device driver initialization completed with errors; continuing example\n");
   }
-  if (!common::GetDriver().IsScreenReady()) {
+  if (!common::IsScreenReady()) {
     printf("Screen init failed\n");
     return;
   }

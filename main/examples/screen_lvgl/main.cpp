@@ -21,12 +21,12 @@ void ReleasedInput(lv_indev_t*, lv_indev_data_t* data) {
 /**
  * @brief 启动显示时序后依次显示屏幕内部测试图案
  * @return 图案设置及测试后的清理均成功返回 true，否则返回 false
- * @note 清理后需调用 InitScreen，重新初始化时通过硬件复位恢复视频模式。
+ * @note 清理后需调用 InitS023msafjf10111e1，通过硬件复位恢复视频模式。
  */
 bool RunScreenInternalTests() {
   using Screen = cpp_bus_driver::S023msafjf10111e1;
   auto& driver = common::GetDriver();
-  if (!driver.InitScreen()) {
+  if (!driver.InitS023msafjf10111e1()) {
     return false;
   }
   auto* screen = driver.chip().s023msafjf10111e1.get();
@@ -66,9 +66,9 @@ bool RunScreenInternalTests() {
   } else {
     printf("Screen internal test reset failed\n");
   }
-  // 手册未提供完整的 BIST 退出序列，解除初始化后由 InitScreen
+  // 手册未提供完整的 BIST 退出序列，解除初始化后由 InitS023msafjf10111e1
   // 复位并恢复视频配置。
-  const bool cleaned_up = driver.DeinitScreen();
+  const bool cleaned_up = driver.DeinitS023msafjf10111e1();
   if (!cleaned_up) {
     printf("Screen internal test cleanup failed\n");
   }
@@ -192,7 +192,7 @@ ScreenTestSequence GetScreenTestSequence() {
   };
   return {"S023MSAFJF10111E1", kSteps, sizeof(kSteps) / sizeof(kSteps[0])};
 #else
-  if (common::IsHi8561Screen() && driver.IsHi8561Ready()) {
+  if (common::IsHi8561Screen() && driver.IsScreenReady()) {
     using Screen = cpp_bus_driver::Hi8561;
     static auto* screen = driver.chip().hi8561.get();
     static const ScreenTestStep kSteps[] = {
@@ -227,7 +227,7 @@ ScreenTestSequence GetScreenTestSequence() {
     return {"HI8561", kSteps, sizeof(kSteps) / sizeof(kSteps[0])};
   }
 #if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4)
-  if (common::IsRm69a10Screen() && driver.IsRm69a10Ready()) {
+  if (common::IsRm69a10Screen() && driver.IsScreenReady()) {
     static auto* screen = driver.chip().rm69a10.get();
     static const ScreenTestStep kSteps[] = {
         {"inversion=on", [] { return screen->SetInversion(true); }},
@@ -339,12 +339,12 @@ extern "C" void app_main(void) {
     return;
   }
   printf("Screen mode: initializing MIPI/LVGL after panel reset\n");
-  if (!common::GetDriver().InitScreen()) {
+  if (!common::GetDriver().InitS023msafjf10111e1()) {
     printf("Screen device initialization failed\n");
     return;
   }
 #endif
-  if (!common::GetDriver().IsScreenReady()) {
+  if (!common::IsScreenReady()) {
     printf("Screen init failed\n");
     return;
   }
