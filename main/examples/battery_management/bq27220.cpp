@@ -1,5 +1,5 @@
 /*
- * @Description: BQ27220 电量计配置与电池状态监测实现
+ * @Description: BQ27220 电池状态监测实现
  * @Author: LILYGO_L
  * @Date: 2026-07-28 13:59:02
  * @LastEditTime: 2026-09-03 16:57:00
@@ -12,8 +12,6 @@
     !defined(CONFIG_LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
 
 namespace {
-constexpr uint16_t kBatteryCapacityMah = 1000;
-
 void PrintSection(const char* title) {
   BatteryLogPrintf("\n%s:\n", title);
 }
@@ -39,22 +37,11 @@ void RunBq27220Example() {
 
   auto& driver = common::GetDriver();
 
-  if (!driver.InitBq27220()) {
-    BatteryLogPrintf("BQ27220 init failed\n");
+  if (!driver.IsBq27220Ready()) {
+    BatteryLogPrintf("BQ27220 is not ready\n");
     return;
   }
   auto& bq27220 = driver.chip().bq27220;
-
-  cpp_bus_driver::Bq27220::CedvProfile battery_profile;
-  battery_profile.design_capacity = kBatteryCapacityMah;
-  battery_profile.full_charge_capacity = kBatteryCapacityMah;
-
-  cpp_bus_driver::Bq27220::GaugingConfig gauging_config;
-
-  bool config_ok =
-      bq27220->ApplyBatteryProfileIfNeeded(battery_profile, gauging_config);
-  BatteryLogPrintf("BQ27220 example config: %s, capacity: %u mAh\n",
-      config_ok ? "ok" : "failed", kBatteryCapacityMah);
 
   while (true) {
     cpp_bus_driver::Bq27220::BatteryStatus battery_status;
