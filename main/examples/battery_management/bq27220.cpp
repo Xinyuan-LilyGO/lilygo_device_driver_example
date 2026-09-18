@@ -14,10 +14,8 @@
 namespace {
 constexpr uint16_t kBatteryCapacityMah = 1000;
 
-void PrintSeparator() {
-  printf(
-      "--------------------------------------------------------------------------"
-      "\n");
+void PrintSection(const char* title) {
+  BatteryLogPrintf("\n%s:\n", title);
 }
 
 const char* SecurityModeToString(
@@ -37,15 +35,12 @@ const char* SecurityModeToString(
 }  // namespace
 
 void RunBq27220Example() {
-  printf("BQ27220 battery management example\n");
+  BatteryLogPrintf("BQ27220 battery management example\n");
 
   auto& driver = common::GetDriver();
-  if (!common::InitMinimalDriver()) {
-    printf("Minimal device driver initialization completed with errors; continuing example\n");
-  }
 
   if (!driver.InitBq27220()) {
-    printf("BQ27220 init failed\n");
+    BatteryLogPrintf("BQ27220 init failed\n");
     return;
   }
   auto& bq27220 = driver.chip().bq27220;
@@ -58,7 +53,7 @@ void RunBq27220Example() {
 
   bool config_ok =
       bq27220->ApplyBatteryProfileIfNeeded(battery_profile, gauging_config);
-  printf("BQ27220 example config: %s, capacity: %u mAh\n",
+  BatteryLogPrintf("BQ27220 example config: %s, capacity: %u mAh\n",
       config_ok ? "ok" : "failed", kBatteryCapacityMah);
 
   while (true) {
@@ -69,98 +64,104 @@ void RunBq27220Example() {
         bq27220->GetOperationStatus(operation_status);
     const int16_t current_ma = bq27220->GetCurrent();
 
-    printf("\nBQ27220 snapshot\n");
-    PrintSeparator();
-    printf("Chip ID: 0x%04X\n", bq27220->GetChipId());
-    printf("Firmware version: 0x%04X\n", bq27220->GetFirmwareVersion());
-    printf("Hardware version: 0x%04X\n", bq27220->GetHardwareVersion());
+    BatteryLogBeginSnapshot();
+    BatteryLogPrintf("\nBQ27220 snapshot\n");
+    PrintSection("Chip information");
+    BatteryLogPrintf("  Chip ID: 0x%04X\n", bq27220->GetChipId());
+    BatteryLogPrintf("  Firmware version: 0x%04X\n", bq27220->GetFirmwareVersion());
+    BatteryLogPrintf("  Hardware version: 0x%04X\n", bq27220->GetHardwareVersion());
 
+    PrintSection("Operation status");
     if (operation_status_ok) {
-      printf("Security mode: %s\n",
+      BatteryLogPrintf("  Security mode: %s\n",
           SecurityModeToString(operation_status.security));
-      printf("Calibration mode: %d\n",
+      BatteryLogPrintf("  Calibration mode: %d\n",
           operation_status.flag.calibration_mode);
-      printf("Config update: %d\n",
+      BatteryLogPrintf("  Config update: %d\n",
           operation_status.flag.config_update_mode);
-      printf("Init complete: %d\n",
+      BatteryLogPrintf("  Init complete: %d\n",
           operation_status.flag.initialization_complete);
-      printf("EDV2 reached: %d\n", operation_status.flag.edv2_reached);
-      printf("Valid discharge qualified: %d\n",
+      BatteryLogPrintf("  EDV2 reached: %d\n", operation_status.flag.edv2_reached);
+      BatteryLogPrintf("  Valid discharge qualified: %d\n",
           operation_status.flag.valid_discharge_qualified);
-      printf("Smoothing active: %d\n",
+      BatteryLogPrintf("  Smoothing active: %d\n",
           operation_status.flag.smoothing_active);
-      printf("Battery trip point interrupt: %d\n",
+      BatteryLogPrintf("  Battery trip point interrupt: %d\n",
           operation_status.flag.battery_trip_point_interrupt);
+    } else {
+      BatteryLogPrintf("  Operation status: read failed\n");
     }
 
-    PrintSeparator();
-    printf("Design capacity: %u mAh\n", bq27220->GetDesignCapacity());
-    printf("Remaining capacity: %u mAh\n",
+    PrintSection("Battery capacity");
+    BatteryLogPrintf("  Design capacity: %u mAh\n", bq27220->GetDesignCapacity());
+    BatteryLogPrintf("  Remaining capacity: %u mAh\n",
         bq27220->GetRemainingCapacity());
-    printf("Full charge capacity: %u mAh\n",
+    BatteryLogPrintf("  Full charge capacity: %u mAh\n",
         bq27220->GetFullChargeCapacity());
-    printf("State of charge: %u%%\n", bq27220->GetStatusOfCharge());
-    printf("State of health: %u%%\n", bq27220->GetStatusOfHealth());
-    printf("Cycle count: %u\n", bq27220->GetCycleCount());
-    printf("Raw coulomb count: %d c\n", bq27220->GetRawCoulombCount());
+    BatteryLogPrintf("  State of charge: %u%%\n", bq27220->GetStatusOfCharge());
+    BatteryLogPrintf("  State of health: %u%%\n", bq27220->GetStatusOfHealth());
+    BatteryLogPrintf("  Cycle count: %u\n", bq27220->GetCycleCount());
+    BatteryLogPrintf("  Raw coulomb count: %d c\n", bq27220->GetRawCoulombCount());
 
-    PrintSeparator();
-    printf("Voltage: %u mV\n", bq27220->GetVoltage());
-    printf("Current: %d mA\n", current_ma);
-    printf("Average current: %d mA\n", bq27220->GetAverageCurrent());
-    printf("Average power: %d mW\n", bq27220->GetAveragePower());
-    printf("Charging voltage request: %u mV\n",
+    PrintSection("Voltage and current");
+    BatteryLogPrintf("  Voltage: %u mV\n", bq27220->GetVoltage());
+    BatteryLogPrintf("  Current: %d mA\n", current_ma);
+    BatteryLogPrintf("  Average current: %d mA\n", bq27220->GetAverageCurrent());
+    BatteryLogPrintf("  Average power: %d mW\n", bq27220->GetAveragePower());
+    BatteryLogPrintf("  Charging voltage request: %u mV\n",
         bq27220->GetChargingVoltage());
-    printf("Charging current request: %u mA\n",
+    BatteryLogPrintf("  Charging current request: %u mA\n",
         bq27220->GetChargingCurrent());
-    printf("Standby current: %d mA\n", bq27220->GetStandbyCurrent());
-    printf("Max load current: %d mA\n", bq27220->GetMaxLoadCurrent());
+    BatteryLogPrintf("  Standby current: %d mA\n", bq27220->GetStandbyCurrent());
+    BatteryLogPrintf("  Max load current: %d mA\n", bq27220->GetMaxLoadCurrent());
 
-    PrintSeparator();
-    printf("Gauge temperature: %.2f C\n", bq27220->GetTemperatureCelsius());
-    printf("Internal temperature: %.2f C\n",
+    PrintSection("Temperature");
+    BatteryLogPrintf("  Gauge temperature: %.2f C\n", bq27220->GetTemperatureCelsius());
+    BatteryLogPrintf("  Internal temperature: %.2f C\n",
         bq27220->GetChipTemperatureCelsius());
 
-    PrintSeparator();
+    PrintSection("Runtime estimates");
     bq27220->SetAtRate(current_ma);
-    printf("AtRate: %d mA\n", bq27220->GetAtRate());
-    printf("AtRate time to empty: %u min\n",
+    BatteryLogPrintf("  AtRate: %d mA\n", bq27220->GetAtRate());
+    BatteryLogPrintf("  AtRate time to empty: %u min\n",
         bq27220->GetAtRateTimeToEmpty());
-    printf("Time to empty: %u min\n", bq27220->GetTimeToEmpty());
-    printf("Time to full: %u min\n", bq27220->GetTimeToFull());
-    printf("Standby time to empty: %u min\n",
+    BatteryLogPrintf("  Time to empty: %u min\n", bq27220->GetTimeToEmpty());
+    BatteryLogPrintf("  Time to full: %u min\n", bq27220->GetTimeToFull());
+    BatteryLogPrintf("  Standby time to empty: %u min\n",
         bq27220->GetStandbyTimeToEmpty());
-    printf("Max load time to empty: %u min\n",
+    BatteryLogPrintf("  Max load time to empty: %u min\n",
         bq27220->GetMaxLoadTimeToEmpty());
 
+    PrintSection("Battery status");
     if (battery_status_ok) {
-      PrintSeparator();
-      printf("Discharging: %d\n", battery_status.flag.discharging);
-      printf("Battery present: %d\n", battery_status.flag.battery_present);
-      printf("Authentication good: %d\n",
+      BatteryLogPrintf("  Discharging: %d\n", battery_status.flag.discharging);
+      BatteryLogPrintf("  Battery present: %d\n", battery_status.flag.battery_present);
+      BatteryLogPrintf("  Authentication good: %d\n",
           battery_status.flag.authentication_good);
-      printf("Open circuit voltage good: %d\n",
+      BatteryLogPrintf("  Open circuit voltage good: %d\n",
           battery_status.flag.open_circuit_voltage_good);
-      printf("Open circuit voltage failed: %d\n",
+      BatteryLogPrintf("  Open circuit voltage failed: %d\n",
           battery_status.flag.open_circuit_voltage_failed);
-      printf("Open circuit voltage complete: %d\n",
+      BatteryLogPrintf("  Open circuit voltage complete: %d\n",
           battery_status.flag.open_circuit_voltage_complete);
-      printf("Full charged: %d\n", battery_status.flag.full_charged);
-      printf("Full discharged: %d\n", battery_status.flag.full_discharged);
-      printf("Charge inhibit: %d\n", battery_status.flag.charge_inhibit);
-      printf("Charge overtemperature: %d\n",
+      BatteryLogPrintf("  Full charged: %d\n", battery_status.flag.full_charged);
+      BatteryLogPrintf("  Full discharged: %d\n", battery_status.flag.full_discharged);
+      BatteryLogPrintf("  Charge inhibit: %d\n", battery_status.flag.charge_inhibit);
+      BatteryLogPrintf("  Charge overtemperature: %d\n",
           battery_status.flag.over_temperature_charge);
-      printf("Discharge overtemperature: %d\n",
+      BatteryLogPrintf("  Discharge overtemperature: %d\n",
           battery_status.flag.over_temperature_discharge);
-      printf("Sleep: %d\n", battery_status.flag.sleep_mode);
-      printf("Terminate charge alarm: %d\n",
+      BatteryLogPrintf("  Sleep: %d\n", battery_status.flag.sleep_mode);
+      BatteryLogPrintf("  Terminate charge alarm: %d\n",
           battery_status.flag.terminate_charge_alarm);
-      printf("Terminate discharge alarm: %d\n",
+      BatteryLogPrintf("  Terminate discharge alarm: %d\n",
           battery_status.flag.terminate_discharge_alarm);
-      printf("System down: %d\n", battery_status.flag.system_down);
+      BatteryLogPrintf("  System down: %d\n", battery_status.flag.system_down);
+    } else {
+      BatteryLogPrintf("  Battery status: read failed\n");
     }
 
-    PrintSeparator();
+    BatteryLogEndSnapshot();
     vTaskDelay(pdMS_TO_TICKS(1000));
   }
 }
