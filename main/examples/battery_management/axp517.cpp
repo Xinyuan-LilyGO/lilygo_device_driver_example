@@ -12,276 +12,106 @@
     (defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) && \
         defined(CONFIG_LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2))
 
-const char* ChargeStatusName(cpp_bus_driver::Axp517::ChargeStatus status) {
-  switch (status) {
-    case cpp_bus_driver::Axp517::ChargeStatus::kTrickleCharge:
-      return "trickle charge";
-    case cpp_bus_driver::Axp517::ChargeStatus::kPrecharge:
-      return "precharge";
-    case cpp_bus_driver::Axp517::ChargeStatus::kConstantCurrent:
-      return "constant current";
-    case cpp_bus_driver::Axp517::ChargeStatus::kConstantVoltage:
-      return "constant voltage";
-    case cpp_bus_driver::Axp517::ChargeStatus::kChargeDone:
-      return "charge done";
-    case cpp_bus_driver::Axp517::ChargeStatus::kNotCharging:
-      return "not charging";
-    default:
-      return "invalid";
+namespace {
+const char* ChargeName(cpp_bus_driver::Axp517::ChargeStatus value) {
+  using S = cpp_bus_driver::Axp517::ChargeStatus;
+  switch (value) {
+    case S::kTrickleCharge: return "trickle";
+    case S::kPrecharge: return "precharge";
+    case S::kConstantCurrent: return "constant-current";
+    case S::kConstantVoltage: return "constant-voltage";
+    case S::kChargeDone: return "done";
+    case S::kNotCharging: return "not-charging";
+    default: return "invalid";
   }
 }
 
-const char* BatteryCurrentDirectionName(
-    cpp_bus_driver::Axp517::BatteryCurrentDirection direction) {
-  switch (direction) {
-    case cpp_bus_driver::Axp517::BatteryCurrentDirection::kStandby:
-      return "standby";
-    case cpp_bus_driver::Axp517::BatteryCurrentDirection::kCharge:
-      return "charge";
-    case cpp_bus_driver::Axp517::BatteryCurrentDirection::kDischarge:
-      return "discharge";
-    default:
-      return "invalid";
+const char* DirectionName(cpp_bus_driver::Axp517::BatteryCurrentDirection value) {
+  using D = cpp_bus_driver::Axp517::BatteryCurrentDirection;
+  switch (value) {
+    case D::kStandby: return "standby";
+    case D::kCharge: return "charge";
+    case D::kDischarge: return "discharge";
+    default: return "invalid";
   }
 }
 
-const char* BcDetectResultName(cpp_bus_driver::Axp517::BcDetectResult result) {
-  switch (result) {
-    case cpp_bus_driver::Axp517::BcDetectResult::kSdp:
-      return "SDP";
-    case cpp_bus_driver::Axp517::BcDetectResult::kCdp:
-      return "CDP";
-    case cpp_bus_driver::Axp517::BcDetectResult::kDcp:
-      return "DCP";
-    default:
-      return "invalid";
-  }
-}
+void PrintAxp517(cpp_bus_driver::Axp517& chip) {
+  cpp_bus_driver::Axp517::ChipId id;
+  cpp_bus_driver::Axp517::Status status;
+  cpp_bus_driver::Axp517::FaultStatus fault;
+  uint8_t soc = 0, soh = 0;
+  uint16_t vbat = 0, vsys = 0, vbus = 0, cycle = 0;
+  float ibat = 0, ichg = 0, idchg = 0, ibus = 0, ts = 0, die = 0, temp = 0;
+  uint64_t irq = 0;
+  uint16_t pd_alert = 0;
 
-const char* YesNo(bool value) {
-  return value ? "yes" : "no";
-}
-
-void PrintChipStatus(cpp_bus_driver::Axp517& axp517) {
-  cpp_bus_driver::Axp517::ChipStatus0 status0;
-  if (axp517.GetChipStatus0(status0)) {
-    BatteryLogPrintf("\nchip status0:\n");
-    BatteryLogPrintf("  current limit: %s\n", YesNo(status0.current_limit_status));
-    BatteryLogPrintf("  thermal regulation: %s\n",
-        YesNo(status0.thermal_regulation_status));
-    BatteryLogPrintf("  battery active mode: %s\n",
-        YesNo(status0.battery_in_active_mode));
-    BatteryLogPrintf("  battery present: %s\n",
-        YesNo(status0.battery_present_status));
-    BatteryLogPrintf("  batfet on: %s\n", YesNo(status0.batfet_status));
-    BatteryLogPrintf("  vbus good: %s\n", YesNo(status0.vbus_good_indication));
+  BatteryLogPrintf("\n========== AXP517 official driver status ==========\n");
+  if (chip.GetChipId(id))
+    BatteryLogPrintf("chip id: 0x%02X  extended id: 0x%02X\n", id.chip_id, id.extended_id);
+  else
+    BatteryLogPrintf("chip id: read failed\n");
+  if (chip.GetStatus(status)) {
+    BatteryLogPrintf("status: battery=%s  vbus=%s  system=%s\n",
+        status.battery_present ? "present" : "absent",
+        status.vbus_good ? "good" : "absent",
+        status.system_on ? "on" : "off");
+    BatteryLogPrintf("charge: %s  battery-current-direction: %s\n",
+        ChargeName(status.charge), DirectionName(status.current_direction));
   } else {
-    BatteryLogPrintf("\nchip status0: read failed\n");
+    BatteryLogPrintf("status: read failed\n");
   }
-
-  cpp_bus_driver::Axp517::ChipStatus1 status1;
-  if (axp517.GetChipStatus1(status1)) {
-    BatteryLogPrintf("\nchip status1:\n");
-    BatteryLogPrintf("  charging status: %s\n",
-        ChargeStatusName(status1.charging_status));
-    BatteryLogPrintf("  vindpm status: %s\n", YesNo(status1.vindpm_status));
-    BatteryLogPrintf("  system status indication: %s\n",
-        YesNo(status1.system_status_indication));
-    BatteryLogPrintf("  battery current direction: %s\n",
-        BatteryCurrentDirectionName(status1.battery_current_direction));
-  } else {
-    BatteryLogPrintf("\nchip status1: read failed\n");
+  if (chip.GetFaultStatus(fault)) {
+    BatteryLogPrintf("fault: ntc=%u  vsys-overvoltage=%s  vbat-undervoltage=%s\n",
+        static_cast<unsigned>(fault.ntc), fault.system_overvoltage ? "yes" : "no",
+        fault.battery_undervoltage ? "yes" : "no");
   }
+  if (chip.GetBatteryLevel(soc)) BatteryLogPrintf("gauge soc: %u %%\n", soc);
+  if (chip.GetBatterySoh(soh)) BatteryLogPrintf("gauge soh: %u %%\n", soh);
+  if (chip.GetCycleCount(cycle)) BatteryLogPrintf("cycle count: %u\n", cycle);
+  if (chip.GetBatteryVoltage(vbat)) BatteryLogPrintf("vbat: %u mV\n", vbat);
+  if (chip.GetSystemVoltage(vsys)) BatteryLogPrintf("vsys: %u mV\n", vsys);
+  if (chip.GetVbusVoltage(vbus)) BatteryLogPrintf("vbus: %u mV\n", vbus);
+  if (chip.GetBatteryCurrent(ibat)) BatteryLogPrintf("ibat: %.2f mA\n", ibat);
+  if (chip.GetChargingCurrent(ichg)) BatteryLogPrintf("ichg adc: %.2f mA\n", ichg);
+  if (chip.GetDischargingCurrent(idchg)) BatteryLogPrintf("idchg adc: %.2f mA\n", idchg);
+  if (chip.GetVbusCurrent(ibus)) BatteryLogPrintf("ibus: %.2f mA\n", ibus);
+  if (chip.GetTsVoltage(ts)) BatteryLogPrintf("ts voltage: %.2f mV\n", ts);
+  if (chip.GetDieTemperature(die)) BatteryLogPrintf("die temperature: %.1f C\n", die);
+  if (chip.GetBatteryTemperature(temp)) BatteryLogPrintf("battery temperature: %.1f C\n", temp);
+  if (chip.GetIrqStatus(irq)) BatteryLogPrintf("power irq: 0x%010llX\n", static_cast<unsigned long long>(irq));
+  if (chip.GetPdAlerts(pd_alert)) BatteryLogPrintf("pd alert: 0x%04X\n", pd_alert);
 }
-
-void PrintIrqStatus(cpp_bus_driver::Axp517& axp517) {
-  cpp_bus_driver::Axp517::IrqStatus0 irq0;
-  cpp_bus_driver::Axp517::IrqStatus1 irq1;
-  cpp_bus_driver::Axp517::IrqStatus2 irq2;
-  cpp_bus_driver::Axp517::IrqStatus3 irq3;
-  if (!axp517.GetIrqStatus(irq0, irq1, irq2, irq3)) {
-    BatteryLogPrintf("\nlatched irq status: read failed\n");
-    return;
-  }
-
-  BatteryLogPrintf("\nlatched irq status0:\n");
-  BatteryLogPrintf("  vbus fault: %s\n", YesNo(irq0.vbus_fault_flag));
-  BatteryLogPrintf("  vbus over voltage: %s\n",
-      YesNo(irq0.vbus_over_voltage_flag));
-  BatteryLogPrintf("  boost over voltage: %s\n",
-      YesNo(irq0.boost_over_voltage_flag));
-  BatteryLogPrintf("  charge to normal: %s\n", YesNo(irq0.charge_to_normal_flag));
-  BatteryLogPrintf("  gauge new soc: %s\n", YesNo(irq0.gauge_new_soc_flag));
-  BatteryLogPrintf("  soc drop to shutdown level: %s\n",
-      YesNo(irq0.soc_drop_to_shutdown_level_flag));
-  BatteryLogPrintf("  soc drop to warning level: %s\n",
-      YesNo(irq0.soc_drop_to_warning_level_flag));
-
-  BatteryLogPrintf("\nlatched irq status1:\n");
-  BatteryLogPrintf("  power key positive edge: %s\n",
-      YesNo(irq1.pwr_on_positive_edge_flag));
-  BatteryLogPrintf("  power key negative edge: %s\n",
-      YesNo(irq1.pwr_on_negative_edge_flag));
-  BatteryLogPrintf("  power key long press: %s\n",
-      YesNo(irq1.pwr_on_long_press_flag));
-  BatteryLogPrintf("  power key short press: %s\n",
-      YesNo(irq1.pwr_on_short_press_flag));
-  BatteryLogPrintf("  battery removed: %s\n", YesNo(irq1.battery_remove_flag));
-  BatteryLogPrintf("  battery inserted: %s\n", YesNo(irq1.battery_insert_flag));
-  BatteryLogPrintf("  vbus removed: %s\n", YesNo(irq1.vbus_remove_flag));
-  BatteryLogPrintf("  vbus inserted: %s\n", YesNo(irq1.vbus_insert_flag));
-
-  BatteryLogPrintf("\nlatched irq status2:\n");
-  BatteryLogPrintf("  battery over voltage: %s\n",
-      YesNo(irq2.battery_over_voltage_flag));
-  BatteryLogPrintf("  charger safety timer expired: %s\n",
-      YesNo(irq2.charger_safety_timer_expire_flag));
-  BatteryLogPrintf("  die over temperature level1: %s\n",
-      YesNo(irq2.die_over_temperature_level1_flag));
-  BatteryLogPrintf("  charger started: %s\n", YesNo(irq2.charger_start_flag));
-  BatteryLogPrintf("  battery charge done: %s\n",
-      YesNo(irq2.battery_charge_done_flag));
-  BatteryLogPrintf("  batfet over current: %s\n",
-      YesNo(irq2.batfet_over_current_flag));
-  BatteryLogPrintf("  watchdog expired: %s\n", YesNo(irq2.watchdog_expire_flag));
-
-  BatteryLogPrintf("\nlatched irq status3:\n");
-  BatteryLogPrintf("  battery under temperature work: %s\n",
-      YesNo(irq3.battery_under_temperature_work_flag));
-  BatteryLogPrintf("  battery over temperature work: %s\n",
-      YesNo(irq3.battery_over_temperature_work_flag));
-  BatteryLogPrintf("  battery under temperature charge: %s\n",
-      YesNo(irq3.battery_under_temperature_charge_flag));
-  BatteryLogPrintf("  battery over temperature charge: %s\n",
-      YesNo(irq3.battery_over_temperature_charge_flag));
-  BatteryLogPrintf("  battery over temperature quit: %s\n",
-      YesNo(irq3.battery_over_temperature_quit_flag));
-  BatteryLogPrintf("  bc1.2 result changed: %s\n",
-      YesNo(irq3.bc1_2_detect_result_change_flag));
-  BatteryLogPrintf("  bc1.2 detect finished: %s\n",
-      YesNo(irq3.bc1_2_detect_finished_flag));
-
-  if (!axp517.ClearAllIrq()) {
-    BatteryLogPrintf("  clear latched irq failed\n");
-  }
-}
-
-void PrintBatteryGauge(cpp_bus_driver::Axp517& axp517) {
-  BatteryLogPrintf("\nbattery gauge:\n");
-  BatteryLogPrintf("  level: %u %%\n", axp517.GetBatteryLevel());
-  BatteryLogPrintf("  health: %u %%\n", axp517.GetBatteryHealth());
-  BatteryLogPrintf("  temperature: %d C\n",
-      axp517.GetBatteryTemperatureCelsius());
-}
-
-void PrintAdcInfo(cpp_bus_driver::Axp517& axp517,
-    cpp_bus_driver::Axp517::BatteryCurrentDirection direction) {
-  BatteryLogPrintf("\nadc data:\n");
-  BatteryLogPrintf("  battery voltage: %u mV\n", axp517.GetBatteryVoltage());
-  BatteryLogPrintf("  battery current: %.2f mA\n", axp517.GetBatteryCurrent());
-  BatteryLogPrintf("  ts voltage: %.2f mV\n", axp517.GetTsVoltage());
-  BatteryLogPrintf("  vbus voltage: %u mV\n", axp517.GetVbusVoltage());
-  BatteryLogPrintf("  vbus current: %u mA\n", axp517.GetVbusCurrent());
-
-  if (axp517.SetAdcDataSelect(
-          cpp_bus_driver::Axp517::AdcData::kSystemVoltage)) {
-    BatteryLogPrintf("  system voltage: %u mV\n", axp517.GetSystemVoltage());
-  } else {
-    BatteryLogPrintf("  system voltage: select failed\n");
-  }
-
-  if (axp517.SetAdcDataSelect(
-          cpp_bus_driver::Axp517::AdcData::kChipTemperatureCelsius)) {
-    BatteryLogPrintf("  chip die junction temperature: %.2f C\n",
-        axp517.GetChipDieJunctionTemperatureCelsius());
-  } else {
-    BatteryLogPrintf("  chip die junction temperature: select failed\n");
-  }
-
-  switch (direction) {
-    case cpp_bus_driver::Axp517::BatteryCurrentDirection::kCharge:
-      if (axp517.SetAdcDataSelect(
-              cpp_bus_driver::Axp517::AdcData::kChargingCurrent)) {
-        BatteryLogPrintf("  charging current: %.2f mA\n", axp517.GetChargingCurrent());
-      } else {
-        BatteryLogPrintf("  charging current: select failed\n");
-      }
-      break;
-    case cpp_bus_driver::Axp517::BatteryCurrentDirection::kDischarge:
-      if (axp517.SetAdcDataSelect(
-              cpp_bus_driver::Axp517::AdcData::kDischargeCurrent)) {
-        BatteryLogPrintf("  discharging current: %.2f mA\n",
-            axp517.GetDischargingCurrent());
-      } else {
-        BatteryLogPrintf("  discharging current: select failed\n");
-      }
-      break;
-    case cpp_bus_driver::Axp517::BatteryCurrentDirection::kStandby:
-      BatteryLogPrintf("  charge/discharge current: standby\n");
-      break;
-    default:
-      BatteryLogPrintf("  charge/discharge current: invalid direction\n");
-      break;
-  }
-}
-
-void PrintBc12Info(cpp_bus_driver::Axp517& axp517) {
-  BatteryLogPrintf("\nbc1.2 detection:\n");
-  cpp_bus_driver::Axp517::BcDetectResult result;
-  if (axp517.GetBc12DetectResult(result)) {
-    BatteryLogPrintf("  bc1.2 detect result: %s\n", BcDetectResultName(result));
-  } else {
-    BatteryLogPrintf("  bc1.2 detect result: invalid or read failed\n");
-  }
-}
-
-void PrintPowerInfo(cpp_bus_driver::Axp517& axp517) {
-  BatteryLogPrintf("\n========== AXP517 power info ==========\n");
-  BatteryLogPrintf("\nchip information:\n  chip id: %#X\n", axp517.GetChipId());
-  PrintChipStatus(axp517);
-  PrintBatteryGauge(axp517);
-
-  cpp_bus_driver::Axp517::ChipStatus1 status1;
-  if (axp517.GetChipStatus1(status1)) {
-    PrintAdcInfo(axp517, status1.battery_current_direction);
-  } else {
-    PrintAdcInfo(
-        axp517, cpp_bus_driver::Axp517::BatteryCurrentDirection::kInvalid);
-  }
-
-  PrintBc12Info(axp517);
-  PrintIrqStatus(axp517);
-}
+}  // namespace
 
 void RunAxp517Example() {
   BatteryLogPrintf("AXP517 battery management example\n");
-
   auto& driver = common::GetDriver();
   if (!driver.IsAxp517Ready()) {
     BatteryLogPrintf("AXP517 init failed\n");
     return;
   }
-  auto& axp517 = driver.chip().axp517;
-
-  cpp_bus_driver::Axp517::AdcChannel adc_channel = {
-      .vbus_current_measure = true,
-      .battery_discharge_current_measure = true,
-      .battery_charge_current_measure = true,
-      .chip_temperature_measure = true,
-      .system_voltage_measure = true,
-      .vbus_voltage_measure = true,
-      .ts_value_measure = true,
-      .battery_voltage_measure = true,
-  };
-  if (!axp517->SetAdcChannel(adc_channel) ||
-      !axp517->SetBc12DetectEnable(true) || !axp517->ClearAllIrq()) {
-    BatteryLogPrintf("AXP517 measurement configuration failed\n");
+  auto& chip = driver.chip().axp517;
+  if (chip == nullptr) {
+    BatteryLogPrintf("AXP517 driver unavailable\n");
     return;
   }
-
-  while (1) {
+  constexpr uint8_t kAdcChannels =
+      static_cast<uint8_t>(cpp_bus_driver::Axp517::AdcChannel::kBatteryVoltage) |
+      static_cast<uint8_t>(cpp_bus_driver::Axp517::AdcChannel::kTs) |
+      static_cast<uint8_t>(cpp_bus_driver::Axp517::AdcChannel::kVbusVoltage) |
+      static_cast<uint8_t>(cpp_bus_driver::Axp517::AdcChannel::kSystemVoltage) |
+      static_cast<uint8_t>(cpp_bus_driver::Axp517::AdcChannel::kDieTemperature) |
+      static_cast<uint8_t>(cpp_bus_driver::Axp517::AdcChannel::kChargeCurrent) |
+      static_cast<uint8_t>(cpp_bus_driver::Axp517::AdcChannel::kDischargeCurrent) |
+      static_cast<uint8_t>(cpp_bus_driver::Axp517::AdcChannel::kVbusCurrent);
+  if (!chip->SetAdcChannels(kAdcChannels)) {
+    BatteryLogPrintf("AXP517 ADC configuration failed\n");
+    return;
+  }
+  while (true) {
     BatteryLogBeginSnapshot();
-    PrintPowerInfo(*axp517);
+    PrintAxp517(*chip);
     BatteryLogEndSnapshot();
     vTaskDelay(pdMS_TO_TICKS(1000));
   }
