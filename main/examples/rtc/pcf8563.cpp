@@ -3,6 +3,8 @@
  * @Author: LILYGO_L
  * @License: GPL 3.0
  */
+#include <cstdio>
+
 #include "common.h"
 #include "rtc.h"
 
@@ -34,8 +36,8 @@ bool ConfigureInterrupts(Rtc& rtc) {
   };
   return rtc.SetTimerInterrupt(false, Rtc::TimerInterruptMode::kLevel) &&
          rtc.StopTimer() && rtc.SetAlarmInterrupt(false) &&
-         rtc.SetAlarm(alarm) && rtc.ClearAlarmFlag() &&
-         rtc.ClearTimerFlag() && rtc.SetAlarmInterrupt(true) &&
+         rtc.SetAlarm(alarm) && rtc.ClearAlarmFlag() && rtc.ClearTimerFlag() &&
+         rtc.SetAlarmInterrupt(true) &&
          rtc.SetTimerInterrupt(true, Rtc::TimerInterruptMode::kLevel) &&
          rtc.SetTimer(timer);
 }
@@ -85,12 +87,14 @@ void RunPcf8563RtcExample() {
     Rtc::Time time;
     bool voltage_low = false;
     if (rtc.GetTime(time, voltage_low)) {
-      printf("RTC time: %02u-%02u-%02u %02u:%02u:%02u, weekday: %u, C: %u, "
-             "VL: %u\n",
+      printf(
+          "RTC time: %02u-%02u-%02u %02u:%02u:%02u, weekday: %u, C: %u, "
+          "VL: %u\n",
           static_cast<unsigned>(time.year), static_cast<unsigned>(time.month),
           static_cast<unsigned>(time.day), static_cast<unsigned>(time.hour),
-          static_cast<unsigned>(time.minute), static_cast<unsigned>(time.second),
-          static_cast<unsigned>(time.week), static_cast<unsigned>(time.century),
+          static_cast<unsigned>(time.minute),
+          static_cast<unsigned>(time.second), static_cast<unsigned>(time.week),
+          static_cast<unsigned>(time.century),
           static_cast<unsigned>(voltage_low));
     } else {
       printf("RTC calendar read failed or date invalid\n");

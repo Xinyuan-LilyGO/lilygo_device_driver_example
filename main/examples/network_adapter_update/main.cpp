@@ -2,11 +2,13 @@
  * @Description: 检查并更新网络适配器固件的示例
  * @Author: LILYGO_L
  * @Date: 2026-07-28 13:59:02
- * @LastEditTime: 2026-07-28 14:05:30
+ * @LastEditTime: 2026-09-22 17:04:17
  * @License: GPL 3.0
  */
 #include <algorithm>
 #include <cinttypes>
+#include <cstddef>
+#include <cstdint>
 #include <cstdio>
 #include <cstring>
 #include <memory>
@@ -30,8 +32,7 @@ namespace {
 // 用于存放网络适配器待更新固件文件的 LittleFS 分区和挂载路径
 constexpr char kFirmwarePartitionLabel[] = "storage";
 constexpr char kFirmwareStorageBasePath[] = "/storage";
-constexpr char kFirmwareFilePath[] =
-    "/storage/network_adapter_firmware.bin";
+constexpr char kFirmwareFilePath[] = "/storage/network_adapter_firmware.bin";
 // 网络适配器固件中预期的 ESP-IDF 应用程序名称
 constexpr char kFirmwareProjectName[] = "network_adapter";
 #if CONFIG_SLAVE_IDF_TARGET_ESP32C5
@@ -91,8 +92,8 @@ bool MountFirmwareStorage() {
 
   size_t total_bytes = 0;
   size_t used_bytes = 0;
-  if (esp_littlefs_info(
-          kFirmwarePartitionLabel, &total_bytes, &used_bytes) == ESP_OK) {
+  if (esp_littlefs_info(kFirmwarePartitionLabel, &total_bytes, &used_bytes) ==
+      ESP_OK) {
     printf("LittleFS storage: total=%u used=%u bytes\n",
         static_cast<unsigned int>(total_bytes),
         static_cast<unsigned int>(used_bytes));
@@ -103,8 +104,8 @@ bool MountFirmwareStorage() {
 /**
  * @brief 处理 ESP-Hosted 传输状态事件
  */
-void HostedEventHandler(void*, esp_event_base_t event_base,
-    int32_t event_id, void*) {
+void HostedEventHandler(
+    void*, esp_event_base_t event_base, int32_t event_id, void*) {
   if (event_base != ESP_HOSTED_EVENT || hosted_event_group == nullptr) {
     return;
   }
@@ -128,8 +129,7 @@ void HostedEventHandler(void*, esp_event_base_t event_base,
 bool InitEspHostedTransport() {
   esp_err_t result = esp_event_loop_create_default();
   if (result != ESP_OK && result != ESP_ERR_INVALID_STATE) {
-    printf("Create default event loop failed: %s\n",
-        esp_err_to_name(result));
+    printf("Create default event loop failed: %s\n", esp_err_to_name(result));
     return false;
   }
 
@@ -139,8 +139,8 @@ bool InitEspHostedTransport() {
     return false;
   }
 
-  result = esp_event_handler_register(ESP_HOSTED_EVENT,
-      ESP_EVENT_ANY_ID, HostedEventHandler, nullptr);
+  result = esp_event_handler_register(
+      ESP_HOSTED_EVENT, ESP_EVENT_ANY_ID, HostedEventHandler, nullptr);
   if (result != ESP_OK) {
     printf("Register ESP-Hosted event handler failed: %s\n",
         esp_err_to_name(result));
@@ -160,15 +160,14 @@ bool InitEspHostedTransport() {
 
   result = static_cast<esp_err_t>(esp_hosted_connect_to_slave());
   if (result != ESP_OK) {
-    printf("esp_hosted_connect_to_slave failed: %s\n",
-        esp_err_to_name(result));
+    printf("esp_hosted_connect_to_slave failed: %s\n", esp_err_to_name(result));
     return false;
   }
 
   printf("Waiting for ESP-Hosted transport...\n");
-  const EventBits_t bits = xEventGroupWaitBits(hosted_event_group,
-      kHostedTransportUpBit, pdFALSE, pdFALSE,
-      pdMS_TO_TICKS(kHostedTransportTimeoutMs));
+  const EventBits_t bits =
+      xEventGroupWaitBits(hosted_event_group, kHostedTransportUpBit, pdFALSE,
+          pdFALSE, pdMS_TO_TICKS(kHostedTransportTimeoutMs));
   if ((bits & kHostedTransportUpBit) == 0) {
     printf("ESP-Hosted transport timeout after %" PRIu32 " ms\n",
         kHostedTransportTimeoutMs);
@@ -239,8 +238,8 @@ bool CalculateImageSize(FILE* file, size_t file_size, size_t image_offset,
   size_t total_size = sizeof(esp_image_header_t);
   for (uint8_t index = 0; index < image_header.segment_count; ++index) {
     esp_image_segment_header_t segment_header = {};
-    if (!ReadFirmwareFile(file, file_size, cursor, &segment_header,
-            sizeof(segment_header))) {
+    if (!ReadFirmwareFile(
+            file, file_size, cursor, &segment_header, sizeof(segment_header))) {
       return false;
     }
 
@@ -280,10 +279,10 @@ bool FindNetworkAdapterImage(
   }
 
   for (size_t offset = 0;
-       offset + sizeof(esp_image_header_t) +
-               sizeof(esp_image_segment_header_t) + sizeof(esp_app_desc_t) <=
-           file_size;
-       offset += kImageSearchAlignment) {
+      offset + sizeof(esp_image_header_t) + sizeof(esp_image_segment_header_t) +
+          sizeof(esp_app_desc_t) <=
+      file_size;
+      offset += kImageSearchAlignment) {
     esp_image_header_t image_header = {};
     if (!ReadFirmwareFile(
             file, file_size, offset, &image_header, sizeof(image_header))) {
@@ -343,8 +342,7 @@ void CopyImageText(char* destination, size_t destination_size,
   if (destination == nullptr || destination_size == 0 || source == nullptr) {
     return;
   }
-  const size_t copy_size =
-      std::min(destination_size - 1, source_size);
+  const size_t copy_size = std::min(destination_size - 1, source_size);
   std::memcpy(destination, source, copy_size);
   destination[copy_size] = '\0';
 }
@@ -355,8 +353,7 @@ void CopyImageText(char* destination, size_t destination_size,
  * @return ESP-Hosted 版本不低于 2.6.0 时返回 true
  */
 bool SupportsOtaActivate(const esp_hosted_coprocessor_fwver_t& version) {
-  return version.major1 > 2 ||
-         (version.major1 == 2 && version.minor1 >= 6);
+  return version.major1 > 2 || (version.major1 == 2 && version.minor1 >= 6);
 }
 
 /**
@@ -418,8 +415,8 @@ bool CheckAndUpdateNetworkAdapter() {
       current_version_text, target_version);
   esp_err_t result = esp_hosted_slave_ota_begin();
   if (result != ESP_OK) {
-    printf("%s OTA begin failed: %s\n", kCoprocessorName,
-        esp_err_to_name(result));
+    printf(
+        "%s OTA begin failed: %s\n", kCoprocessorName, esp_err_to_name(result));
     return false;
   }
 
@@ -438,8 +435,8 @@ bool CheckAndUpdateNetworkAdapter() {
       return false;
     }
 
-    result = esp_hosted_slave_ota_write(
-        chunk, static_cast<uint32_t>(chunk_size));
+    result =
+        esp_hosted_slave_ota_write(chunk, static_cast<uint32_t>(chunk_size));
     if (result != ESP_OK) {
       printf("%s OTA write failed at %u bytes: %s\n", kCoprocessorName,
           static_cast<unsigned int>(sent_size), esp_err_to_name(result));
@@ -448,8 +445,8 @@ bool CheckAndUpdateNetworkAdapter() {
     }
 
     sent_size += chunk_size;
-    const uint32_t progress = static_cast<uint32_t>(
-        sent_size * 100 / image_info.size);
+    const uint32_t progress =
+        static_cast<uint32_t>(sent_size * 100 / image_info.size);
     if (progress == 100 || progress >= last_progress + 5) {
       printf("%s update progress: %" PRIu32 "%% (%u/%u bytes)\n",
           kCoprocessorName, progress, static_cast<unsigned int>(sent_size),
@@ -464,8 +461,7 @@ bool CheckAndUpdateNetworkAdapter() {
         esp_err_to_name(result));
     return false;
   }
-  printf("%s firmware transfer and verification completed\n",
-      kCoprocessorName);
+  printf("%s firmware transfer and verification completed\n", kCoprocessorName);
 
   if (SupportsOtaActivate(current_version)) {
     result = esp_hosted_slave_ota_activate();
@@ -481,22 +477,23 @@ bool CheckAndUpdateNetworkAdapter() {
   }
 
   firmware_file.reset();
-  printf("Restarting ESP32-P4 to resynchronize with %s...\n",
-      kCoprocessorName);
+  printf("Restarting ESP32-P4 to resynchronize with %s...\n", kCoprocessorName);
   vTaskDelay(pdMS_TO_TICKS(kHostRestartDelayMs));
   esp_restart();
   return true;
 }
 
-}  // 匿名命名空间
+}  // namespace
 
-extern "C" void app_main(void) {
+extern "C" void app_main() {
   namespace board = lilygo_device_driver::t_display_p4;
 
   printf("%s network adapter update example\n", kCoprocessorName);
   auto& driver = lilygo_device_driver::TDisplayP4Driver::GetInstance();
   if (!driver.InitMinimal()) {
-    printf("Minimal device driver initialization completed with errors; continuing example\n");
+    printf(
+        "Minimal device driver initialization completed with errors; "
+        "continuing example\n");
   }
   if (!driver.SetEsp32c6PowerEnabled(true)) {
     printf("%s power initialization failed\n", kCoprocessorName);
@@ -533,14 +530,13 @@ extern "C" void app_main(void) {
       const uint32_t pressed_time_ms = static_cast<uint32_t>(
           (xTaskGetTickCount() - press_start_tick) * portTICK_PERIOD_MS);
       if (pressed_time_ms >= kButtonDebounceMs) {
-        if ((xEventGroupGetBits(hosted_event_group) &
-                kHostedTransportUpBit) != 0) {
+        if ((xEventGroupGetBits(hosted_event_group) & kHostedTransportUpBit) !=
+            0) {
           CheckAndUpdateNetworkAdapter();
         } else {
           printf("ESP-Hosted transport is not ready\n");
         }
-        printf("Press BOOT again to check the %s firmware\n",
-            kCoprocessorName);
+        printf("Press BOOT again to check the %s firmware\n", kCoprocessorName);
       }
     }
     was_pressed = is_pressed;

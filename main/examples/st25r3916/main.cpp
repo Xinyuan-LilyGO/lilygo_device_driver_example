@@ -2,7 +2,7 @@
  * @Description: 使用 ST25R3916 和 STSW-ST25RFAL002 执行 NFC 轮询发现的示例
  * @Author: LILYGO_L
  * @Date: 2026-07-28 13:59:02
- * @LastEditTime: 2026-09-03 16:57:00
+ * @LastEditTime: 2026-09-22 17:04:39
  * @License: GPL 3.0
  */
 #include <algorithm>
@@ -15,6 +15,8 @@
 #include <new>
 
 #include "common.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include "stsw_st25rfal002_cpp_bus_driver.h"
 
 namespace stsw = stsw_st25rfal002_cpp_bus_driver;
@@ -253,9 +255,8 @@ const char* ManufacturerName(uint8_t manufacturer_code) {
  */
 uint16_t FrameSizeFromFsci(uint8_t fsci) {
   constexpr uint16_t kFrameSizes[] = {16, 24, 32, 40, 48, 64, 96, 128, 256};
-  return fsci < sizeof(kFrameSizes) / sizeof(kFrameSizes[0])
-             ? kFrameSizes[fsci]
-             : 0;
+  return fsci < sizeof(kFrameSizes) / sizeof(kFrameSizes[0]) ? kFrameSizes[fsci]
+                                                             : 0;
 }
 
 /**
@@ -271,8 +272,8 @@ void PrintFieldLabel(const char* label) { std::printf("  %-28s : ", label); }
  * @param length 字节数量
  * @param reverse 是否反向显示字节顺序
  */
-void PrintHexField(
-    const char* label, const uint8_t* data, size_t length, bool reverse = false) {
+void PrintHexField(const char* label, const uint8_t* data, size_t length,
+    bool reverse = false) {
   PrintFieldLabel(label);
   if (data == nullptr || length == 0) {
     std::printf("Not available\n");
@@ -312,16 +313,16 @@ void PrintNfcaDetails(const rfalNfcaListenDevice& card) {
   PrintFieldLabel("UID length");
   std::printf("%u bytes (%u cascade level%s)\n",
       static_cast<unsigned int>(card.nfcId1Len),
-      static_cast<unsigned int>(card.nfcId1Len <= 4 ? 1 :
-              (card.nfcId1Len <= 7 ? 2 : 3)),
+      static_cast<unsigned int>(
+          card.nfcId1Len <= 4 ? 1 : (card.nfcId1Len <= 7 ? 2 : 3)),
       card.nfcId1Len <= 4 ? "" : "s");
   PrintFieldLabel("ATQA / SENS_RES");
   std::printf("0x%04X\n", static_cast<unsigned int>(atqa));
   PrintFieldLabel("SAK / SEL_RES");
   std::printf("0x%02X\n", static_cast<unsigned int>(card.selRes.sak));
   PrintFieldLabel("ISO-DEP capable");
-  std::printf("%s\n", YesNo(card.type == RFAL_NFCA_T4T ||
-                            card.type == RFAL_NFCA_T4T_NFCDEP));
+  std::printf("%s\n",
+      YesNo(card.type == RFAL_NFCA_T4T || card.type == RFAL_NFCA_T4T_NFCDEP));
   PrintFieldLabel("NFC-DEP capable");
   std::printf("%s\n", YesNo(card.type == RFAL_NFCA_NFCDEP ||
                             card.type == RFAL_NFCA_T4T_NFCDEP));
@@ -372,8 +373,8 @@ void PrintNfcbDetails(const rfalNfcbListenDevice& card) {
   const uint8_t fwi = response.protInfo.FwiAdcFo >> 4U;
   PrintFieldLabel("Card profile");
   std::printf("%s\n", rfalNfcbIsIsoDepSupported(&card)
-                            ? "NFC Forum Type 4 Tag (T4T / ISO-DEP)"
-                            : "NFC-B RF card");
+                          ? "NFC Forum Type 4 Tag (T4T / ISO-DEP)"
+                          : "NFC-B RF card");
   PrintHexField("PUPI / NFCID0", response.nfcid0, RFAL_NFCB_NFCID0_LEN);
   PrintFieldLabel("ATQB / SENSB_RES length");
   std::printf("%u bytes\n", static_cast<unsigned int>(card.sensbResLen));
@@ -382,8 +383,8 @@ void PrintNfcbDetails(const rfalNfcbListenDevice& card) {
       AfiFamilyName(response.appData.AFI));
   PrintFieldLabel("Applications reported");
   std::printf("%u\n", static_cast<unsigned int>(response.appData.numApps));
-  PrintHexField("Application data CRC_B", response.appData.CRC_B,
-      RFAL_NFCB_CRC_LEN);
+  PrintHexField(
+      "Application data CRC_B", response.appData.CRC_B, RFAL_NFCB_CRC_LEN);
   PrintNfcbRateCapabilities(response.protInfo.BRC);
   PrintFieldLabel("Maximum frame size");
   const uint16_t frame_size = FrameSizeFromFsci(fsci);
@@ -396,23 +397,23 @@ void PrintNfcbDetails(const rfalNfcbListenDevice& card) {
   PrintFieldLabel("Frame waiting integer");
   std::printf("FWI=%u\n", static_cast<unsigned int>(fwi));
   PrintFieldLabel("Advanced protocol features");
-  std::printf("%s\n",
-      YesNo((response.protInfo.FwiAdcFo &
-                RFAL_NFCB_SENSB_RES_ADC_ADV_FEATURE_MASK) != 0U));
+  std::printf(
+      "%s\n", YesNo((response.protInfo.FwiAdcFo &
+                        RFAL_NFCB_SENSB_RES_ADC_ADV_FEATURE_MASK) != 0U));
   PrintFieldLabel("Proprietary application");
-  std::printf("%s\n",
-      YesNo((response.protInfo.FwiAdcFo &
-                RFAL_NFCB_SENSB_RES_ADC_PROPRIETARY_MASK) != 0U));
+  std::printf(
+      "%s\n", YesNo((response.protInfo.FwiAdcFo &
+                        RFAL_NFCB_SENSB_RES_ADC_PROPRIETARY_MASK) != 0U));
   PrintFieldLabel("DID addressing supported");
   std::printf("%s\n", YesNo((response.protInfo.FwiAdcFo &
-                                  RFAL_NFCB_SENSB_RES_FO_DID_MASK) != 0U));
+                                RFAL_NFCB_SENSB_RES_FO_DID_MASK) != 0U));
   PrintFieldLabel("NAD addressing supported");
   std::printf("%s\n", YesNo((response.protInfo.FwiAdcFo &
-                                  RFAL_NFCB_SENSB_RES_FO_NAD_MASK) != 0U));
+                                RFAL_NFCB_SENSB_RES_FO_NAD_MASK) != 0U));
   if (card.sensbResLen >= RFAL_NFCB_SENSB_RES_EXT_LEN) {
     PrintFieldLabel("Start-up guard integer");
-    std::printf("SFGI=%u\n",
-        static_cast<unsigned int>(response.protInfo.SFGI >> 4U));
+    std::printf(
+        "SFGI=%u\n", static_cast<unsigned int>(response.protInfo.SFGI >> 4U));
   }
   PrintFieldLabel("Sleep state");
   std::printf("%s\n", card.isSleep ? "Sleeping" : "Awake / selected");
@@ -425,24 +426,23 @@ void PrintNfcbDetails(const rfalNfcbListenDevice& card) {
 void PrintNfcfDetails(const rfalNfcfListenDevice& card) {
   const auto& response = card.sensfRes;
   uint8_t manufacturer_parameter[8] = {response.PAD0[0], response.PAD0[1],
-      response.PAD1[0], response.PAD1[1], response.PAD1[2],
-      response.MRTIcheck, response.MRTIupdate, response.PAD2};
+      response.PAD1[0], response.PAD1[1], response.PAD1[2], response.MRTIcheck,
+      response.MRTIupdate, response.PAD2};
   PrintFieldLabel("Card profile");
   std::printf("%s\n", rfalNfcfIsNfcDepSupported(&card)
-                            ? "NFC-DEP peer-to-peer target"
-                            : "NFC Forum Type 3 Tag (T3T / FeliCa)");
+                          ? "NFC-DEP peer-to-peer target"
+                          : "NFC Forum Type 3 Tag (T3T / FeliCa)");
   PrintHexField("IDm / NFCID2", response.NFCID2, RFAL_NFCF_NFCID2_LEN);
   PrintFieldLabel("SENSF_RES length");
   std::printf("%u bytes\n", static_cast<unsigned int>(card.sensfResLen));
-  PrintHexField(
-      "Manufacturer parameter / PMm", manufacturer_parameter,
+  PrintHexField("Manufacturer parameter / PMm", manufacturer_parameter,
       sizeof(manufacturer_parameter));
   PrintFieldLabel("Response time: check");
   std::printf("MRTI=0x%02X\n", static_cast<unsigned int>(response.MRTIcheck));
   PrintFieldLabel("Response time: update");
   std::printf("MRTI=0x%02X\n", static_cast<unsigned int>(response.MRTIupdate));
-  PrintHexField("Request data / system code", response.RD,
-      RFAL_NFCF_SENSF_RES_RD_LEN);
+  PrintHexField(
+      "Request data / system code", response.RD, RFAL_NFCF_SENSF_RES_RD_LEN);
   PrintFieldLabel("NFC-DEP capable");
   std::printf("%s\n", YesNo(rfalNfcfIsNfcDepSupported(&card)));
 }
@@ -497,8 +497,7 @@ void PrintIsoDepDetails(const rfalNfcDevice& device) {
   const auto& iso_dep = device.proto.isoDep;
   const auto& info = iso_dep.info;
   const uint64_t frame_wait_us =
-      (static_cast<uint64_t>(info.FWT) * 1000000ULL + 6780000ULL) /
-      13560000ULL;
+      (static_cast<uint64_t>(info.FWT) * 1000000ULL + 6780000ULL) / 13560000ULL;
   std::printf("\n[ ISO-DEP protocol ]\n");
   PrintFieldLabel("Maximum protocol frame");
   std::printf("%u bytes (FSxI=%u)\n", static_cast<unsigned int>(info.FSx),
@@ -513,25 +512,25 @@ void PrintIsoDepDetails(const rfalNfcDevice& device) {
   PrintFieldLabel("Start-up guard time");
   std::printf("%" PRIu32 " ms (SFGI=%" PRIu32 ")\n", info.SFGT, info.SFGI);
   PrintFieldLabel("DID supported / active");
-  std::printf("%s / %u\n", YesNo(info.supDID),
-      static_cast<unsigned int>(info.DID));
+  std::printf(
+      "%s / %u\n", YesNo(info.supDID), static_cast<unsigned int>(info.DID));
   PrintFieldLabel("NAD supported / active");
-  std::printf("%s / %u\n", YesNo(info.supNAD),
-      static_cast<unsigned int>(info.NAD));
+  std::printf(
+      "%s / %u\n", YesNo(info.supNAD), static_cast<unsigned int>(info.NAD));
   PrintFieldLabel("Advanced features");
   std::printf("%s\n", YesNo(info.supAdFt));
 
   if (device.type == RFAL_NFC_LISTEN_TYPE_NFCA) {
     const auto& ats = iso_dep.activation.A.Listener.ATS;
     PrintFieldLabel("ATS length");
-    std::printf("%u bytes\n", static_cast<unsigned int>(
-        iso_dep.activation.A.Listener.ATSLen));
+    std::printf("%u bytes\n",
+        static_cast<unsigned int>(iso_dep.activation.A.Listener.ATSLen));
     PrintFieldLabel("ATS format byte T0");
     std::printf("0x%02X\n", static_cast<unsigned int>(ats.T0));
-    const uint8_t interface_bytes = static_cast<uint8_t>(
-        ((ats.T0 & 0x10U) != 0U ? 1U : 0U) +
-        ((ats.T0 & 0x20U) != 0U ? 1U : 0U) +
-        ((ats.T0 & 0x40U) != 0U ? 1U : 0U));
+    const uint8_t interface_bytes =
+        static_cast<uint8_t>(((ats.T0 & 0x10U) != 0U ? 1U : 0U) +
+                             ((ats.T0 & 0x20U) != 0U ? 1U : 0U) +
+                             ((ats.T0 & 0x40U) != 0U ? 1U : 0U));
     const uint8_t historical_length =
         ats.TL > static_cast<uint8_t>(2U + interface_bytes)
             ? static_cast<uint8_t>(ats.TL - 2U - interface_bytes)
@@ -540,12 +539,10 @@ void PrintIsoDepDetails(const rfalNfcDevice& device) {
         std::min<size_t>(historical_length, RFAL_ISODEP_ATS_HB_MAX_LEN));
   } else if (device.type == RFAL_NFC_LISTEN_TYPE_NFCB) {
     const auto& attrib = iso_dep.activation.B.Listener;
-    const size_t higher_layer_length = attrib.ATTRIB_RESLen > 1U
-                                           ? attrib.ATTRIB_RESLen - 1U
-                                           : 0U;
+    const size_t higher_layer_length =
+        attrib.ATTRIB_RESLen > 1U ? attrib.ATTRIB_RESLen - 1U : 0U;
     PrintFieldLabel("ATTRIB response length");
-    std::printf("%u bytes\n",
-        static_cast<unsigned int>(attrib.ATTRIB_RESLen));
+    std::printf("%u bytes\n", static_cast<unsigned int>(attrib.ATTRIB_RESLen));
     PrintHexField("Higher-layer response", attrib.ATTRIB_RES.HLInfo,
         std::min<size_t>(higher_layer_length, RFAL_ISODEP_ATTRIB_HLINFO_LEN));
   }
@@ -574,12 +571,10 @@ void PrintNfcDepDetails(const rfalNfcDevice& device) {
   if (device.type == RFAL_NFC_LISTEN_TYPE_AP2P ||
       device.type == RFAL_NFC_LISTEN_TYPE_NFCA ||
       device.type == RFAL_NFC_LISTEN_TYPE_NFCF) {
-    PrintHexField("General bytes",
-        nfc_dep.activation.Target.ATR_RES.GBt,
+    PrintHexField("General bytes", nfc_dep.activation.Target.ATR_RES.GBt,
         std::min<size_t>(info.GBLen, RFAL_NFCDEP_GB_MAX_LEN));
   } else {
-    PrintHexField("General bytes",
-        nfc_dep.activation.Initiator.ATR_REQ.GBi,
+    PrintHexField("General bytes", nfc_dep.activation.Initiator.ATR_REQ.GBi,
         std::min<size_t>(info.GBLen, RFAL_NFCDEP_GB_MAX_LEN));
   }
 }
@@ -603,8 +598,8 @@ void PrintDevice(const rfalNfcDevice& device, uint32_t report_number) {
   std::printf("%s\n", InterfaceName(device.rfInterface));
 
   const bool reverse_id = device.type == RFAL_NFC_LISTEN_TYPE_NFCV;
-  PrintHexField("Primary NFC identifier", device.nfcid, device.nfcidLen,
-      reverse_id);
+  PrintHexField(
+      "Primary NFC identifier", device.nfcid, device.nfcidLen, reverse_id);
   PrintFieldLabel("Identifier length");
   std::printf("%u bytes\n", static_cast<unsigned int>(device.nfcidLen));
   PrintActiveBitRates();
@@ -745,8 +740,8 @@ bool LooksLikeText(const uint8_t* data, size_t length) {
   }
   for (size_t index = 0; index < length; ++index) {
     const uint8_t value = data[index];
-    if (value == 0U || (value < 0x20U && value != '\r' && value != '\n' &&
-                          value != '\t') ||
+    if (value == 0U ||
+        (value < 0x20U && value != '\r' && value != '\n' && value != '\t') ||
         value == 0x7FU) {
       return false;
     }
@@ -846,7 +841,8 @@ void PrintUtf16Text(const uint8_t* data, size_t length) {
   std::printf("\"");
   while (offset + 1U < length) {
     uint16_t first = little_endian
-                         ? static_cast<uint16_t>(data[offset] |
+                         ? static_cast<uint16_t>(
+                               data[offset] |
                                (static_cast<uint16_t>(data[offset + 1U]) << 8U))
                          : static_cast<uint16_t>(
                                (static_cast<uint16_t>(data[offset]) << 8U) |
@@ -854,15 +850,13 @@ void PrintUtf16Text(const uint8_t* data, size_t length) {
     offset += 2U;
     uint32_t code_point = first;
     if (first >= 0xD800U && first <= 0xDBFFU && offset + 1U < length) {
-      const uint16_t second = little_endian
-                                  ? static_cast<uint16_t>(data[offset] |
-                                        (static_cast<uint16_t>(
-                                             data[offset + 1U])
-                                            << 8U))
-                                  : static_cast<uint16_t>(
-                                        (static_cast<uint16_t>(data[offset])
-                                            << 8U) |
-                                        data[offset + 1U]);
+      const uint16_t second =
+          little_endian ? static_cast<uint16_t>(
+                              data[offset] |
+                              (static_cast<uint16_t>(data[offset + 1U]) << 8U))
+                        : static_cast<uint16_t>(
+                              (static_cast<uint16_t>(data[offset]) << 8U) |
+                              data[offset + 1U]);
       if (second >= 0xDC00U && second <= 0xDFFFU) {
         code_point = 0x10000U +
                      ((static_cast<uint32_t>(first) - 0xD800U) << 10U) +
@@ -908,15 +902,13 @@ const char* NdefTnfName(uint8_t tnf) {
  */
 const char* NdefUriPrefix(uint8_t code) {
   constexpr const char* kPrefixes[] = {"", "http://www.", "https://www.",
-      "http://", "https://", "tel:", "mailto:",
-      "ftp://anonymous:anonymous@", "ftp://ftp.", "ftps://", "sftp://",
-      "smb://", "nfs://", "ftp://", "dav://", "news:", "telnet://",
-      "imap:", "rtsp://", "urn:", "pop:", "sip:", "sips:", "tftp:",
-      "btspp://", "btl2cap://", "btgoep://", "tcpobex://", "irdaobex://",
-      "file://", "urn:epc:id:", "urn:epc:tag:", "urn:epc:pat:",
-      "urn:epc:raw:", "urn:epc:", "urn:nfc:"};
-  return code < sizeof(kPrefixes) / sizeof(kPrefixes[0]) ? kPrefixes[code]
-                                                         : "";
+      "http://", "https://", "tel:", "mailto:", "ftp://anonymous:anonymous@",
+      "ftp://ftp.", "ftps://", "sftp://", "smb://", "nfs://", "ftp://",
+      "dav://", "news:", "telnet://", "imap:", "rtsp://",
+      "urn:", "pop:", "sip:", "sips:", "tftp:", "btspp://", "btl2cap://",
+      "btgoep://", "tcpobex://", "irdaobex://", "file://", "urn:epc:id:",
+      "urn:epc:tag:", "urn:epc:pat:", "urn:epc:raw:", "urn:epc:", "urn:nfc:"};
+  return code < sizeof(kPrefixes) / sizeof(kPrefixes[0]) ? kPrefixes[code] : "";
 }
 
 void ParseAndPrintNdefMessage(
@@ -972,9 +964,8 @@ void PrintNdefPayload(uint8_t tnf, const uint8_t* type, size_t type_length,
       std::printf("%s", NdefUriPrefix(payload[0]));
       for (size_t index = 1U; index < payload_length; ++index) {
         const uint8_t value = payload[index];
-        std::printf("%c", value >= 0x20U && value != 0x7FU
-                              ? static_cast<int>(value)
-                              : '.');
+        std::printf("%c",
+            value >= 0x20U && value != 0x7FU ? static_cast<int>(value) : '.');
       }
       std::printf("\n");
     }
@@ -1111,8 +1102,8 @@ void ParseAndPrintNdefMessage(
     std::printf("%s%s\n", message_begin ? "Message begin" : "Continuation",
         message_end ? ", message end" : "");
     PrintFieldLabel("Type Name Format");
-    std::printf("%s (TNF=%u)\n", NdefTnfName(tnf),
-        static_cast<unsigned int>(tnf));
+    std::printf(
+        "%s (TNF=%u)\n", NdefTnfName(tnf), static_cast<unsigned int>(tnf));
     PrintFieldLabel("Record type");
     if (type_length == 0U) {
       std::printf("Not specified\n");
@@ -1135,8 +1126,7 @@ void ParseAndPrintNdefMessage(
       PrintFieldLabel("Chunked record");
       std::printf("Yes; chunk reassembly is not supported\n");
     } else {
-      PrintNdefPayload(
-          tnf, type, type_length, payload, payload_length, depth);
+      PrintNdefPayload(tnf, type, type_length, payload, payload_length, depth);
     }
 
     if (message_end) {
@@ -1181,8 +1171,8 @@ void ParseAndPrintType2Tlvs(const uint8_t* data, size_t data_length) {
         std::printf("  Extended TLV length is incomplete.\n");
         break;
       }
-      value_length = static_cast<size_t>(data[offset]) << 8U |
-                     data[offset + 1U];
+      value_length =
+          static_cast<size_t>(data[offset]) << 8U | data[offset + 1U];
       offset += 2U;
     }
     if (value_length > data_length - offset) {
@@ -1249,8 +1239,8 @@ void ReadAndPrintType2TagContent() {
   std::printf("\n[ Type 2 Tag memory and NDEF content ]\n");
   uint8_t first_pages[RFAL_T2T_READ_DATA_LEN] = {};
   uint16_t received_length = 0;
-  ReturnCode result = rfalT2TPollerRead(
-      0, first_pages, sizeof(first_pages), &received_length);
+  ReturnCode result =
+      rfalT2TPollerRead(0, first_pages, sizeof(first_pages), &received_length);
   if (result != RFAL_ERR_NONE || received_length < sizeof(first_pages)) {
     PrintFieldLabel("Tag memory read");
     std::printf("Failed: %s (code %u, received %u bytes)\n",
@@ -1267,7 +1257,8 @@ void ReadAndPrintType2TagContent() {
                                        : "Not NFC Forum NDEF formatted");
   if (capability[0] != kType2NdefMagic) {
     PrintFieldLabel("Tag content");
-    std::printf("No standard Type 2 Capability Container; NDEF cannot be decoded\n");
+    std::printf(
+        "No standard Type 2 Capability Container; NDEF cannot be decoded\n");
     return;
   }
 
@@ -1283,10 +1274,10 @@ void ReadAndPrintType2TagContent() {
   std::printf("%s\n", read_access == 0U ? "Open without authentication"
                                         : "Reserved / restricted");
   PrintFieldLabel("Write access");
-  std::printf("%s\n", write_access == 0U
-                           ? "Open without authentication"
-                           : (write_access == 0x0FU ? "Read-only"
-                                                    : "Protected / proprietary"));
+  std::printf("%s\n",
+      write_access == 0U
+          ? "Open without authentication"
+          : (write_access == 0x0FU ? "Read-only" : "Protected / proprietary"));
   if (data_area_size == 0U) {
     PrintFieldLabel("NDEF status");
     std::printf("Capability Container reports zero data capacity\n");
@@ -1311,8 +1302,7 @@ void ReadAndPrintType2TagContent() {
     const uint16_t required_sector =
         static_cast<uint16_t>(absolute_page / 256U);
     if (required_sector != selected_sector) {
-      result = rfalT2TPollerSectorSelect(
-          static_cast<uint8_t>(required_sector));
+      result = rfalT2TPollerSectorSelect(static_cast<uint8_t>(required_sector));
       if (result != RFAL_ERR_NONE) {
         PrintFieldLabel("Sector selection");
         std::printf("Sector %u failed: %s (code %u)\n",
@@ -1336,8 +1326,8 @@ void ReadAndPrintType2TagContent() {
       break;
     }
 
-    const size_t copy_length = std::min<size_t>(
-        sizeof(read_buffer), total_memory_size - bytes_read);
+    const size_t copy_length =
+        std::min<size_t>(sizeof(read_buffer), total_memory_size - bytes_read);
     std::memcpy(memory.get() + bytes_read, read_buffer, copy_length);
     bytes_read += copy_length;
   }
@@ -1395,8 +1385,8 @@ bool IsSameCard(
   if (!fingerprint.valid || fingerprint.type != device.type) {
     return false;
   }
-  const uint8_t id_length = static_cast<uint8_t>(std::min<size_t>(
-      device.nfcidLen, kTrackedNfcIdCapacity));
+  const uint8_t id_length = static_cast<uint8_t>(
+      std::min<size_t>(device.nfcidLen, kTrackedNfcIdCapacity));
   if (fingerprint.nfcid_length != id_length) {
     return false;
   }
@@ -1410,18 +1400,16 @@ bool IsSameCard(
  * @param device 当前卡片
  * @param fingerprint 用于保存卡片指纹的结构体
  */
-void RememberCard(
-    const rfalNfcDevice& device, CardFingerprint* fingerprint) {
+void RememberCard(const rfalNfcDevice& device, CardFingerprint* fingerprint) {
   if (fingerprint == nullptr) {
     return;
   }
   fingerprint->type = device.type;
-  fingerprint->nfcid_length = static_cast<uint8_t>(std::min<size_t>(
-      device.nfcidLen, kTrackedNfcIdCapacity));
+  fingerprint->nfcid_length = static_cast<uint8_t>(
+      std::min<size_t>(device.nfcidLen, kTrackedNfcIdCapacity));
   std::memset(fingerprint->nfcid, 0, sizeof(fingerprint->nfcid));
   if (device.nfcid != nullptr && fingerprint->nfcid_length > 0U) {
-    std::memcpy(
-        fingerprint->nfcid, device.nfcid, fingerprint->nfcid_length);
+    std::memcpy(fingerprint->nfcid, device.nfcid, fingerprint->nfcid_length);
   }
   fingerprint->valid = true;
 }
@@ -1459,31 +1447,37 @@ rfalNfcDiscoverParam CreateDiscoveryParameters() {
 
 }  // namespace
 
-extern "C" void app_main(void) {
+extern "C" void app_main() {
   std::printf("\n%s\n", kSectionLine);
   std::printf("                 ST25R3916 NFC CARD READER\n");
   std::printf("%s\n", kSectionLine);
   std::printf("Board                    : %s\n", common::kBoardName);
   std::printf("Reader                   : ST25R3916\n");
-  std::printf("Supported technologies   : NFC-A, NFC-B, NFC-F, NFC-V, ST25TB\n");
+  std::printf(
+      "Supported technologies   : NFC-A, NFC-B, NFC-F, NFC-V, ST25TB\n");
   std::printf("Maximum configured rate  : 848 kbit/s\n");
   std::printf("%s\n", kSectionLine);
   std::printf("Initializing board and NFC reader...\n");
   if (!common::InitDriver()) {
-    std::printf("Board initialization completed with errors: %s; continuing example\n",
+    std::printf(
+        "Board initialization completed with errors: %s; continuing example\n",
         common::kBoardName);
   }
 
 #if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4)
   auto& board_driver = common::GetDriver();
   if (!board_driver.InitKeyboardExpansion()) {
-    std::printf("Some keyboard expansion peripherals failed to initialize; continuing example\n");
+    std::printf(
+        "Some keyboard expansion peripherals failed to initialize; continuing "
+        "example\n");
   }
   auto* nfc = board_driver.chip().st25r3916.get();
   if (!board_driver.IsSt25r3916Ready() ||
       !board_driver.SetSt25r3916OperatingMode(
           common::DeviceDriver::St25r3916OperatingMode::kActive)) {
-    std::printf("[ERROR] Keyboard expansion ST25R3916 initialization or wake-up failed\n");
+    std::printf(
+        "[ERROR] Keyboard expansion ST25R3916 initialization or wake-up "
+        "failed\n");
     return;
   }
   ReturnCode result = RFAL_ERR_NONE;
@@ -1494,8 +1488,7 @@ extern "C" void app_main(void) {
     const auto& status = board_driver.chip_status().st25r3916;
     std::printf("[ERROR] ST25R3916 initialization failed\n");
     std::printf("        RFAL     : %s (code %u)\n",
-        RfalErrorName(status.result),
-        static_cast<unsigned int>(status.result));
+        RfalErrorName(status.result), static_cast<unsigned int>(status.result));
     std::printf("        Platform : %s (code %u)\n",
         PlatformErrorName(status.platform_error),
         static_cast<unsigned int>(status.platform_error));
@@ -1536,17 +1529,17 @@ extern "C" void app_main(void) {
         const TickType_t now = xTaskGetTickCount();
         const bool same_card = IsSameCard(last_card, *device);
         const bool card_was_absent =
-            !last_card.valid ||
-            ElapsedMilliseconds(last_card_seen_tick, now) >=
-                kCardRemovalTimeoutMs;
+            !last_card.valid || ElapsedMilliseconds(last_card_seen_tick, now) >=
+                                    kCardRemovalTimeoutMs;
         if (!same_card || card_was_absent) {
           PrintDevice(*device, ++report_number);
         }
         RememberCard(*device, &last_card);
         last_card_seen_tick = now;
       } else {
-        std::printf("Active NFC device details are unavailable: "
-                    "%s (code %u)\n",
+        std::printf(
+            "Active NFC device details are unavailable: "
+            "%s (code %u)\n",
             RfalErrorName(result), static_cast<unsigned int>(result));
       }
 
@@ -1559,8 +1552,7 @@ extern "C" void app_main(void) {
         vTaskDelay(pdMS_TO_TICKS(100));
       }
     } else if (rfalNfcIsInDiscovery(state) && last_card.valid &&
-               ElapsedMilliseconds(
-                   last_card_seen_tick, xTaskGetTickCount()) >=
+               ElapsedMilliseconds(last_card_seen_tick, xTaskGetTickCount()) >=
                    kCardRemovalTimeoutMs) {
       last_card.valid = false;
       std::printf("Card removed. Ready for the next NFC card.\n\n");

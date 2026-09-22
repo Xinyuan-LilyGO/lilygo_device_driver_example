@@ -1,12 +1,15 @@
+
+#include <sys/time.h>
+
+#include <cstdio>
+#include <cstdlib>
+#include <ctime>
+
 #include "common.h"
 #include "rtc.h"
 
-#include <cstdlib>
-#include <ctime>
-#include <sys/time.h>
-
 #if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR) || \
-    (defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) && \
+    (defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) &&    \
         defined(CONFIG_LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2))
 
 namespace {
@@ -30,8 +33,8 @@ bool ResetTime() {
 }  // namespace
 
 void RunInternalRtcExample() {
-#if !defined(CONFIG_LIBC_TIME_SYSCALL_USE_RTC_HRT) && \
-    !defined(CONFIG_LIBC_TIME_SYSCALL_USE_RTC) && \
+#if !defined(CONFIG_LIBC_TIME_SYSCALL_USE_RTC_HRT) &&   \
+    !defined(CONFIG_LIBC_TIME_SYSCALL_USE_RTC) &&       \
     !defined(CONFIG_NEWLIB_TIME_SYSCALL_USE_RTC_HRT) && \
     !defined(CONFIG_NEWLIB_TIME_SYSCALL_USE_RTC)
   printf("Internal RTC requires an RTC-backed system time configuration\n");

@@ -2,16 +2,21 @@
  * @Description: 在屏幕上运行 LVGL 仪表盘界面的示例
  * @Author: LILYGO_L
  * @Date: 2026-07-28 13:59:02
- * @LastEditTime: 2026-09-07 15:58:59
+ * @LastEditTime: 2026-09-22 17:04:33
  * @License: GPL 3.0
  */
+#include <cstddef>
+#include <cstdint>
+#include <cstdio>
+
 #include "display/lvgl.h"
 #include "esp_lcd_mipi_dsi.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include "lvgl.h"
+#include "lvgl_demo_ui.h"
 
 namespace {
-
-extern "C" void example_lvgl_demo_ui(lv_display_t* display);
 
 void ReleasedInput(lv_indev_t*, lv_indev_data_t* data) {
   data->state = LV_INDEV_STATE_RELEASED;
@@ -114,8 +119,7 @@ bool RunScreenSoftwareColorBars(lv_display_t* display) {
   common::StartBacklight();
   const bool result = true;
 #endif
-  printf("Software color bars: %s\n",
-      result ? "displaying" : "failed");
+  printf("Software color bars: %s\n", result ? "displaying" : "failed");
   if (result) {
     vTaskDelay(pdMS_TO_TICKS(1000));
   }
@@ -328,10 +332,12 @@ void RunBootScreenTests(common::LvglPort& lvgl_port) {
 
 }  // namespace
 
-extern "C" void app_main(void) {
+extern "C" void app_main() {
   printf("LVGL screen example on %s\n", common::kBoardName);
   if (!common::InitDriver()) {
-    printf("Device driver initialization completed with errors; continuing example\n");
+    printf(
+        "Device driver initialization completed with errors; continuing "
+        "example\n");
   }
 #if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_GLASSES_P4)
   if (!RunScreenInternalTests()) {
@@ -359,7 +365,7 @@ extern "C" void app_main(void) {
     return;
   }
   printf("Screen mode: LVGL\n");
-  example_lvgl_demo_ui(lvgl_port.display());
+  CreateLvglDemoUi(lvgl_port.display());
   // 提交界面首帧后启动持续刷新。
   lv_refr_now(lvgl_port.display());
   if (!lvgl_port.Start()) {

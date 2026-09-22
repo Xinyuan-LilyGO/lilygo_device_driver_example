@@ -5,10 +5,16 @@
  * @LastEditTime: 2026-09-03 16:57:00
  * @License: GPL 3.0
  */
-#include "common.h"
-#include "lora_tx_rx.h"
-
 #include <array>
+#include <cinttypes>
+#include <cstdint>
+#include <cstdio>
+
+#include "common.h"
+#include "esp_timer.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "lora_tx_rx.h"
 
 #if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) && \
     !defined(CONFIG_LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
@@ -119,8 +125,7 @@ void RunSx1262() {
       vTaskDelay(pdMS_TO_TICKS(30));
       if (ButtonPressed(platform_hal)) {
         printf("SX1262 send started\n");
-        if (sx1262.StartTransmit(
-                kTestPayload.data(), kTestPayload.size())) {
+        if (sx1262.StartTransmit(kTestPayload.data(), kTestPayload.size())) {
           transmitting = true;
         } else {
           printf("SX1262 send failed\n");
@@ -147,8 +152,8 @@ void RunSx1262() {
           sx1262.StartReceive();
         } else if ((irq_mask &
                        (SX126X_IRQ_CRC_ERROR | SX126X_IRQ_HEADER_ERROR)) != 0) {
-          printf("SX1262 receive packet error (IRQ: 0x%04lX)\n",
-              static_cast<unsigned long>(irq_mask));
+          printf("SX1262 receive packet error (IRQ: 0x%04" PRIX32 ")\n",
+              static_cast<uint32_t>(irq_mask));
           sx1262.StartReceive();
         } else if ((irq_mask & SX126X_IRQ_RX_DONE) != 0) {
           uint8_t received_size = 0;
@@ -159,8 +164,7 @@ void RunSx1262() {
                 static_cast<double>(metrics.rssi_quarter_dbm) / 4.0,
                 static_cast<double>(metrics.snr_quarter_db) / 4.0);
             for (uint8_t index = 0; index < received_size; ++index) {
-              printf("SX1262 data[%u]: %u\n",
-                  static_cast<unsigned int>(index),
+              printf("SX1262 data[%u]: %u\n", static_cast<unsigned int>(index),
                   static_cast<unsigned int>(receive_buffer[index]));
             }
           } else {
@@ -171,7 +175,8 @@ void RunSx1262() {
       }
     }
 
-    const uint32_t current_time = esp_log_timestamp();
+    const uint32_t current_time =
+        static_cast<uint32_t>(esp_timer_get_time() / 1000);
     if (current_time >= status_print_time) {
       sx126x_chip_status_t chip_status = {};
       if (sx1262.GetChipStatus(chip_status)) {

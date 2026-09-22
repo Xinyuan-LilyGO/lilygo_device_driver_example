@@ -2,18 +2,23 @@
  * @Description: 扫描 I2C 总线并输出已发现设备地址的示例
  * @Author: LILYGO_L
  * @Date: 2026-07-28 13:59:02
- * @LastEditTime: 2026-07-28 14:05:30
+ * @LastEditTime: 2026-09-22 17:03:55
  * @License: GPL 3.0
  */
+#include <cstddef>
+#include <cstdint>
+#include <cstdio>
 #include <memory>
 #include <vector>
 
 #include "common.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 
 namespace {
 
-void Scan(const char* name,
-    const std::shared_ptr<cpp_bus_driver::HardwareI2c>& bus) {
+void Scan(
+    const char* name, const std::shared_ptr<cpp_bus_driver::HardwareI2c>& bus) {
   if (bus == nullptr) {
     printf("%s is not available\n", name);
     return;
@@ -37,11 +42,13 @@ void Scan(const char* name,
 
 }  // namespace
 
-extern "C" void app_main(void) {
+extern "C" void app_main() {
   printf("I2C scan example on %s\n", common::kBoardName);
   auto& driver = common::GetDriver();
   if (!common::InitMinimalDriver()) {
-    printf("Minimal device driver initialization completed with errors; continuing example\n");
+    printf(
+        "Minimal device driver initialization completed with errors; "
+        "continuing example\n");
   }
 
   while (true) {

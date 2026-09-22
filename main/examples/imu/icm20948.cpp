@@ -2,17 +2,20 @@
  * @Description: ICM20948 姿态角读取实现
  * @Author: LILYGO_L
  * @Date: 2026-07-28 13:59:02
- * @LastEditTime: 2026-07-28 14:05:30
+ * @LastEditTime: 2026-09-22 17:03:58
  * @License: GPL 3.0
  */
-#include "common.h"
-#include "imu.h"
-
 #include <cmath>
+#include <cstdint>
+#include <cstdio>
+
+#include "common.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "imu.h"
 
 #if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) && \
     !defined(CONFIG_LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
-
 #include "esp_timer.h"
 
 namespace {
@@ -27,7 +30,7 @@ struct EulerAngles {
 };
 
 constexpr float kDegreesToRadians = 0.0174532925f;  // 度转弧度。
-constexpr float kRadiansToDegrees = 57.2957795f;  // 弧度转度。
+constexpr float kRadiansToDegrees = 57.2957795f;    // 弧度转度。
 constexpr float kAccelerationMinimumSquared =
     0.0001f;  // 有效加速度向量模平方下限。
 constexpr float kMagneticFieldMinimumSquared =
@@ -35,9 +38,9 @@ constexpr float kMagneticFieldMinimumSquared =
 constexpr float kAccelCorrectionTimeConstantSeconds =
     0.5f;  // 加速度姿态校正时间常数。
 constexpr float kMagCorrectionTimeConstantSeconds =
-    0.5f;  // 磁场偏航校正时间常数。
-constexpr uint32_t kSampleIntervalMs = 10;  // 传感器轮询间隔。
-constexpr uint32_t kLogIntervalMs = 100;  // 姿态日志间隔。
+    0.5f;                                       // 磁场偏航校正时间常数。
+constexpr uint32_t kSampleIntervalMs = 10;      // 传感器轮询间隔。
+constexpr uint32_t kLogIntervalMs = 100;        // 姿态日志间隔。
 constexpr uint32_t kErrorLogIntervalMs = 1000;  // 错误日志限频间隔。
 
 /**
@@ -61,8 +64,7 @@ float NormalizeDegrees(float degrees) {
  * @param current_degrees 当前角度
  * @return -180 至 180 度范围内的角度差
  */
-float ShortestAngleDifference(
-    float target_degrees, float current_degrees) {
+float ShortestAngleDifference(float target_degrees, float current_degrees) {
   float difference =
       NormalizeDegrees(target_degrees) - NormalizeDegrees(current_degrees);
   if (difference > 180.0f) {
@@ -81,22 +83,19 @@ float ShortestAngleDifference(
  */
 bool CalculateAccelAngles(
     const Icm20948::Vector3& acceleration_g, EulerAngles& angles) {
-  const float magnitude_squared =
-      acceleration_g.x * acceleration_g.x +
-      acceleration_g.y * acceleration_g.y +
-      acceleration_g.z * acceleration_g.z;
+  const float magnitude_squared = acceleration_g.x * acceleration_g.x +
+                                  acceleration_g.y * acceleration_g.y +
+                                  acceleration_g.z * acceleration_g.z;
   if (magnitude_squared < kAccelerationMinimumSquared) {
     return false;
   }
 
-  angles.pitch =
-      std::atan2(-acceleration_g.x,
-          std::sqrt(acceleration_g.y * acceleration_g.y +
-                    acceleration_g.z * acceleration_g.z)) *
-      kRadiansToDegrees;
+  angles.pitch = std::atan2(-acceleration_g.x,
+                     std::sqrt(acceleration_g.y * acceleration_g.y +
+                               acceleration_g.z * acceleration_g.z)) *
+                 kRadiansToDegrees;
   angles.roll =
-      std::atan2(acceleration_g.y, acceleration_g.z) *
-      kRadiansToDegrees;
+      std::atan2(acceleration_g.y, acceleration_g.z) * kRadiansToDegrees;
   return true;
 }
 
@@ -110,10 +109,9 @@ bool CalculateAccelAngles(
  */
 bool CalculateMagneticYaw(const Icm20948::Vector3& magnetic_field_ut,
     float pitch_degrees, float roll_degrees, float& yaw_degrees) {
-  const float magnitude_squared =
-      magnetic_field_ut.x * magnetic_field_ut.x +
-      magnetic_field_ut.y * magnetic_field_ut.y +
-      magnetic_field_ut.z * magnetic_field_ut.z;
+  const float magnitude_squared = magnetic_field_ut.x * magnetic_field_ut.x +
+                                  magnetic_field_ut.y * magnetic_field_ut.y +
+                                  magnetic_field_ut.z * magnetic_field_ut.z;
   if (magnitude_squared < kMagneticFieldMinimumSquared) {
     return false;
   }
@@ -124,16 +122,13 @@ bool CalculateMagneticYaw(const Icm20948::Vector3& magnetic_field_ut,
       magnetic_field_ut.x * std::cos(pitch_radians) +
       magnetic_field_ut.z * std::sin(pitch_radians);
   const float magnetic_y_horizontal =
-      magnetic_field_ut.x * std::sin(roll_radians) *
-          std::sin(pitch_radians) +
+      magnetic_field_ut.x * std::sin(roll_radians) * std::sin(pitch_radians) +
       magnetic_field_ut.y * std::cos(roll_radians) -
-      magnetic_field_ut.z * std::sin(roll_radians) *
-          std::cos(pitch_radians);
+      magnetic_field_ut.z * std::sin(roll_radians) * std::cos(pitch_radians);
 
-  yaw_degrees =
-      NormalizeDegrees(std::atan2(
-                           magnetic_y_horizontal, magnetic_x_horizontal) *
-                       kRadiansToDegrees);
+  yaw_degrees = NormalizeDegrees(
+      std::atan2(magnetic_y_horizontal, magnetic_x_horizontal) *
+      kRadiansToDegrees);
   return true;
 }
 
@@ -152,8 +147,8 @@ class OrientationEstimator {
    * @param angles 返回当前姿态角
    * @return 姿态角可用时返回 true，否则返回 false
    */
-  bool Update(const Icm20948::SensorData& data,
-      float delta_time_seconds, EulerAngles& angles) {
+  bool Update(const Icm20948::SensorData& data, float delta_time_seconds,
+      EulerAngles& angles) {
     EulerAngles accel_angles;
     if (!CalculateAccelAngles(data.acceleration_g, accel_angles)) {
       return false;
@@ -183,17 +178,13 @@ class OrientationEstimator {
     const float accel_weight =
         delta_time_seconds /
         (kAccelCorrectionTimeConstantSeconds + delta_time_seconds);
-    angles_.roll +=
-        data.angular_velocity_dps.x * delta_time_seconds;
-    angles_.pitch +=
-        data.angular_velocity_dps.y * delta_time_seconds;
+    angles_.roll += data.angular_velocity_dps.x * delta_time_seconds;
+    angles_.pitch += data.angular_velocity_dps.y * delta_time_seconds;
     angles_.yaw = NormalizeDegrees(
         angles_.yaw + data.angular_velocity_dps.z * delta_time_seconds);
 
-    angles_.roll +=
-        accel_weight * (accel_angles.roll - angles_.roll);
-    angles_.pitch +=
-        accel_weight * (accel_angles.pitch - angles_.pitch);
+    angles_.roll += accel_weight * (accel_angles.roll - angles_.roll);
+    angles_.pitch += accel_weight * (accel_angles.pitch - angles_.pitch);
 
     if (magnetic_data_valid) {
       if (CalculateMagneticYaw(data.magnetic_field_ut, angles_.pitch,
@@ -203,8 +194,7 @@ class OrientationEstimator {
             (kMagCorrectionTimeConstantSeconds + delta_time_seconds);
         angles_.yaw = NormalizeDegrees(
             angles_.yaw +
-            mag_weight *
-                ShortestAngleDifference(magnetic_yaw, angles_.yaw));
+            mag_weight * ShortestAngleDifference(magnetic_yaw, angles_.yaw));
       }
     }
 
@@ -237,8 +227,7 @@ void RunIcm20948ImuExample() {
   int64_t last_sample_time_us = esp_timer_get_time();
   int64_t last_log_time_us = last_sample_time_us;
   int64_t last_error_log_time_us =
-      last_sample_time_us -
-      static_cast<int64_t>(kErrorLogIntervalMs) * 1000;
+      last_sample_time_us - static_cast<int64_t>(kErrorLogIntervalMs) * 1000;
 
   while (true) {
     Icm20948::SensorData data;
@@ -263,8 +252,8 @@ void RunIcm20948ImuExample() {
     if (estimator.Update(data, delta_time_seconds, angles) &&
         now_us - last_log_time_us >=
             static_cast<int64_t>(kLogIntervalMs) * 1000) {
-      printf("Yaw: %7.2f deg, Pitch: %7.2f deg, Roll: %7.2f deg\n",
-          angles.yaw, angles.pitch, angles.roll);
+      printf("Yaw: %7.2f deg, Pitch: %7.2f deg, Roll: %7.2f deg\n", angles.yaw,
+          angles.pitch, angles.roll);
       last_log_time_us = now_us;
     }
 

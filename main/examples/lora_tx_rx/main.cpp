@@ -2,22 +2,28 @@
  * @Description: 根据当前硬件配置运行对应的 LoRa 数据收发测试
  * @Author: LILYGO_L
  * @Date: 2026-07-28 13:59:02
- * @LastEditTime: 2026-07-29 18:00:58
+ * @LastEditTime: 2026-09-22 17:04:14
  * @License: GPL 3.0
  */
+#include <cinttypes>
+#include <cstdio>
+
 #include "common.h"
 #include "lora_tx_rx.h"
 
-extern "C" void app_main(void) {
+extern "C" void app_main() {
   printf("LoRa TX/RX example on %s\n", common::kBoardName);
-  printf("LoRa: %lu MHz, SF12, BW %lu kHz, CR 4/5, "
+  printf("LoRa: %" PRIu32 " MHz, SF12, BW %" PRIu32
+         " kHz, CR 4/5, "
          "private sync word 0x%02X\n",
-      static_cast<unsigned long>(lora_tx_rx::kFrequencyHz / 1000000U),
-      static_cast<unsigned long>(lora_tx_rx::kBandwidthKhz),
+      static_cast<uint32_t>(lora_tx_rx::kFrequencyHz / 1000000U),
+      static_cast<uint32_t>(lora_tx_rx::kBandwidthKhz),
       static_cast<unsigned int>(lora_tx_rx::kSyncWord));
 
   if (!common::InitDriver()) {
-    printf("Device driver initialization completed with errors; continuing example\n");
+    printf(
+        "Device driver initialization completed with errors; continuing "
+        "example\n");
   }
 
 #if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) && \

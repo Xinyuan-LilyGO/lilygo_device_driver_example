@@ -2,13 +2,18 @@
  * @Description: ES8311 麦克风采集与扬声器播放回环实现
  * @Author: LILYGO_L
  * @Date: 2026-07-28 13:59:02
- * @LastEditTime: 2026-07-28 14:05:30
+ * @LastEditTime: 2026-09-22 17:04:19
  * @License: GPL 3.0
  */
-#include "common.h"
-#include "microphone_speaker_loopback.h"
-
+#include <cstddef>
+#include <cstdint>
+#include <cstdio>
 #include <memory>
+
+#include "common.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "microphone_speaker_loopback.h"
 
 #if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) && \
     !defined(CONFIG_LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
@@ -16,8 +21,7 @@
 namespace {
 
 constexpr size_t kAudioBufferSampleCount = 1024;
-constexpr size_t kAudioBufferSize =
-    kAudioBufferSampleCount * sizeof(int16_t);
+constexpr size_t kAudioBufferSize = kAudioBufferSampleCount * sizeof(int16_t);
 
 }  // namespace
 
@@ -46,8 +50,7 @@ void RunEs8311MicrophoneSpeakerLoopback() {
       continue;
     }
 
-    const size_t bytes_written =
-        es8311->WriteI2s(buffer.get(), bytes_read);
+    const size_t bytes_written = es8311->WriteI2s(buffer.get(), bytes_read);
     if (bytes_written != bytes_read) {
       printf("ES8311 audio write failed (%u/%u bytes)\n",
           static_cast<unsigned int>(bytes_written),

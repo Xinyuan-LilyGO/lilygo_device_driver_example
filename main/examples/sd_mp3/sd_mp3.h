@@ -6,7 +6,6 @@
  * @License: GPL 3.0
  */
 #pragma once
-
 #include <cstddef>
 #include <cstdint>
 

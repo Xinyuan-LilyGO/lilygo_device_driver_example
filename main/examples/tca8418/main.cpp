@@ -2,23 +2,33 @@
  * @Description: tca8418
  * @Author: LILYGO_L
  * @Date: 2025-06-13 14:20:16
- * @LastEditTime: 2026-04-30 10:31:48
+ * @LastEditTime: 2026-09-22 17:04:41
  * @License: GPL 3.0
  */
+#include <cstddef>
+#include <cstdint>
+#include <cstdio>
+
 #include "common.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 
 namespace keyboard = common::board::keyboard_expansion;
 
-extern "C" void app_main(void) {
+extern "C" void app_main() {
   printf("TCA8418 example on %s\n", common::kBoardName);
 
   auto& driver = common::GetDriver();
   if (!common::InitMinimalDriver()) {
-    printf("Minimal device driver initialization completed with errors; continuing example\n");
+    printf(
+        "Minimal device driver initialization completed with errors; "
+        "continuing example\n");
   }
   // The expansion initializer creates the TCA8418 driver and handles its reset.
   if (!driver.InitKeyboardExpansion()) {
-    printf("Some keyboard expansion peripherals failed to initialize; continuing example\n");
+    printf(
+        "Some keyboard expansion peripherals failed to initialize; continuing "
+        "example\n");
   }
   if (!driver.IsTca8418Ready()) {
     printf("TCA8418 initialization failed\n");
@@ -37,7 +47,8 @@ extern "C" void app_main(void) {
         printf("Keyboard event FIFO overflow\n");
       }
 
-      // Poll the FIFO too, including events arriving while IRQ flags are cleared.
+      // Poll the FIFO too, including events arriving while IRQ flags are
+      // cleared.
       const uint8_t event_count = tca8418->GetFingerCount();
       if (event_count == 0xFF) {
         printf("Read keyboard event count failed\n");

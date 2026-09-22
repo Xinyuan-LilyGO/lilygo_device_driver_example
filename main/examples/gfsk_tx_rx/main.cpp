@@ -2,10 +2,15 @@
  * @Description: CC1101 GFSK TX/RX on the P4 keyboard expansion
  * @License: GPL 3.0
  */
-#include "common.h"
-
 #include <array>
 #include <atomic>
+#include <cstddef>
+#include <cstdint>
+#include <cstdio>
+
+#include "common.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 
 namespace {
 
@@ -47,14 +52,18 @@ bool ButtonPressed(PlatformHal& platform_hal) {
 
 }  // namespace
 
-extern "C" void app_main(void) {
+extern "C" void app_main() {
   printf("CC1101 GFSK TX/RX example on %s\n", common::kBoardName);
   auto& driver = common::GetDriver();
   if (!common::InitMinimalDriver()) {
-    printf("Minimal device driver initialization completed with errors; continuing example\n");
+    printf(
+        "Minimal device driver initialization completed with errors; "
+        "continuing example\n");
   }
   if (!driver.InitKeyboardExpansion()) {
-    printf("Some keyboard expansion peripherals failed to initialize; continuing example\n");
+    printf(
+        "Some keyboard expansion peripherals failed to initialize; continuing "
+        "example\n");
   }
   if (!driver.IsXl9555Ready() || !driver.IsCc1101Ready()) {
     printf("Keyboard expansion CC1101 is unavailable\n");
@@ -87,7 +96,8 @@ extern "C" void app_main(void) {
   config.append_status = true;
   config.fec_enabled = false;
   if (!driver.SetCc1101RfSwitch(RfSwitch()) ||
-      !driver.SetCc1101OperatingMode(DeviceDriver::Cc1101OperatingMode::kStandby) ||
+      !driver.SetCc1101OperatingMode(
+          DeviceDriver::Cc1101OperatingMode::kStandby) ||
       !radio.Configure(config)) {
     printf("CC1101 GFSK configuration failed\n");
     driver.SetCc1101OperatingMode(DeviceDriver::Cc1101OperatingMode::kSleep);
@@ -103,8 +113,9 @@ extern "C" void app_main(void) {
     return;
   }
 
-  printf("GFSK: %.3f MHz, %.1f kBaud, deviation %.1f kHz, "
-         "RX bandwidth %.3f kHz, sync 0x%02X%02X, power %d dBm\n",
+  printf(
+      "GFSK: %.3f MHz, %.1f kBaud, deviation %.1f kHz, "
+      "RX bandwidth %.3f kHz, sync 0x%02X%02X, power %d dBm\n",
       config.frequency_mhz, config.data_rate_kbaud,
       config.frequency_deviation_khz, config.receive_bandwidth_khz,
       static_cast<unsigned>(config.sync_word_high),
@@ -148,7 +159,8 @@ extern "C" void app_main(void) {
         g_receive_pending.store(false, std::memory_order_relaxed);
         const bool transmitted =
             radio.Transmit(kTestPayload.data(), kTestPayload.size());
-        // TX completion also produces a GDO0 falling edge; discard it before RX.
+        // TX completion also produces a GDO0 falling edge; discard it before
+        // RX.
         g_receive_pending.store(false, std::memory_order_relaxed);
         receiving = radio.StartReceive();
         printf("CC1101 TX: %s (%zu bytes)\n",
@@ -160,10 +172,12 @@ extern "C" void app_main(void) {
   }
 
   printf("CC1101 receive start/restart failed\n");
-  if (!platform_hal.DeinitGpioInterrupt(keyboard_gpio::t_mix_rf::cc1101::kGdo0)) {
+  if (!platform_hal.DeinitGpioInterrupt(
+          keyboard_gpio::t_mix_rf::cc1101::kGdo0)) {
     printf("CC1101 receive interrupt cleanup failed\n");
   }
-  if (!driver.SetCc1101OperatingMode(DeviceDriver::Cc1101OperatingMode::kSleep)) {
+  if (!driver.SetCc1101OperatingMode(
+          DeviceDriver::Cc1101OperatingMode::kSleep)) {
     printf("CC1101 sleep failed\n");
   }
 }

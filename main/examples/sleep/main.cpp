@@ -5,6 +5,8 @@
  * @LastEditTime: 2026-08-03 09:46:03
  * @License: GPL 3.0
  */
+#include <cstdio>
+
 #include "common.h"
 #include "driver/uart.h"
 #include "esp_sleep.h"
@@ -34,7 +36,7 @@ void ConfigureDeepSleepGpioIsolation() {
 
 }  // namespace
 
-extern "C" void app_main(void) {
+extern "C" void app_main() {
   printf("Sleep example on %s\n", common::kBoardName);
 
   auto& driver = common::GetDriver();

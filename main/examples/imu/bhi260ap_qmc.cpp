@@ -2,18 +2,21 @@
  * @Description: BHI260AP 与 QMC6309/QMC6310N 姿态角读取实现
  * @Author: LILYGO_L
  * @Date: 2026-07-28 13:59:02
- * @LastEditTime: 2026-07-28 14:05:30
+ * @LastEditTime: 2026-09-22 17:03:56
  * @License: GPL 3.0
  */
+#include <cmath>
+#include <cstdint>
+#include <cstdio>
+
 #include "common.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include "imu.h"
 
-#include <cmath>
-
 #if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR) || \
-    (defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) && \
+    (defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) &&    \
         defined(CONFIG_LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2))
-
 #include "bhy2_parse.h"
 
 namespace {
@@ -56,12 +59,10 @@ EulerAngles CalculateEulerAngles(
   const float acceleration_z = -acceleration[2];
 
   angles.pitch =
-      std::atan2(-acceleration[0],
-          std::sqrt(acceleration[1] * acceleration[1] +
-                    acceleration_z * acceleration_z)) *
+      std::atan2(-acceleration[0], std::sqrt(acceleration[1] * acceleration[1] +
+                                             acceleration_z * acceleration_z)) *
       kRadiansToDegrees;
-  angles.roll =
-      std::atan2(acceleration[1], acceleration_z) * kRadiansToDegrees;
+  angles.roll = std::atan2(acceleration[1], acceleration_z) * kRadiansToDegrees;
 
   const float pitch_radians = angles.pitch * kDegreesToRadians;
   const float roll_radians = angles.roll * kDegreesToRadians;
@@ -69,16 +70,13 @@ EulerAngles CalculateEulerAngles(
       magnetic_field[0] * std::cos(pitch_radians) +
       magnetic_field[2] * std::sin(pitch_radians);
   const float magnetic_y_horizontal =
-      magnetic_field[0] * std::sin(roll_radians) *
-          std::sin(pitch_radians) -
-      magnetic_field[2] * std::sin(roll_radians) *
-          std::cos(pitch_radians) +
+      magnetic_field[0] * std::sin(roll_radians) * std::sin(pitch_radians) -
+      magnetic_field[2] * std::sin(roll_radians) * std::cos(pitch_radians) +
       magnetic_field[1] * std::cos(roll_radians);
 
-  angles.yaw =
-      NormalizeDegrees(std::atan2(
-                           magnetic_y_horizontal, magnetic_x_horizontal) *
-                       kRadiansToDegrees);
+  angles.yaw = NormalizeDegrees(
+      std::atan2(magnetic_y_horizontal, magnetic_x_horizontal) *
+      kRadiansToDegrees);
   return angles;
 }
 
@@ -109,8 +107,7 @@ bool ConfigureBhi260ap() {
   g_bhi260ap = driver.chip().bhi260ap.get();
   if (!g_bhi260ap->RegisterFifoCallback(
           BHY2_SENSOR_ID_ACC_PASS, ParseAcceleration) ||
-      !g_bhi260ap->ProcessFifo() ||
-      !g_bhi260ap->UpdateVirtualSensorList() ||
+      !g_bhi260ap->ProcessFifo() || !g_bhi260ap->UpdateVirtualSensorList() ||
       !g_bhi260ap->ConfigureSensor(
           BHY2_SENSOR_ID_ACC_PASS, kSampleRateHz, kReportLatencyMs)) {
     printf("BHI260AP configuration failed (error code: %d)\n",
@@ -181,8 +178,8 @@ void RunBhi260apQmcImuExample() {
         now - last_log_tick >= pdMS_TO_TICKS(kLogIntervalMs)) {
       const EulerAngles angles =
           CalculateEulerAngles(g_acceleration, g_magnetic_field);
-      printf("Yaw: %7.2f deg, Pitch: %7.2f deg, Roll: %7.2f deg\n",
-          angles.yaw, angles.pitch, angles.roll);
+      printf("Yaw: %7.2f deg, Pitch: %7.2f deg, Roll: %7.2f deg\n", angles.yaw,
+          angles.pitch, angles.roll);
       g_acceleration_ready = false;
       g_magnetic_field_ready = false;
       last_log_tick = now;

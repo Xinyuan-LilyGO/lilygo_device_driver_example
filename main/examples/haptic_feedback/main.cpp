@@ -2,10 +2,15 @@
  * @Description: 触觉反馈马达的波形播放与增益测试示例
  * @Author: LILYGO_L
  * @Date: 2026-07-28 13:59:02
- * @LastEditTime: 2026-07-28 14:05:30
+ * @LastEditTime: 2026-09-22 17:03:53
  * @License: GPL 3.0
  */
+#include <cstdint>
+#include <cstdio>
+
 #include "common.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 
 namespace {
 
@@ -17,12 +22,14 @@ constexpr uint32_t kStopMs = 180;
 
 }  // namespace
 
-extern "C" void app_main(void) {
+extern "C" void app_main() {
   printf("Haptic feedback example on %s\n", common::kBoardName);
 
   auto& driver = common::GetDriver();
   if (!common::InitDriver()) {
-    printf("Device driver initialization completed with errors; continuing example\n");
+    printf(
+        "Device driver initialization completed with errors; continuing "
+        "example\n");
   }
   if (!driver.IsAw86224Ready()) {
     printf("AW86224 init failed\n");

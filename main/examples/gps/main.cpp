@@ -5,14 +5,18 @@
  * @LastEditTime: 2026-07-29 00:22:40
  * @License: GPL 3.0
  */
+#include <cstdio>
+
 #include "common.h"
 #include "gps.h"
 
-extern "C" void app_main(void) {
+extern "C" void app_main() {
   printf("GPS/GNSS example on %s\n", common::kBoardName);
 
   if (!common::InitDriver()) {
-    printf("Device driver initialization completed with errors; continuing example\n");
+    printf(
+        "Device driver initialization completed with errors; continuing "
+        "example\n");
   }
 
 #if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4)

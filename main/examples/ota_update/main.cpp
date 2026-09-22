@@ -2,12 +2,13 @@
  * @Description: 通过 BOOT 按键触发网络适配器与主控固件 HTTPS OTA 更新的示例
  * @Author: LILYGO_L
  * @Date: 2026-07-28 13:59:02
- * @LastEditTime: 2026-07-28 14:05:30
+ * @LastEditTime: 2026-09-22 17:04:23
  * @License: GPL 3.0
  */
 #include <algorithm>
 #include <cerrno>
 #include <cinttypes>
+#include <cstddef>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
@@ -302,8 +303,7 @@ bool FindWirelessFirmwareImage(
  * @param image_info 用于返回有效应用镜像信息
  * @return 固件文件有效返回 true，失败返回 false
  */
-bool InspectWirelessFirmware(
-    const char* path, FirmwareImageInfo* image_info) {
+bool InspectWirelessFirmware(const char* path, FirmwareImageInfo* image_info) {
   std::unique_ptr<FILE, decltype(&std::fclose)> firmware_file(
       std::fopen(path, "rb"), &std::fclose);
   if (firmware_file == nullptr) {
@@ -327,8 +327,7 @@ bool InspectWirelessFirmware(
  * @param event HTTP 客户端事件及其附带的数据
  * @return 事件处理成功返回 ESP_OK，写文件失败返回 ESP_FAIL
  */
-esp_err_t WirelessFirmwareDownloadEventHandler(
-    esp_http_client_event_t* event) {
+esp_err_t WirelessFirmwareDownloadEventHandler(esp_http_client_event_t* event) {
   if (event == nullptr || event->user_data == nullptr) {
     return ESP_ERR_INVALID_ARG;
   }
@@ -416,10 +415,11 @@ bool DownloadWirelessFirmware() {
   }
   if (content_length > 0 &&
       download_context.downloaded_size != static_cast<size_t>(content_length)) {
-    printf("Wireless firmware (%s) download is incomplete: %u/%lld bytes\n",
+    printf("Wireless firmware (%s) download is incomplete: %u/%" PRId64
+           " bytes\n",
         kWirelessChipName,
         static_cast<unsigned int>(download_context.downloaded_size),
-        static_cast<long long>(content_length));
+        static_cast<int64_t>(content_length));
     download_ok = false;
   }
 
@@ -431,8 +431,7 @@ bool DownloadWirelessFirmware() {
   }
 
   std::remove(kWirelessFirmwarePath);
-  if (std::rename(kWirelessFirmwareTempPath, kWirelessFirmwarePath) !=
-      0) {
+  if (std::rename(kWirelessFirmwareTempPath, kWirelessFirmwarePath) != 0) {
     printf("Install downloaded Wireless firmware (%s) file failed\n",
         kWirelessChipName);
     std::remove(kWirelessFirmwareTempPath);
@@ -527,7 +526,8 @@ WirelessFirmwareUpdateResult CheckAndUpdateWirelessFirmware() {
   std::snprintf(current_version_text, sizeof(current_version_text),
       "%" PRIu32 ".%" PRIu32 ".%" PRIu32, current_version.major1,
       current_version.minor1, current_version.patch1);
-  printf("Stored Wireless firmware (%s): version=%s offset=0x%X size=%u bytes\n",
+  printf(
+      "Stored Wireless firmware (%s): version=%s offset=0x%X size=%u bytes\n",
       kWirelessChipName, target_version,
       static_cast<unsigned int>(image_info.offset),
       static_cast<unsigned int>(image_info.size));
@@ -535,8 +535,7 @@ WirelessFirmwareUpdateResult CheckAndUpdateWirelessFirmware() {
       current_version_text);
 
   if (std::strcmp(current_version_text, target_version) == 0) {
-    printf("Wireless firmware (%s) is already up to date\n",
-        kWirelessChipName);
+    printf("Wireless firmware (%s) is already up to date\n", kWirelessChipName);
     return WirelessFirmwareUpdateResult::kNotRequired;
   }
 
@@ -556,7 +555,8 @@ WirelessFirmwareUpdateResult CheckAndUpdateWirelessFirmware() {
     return WirelessFirmwareUpdateResult::kFailed;
   }
 
-  // 无线固件激活后 ESP32-P4 必须重启重新同步；先写入标记，重启后自动继续主固件 OTA。
+  // 无线固件激活后 ESP32-P4 必须重启重新同步；先写入标记，重启后自动继续主固件
+  // OTA。
   if (!SetPendingMainFirmwareUpdate()) {
     return WirelessFirmwareUpdateResult::kFailed;
   }
@@ -628,7 +628,8 @@ WirelessFirmwareUpdateResult CheckAndUpdateWirelessFirmware() {
     }
     printf("Wireless firmware (%s) activated\n", kWirelessChipName);
   } else {
-    printf("Current Wireless firmware (%s) activates the update during OTA end\n",
+    printf(
+        "Current Wireless firmware (%s) activates the update during OTA end\n",
         kWirelessChipName);
   }
 
@@ -859,8 +860,8 @@ MainFirmwareUpdateResult CheckAndUpdateMainFirmware() {
   esp_https_ota_handle_t ota_handle = nullptr;
   esp_err_t result = esp_https_ota_begin(&ota_config, &ota_handle);
   if (result != ESP_OK) {
-    printf("Main firmware HTTPS OTA begin failed: %s\n",
-        esp_err_to_name(result));
+    printf(
+        "Main firmware HTTPS OTA begin failed: %s\n", esp_err_to_name(result));
     return MainFirmwareUpdateResult::kFailed;
   }
 
@@ -891,8 +892,7 @@ MainFirmwareUpdateResult CheckAndUpdateMainFirmware() {
   } while (result == ESP_ERR_HTTPS_OTA_IN_PROGRESS);
 
   if (result != ESP_OK) {
-    printf("Main firmware OTA download failed: %s\n",
-        esp_err_to_name(result));
+    printf("Main firmware OTA download failed: %s\n", esp_err_to_name(result));
     esp_https_ota_abort(ota_handle);
     return MainFirmwareUpdateResult::kFailed;
   }
@@ -1002,8 +1002,9 @@ void OtaTask(void* task_parameter) {
       g_wifi_events, kWifiConnectedBit, pdFALSE, pdTRUE, portMAX_DELAY);
   ConfirmRunningMainFirmware();
   if (HasPendingMainFirmwareUpdate()) {
-    printf("Verifying Wireless firmware (%s) before resuming Main firmware "
-           "OTA\n",
+    printf(
+        "Verifying Wireless firmware (%s) before resuming Main firmware "
+        "OTA\n",
         kWirelessChipName);
     const WirelessFirmwareUpdateResult wireless_firmware_result =
         CheckAndUpdateWirelessFirmware();
@@ -1012,8 +1013,9 @@ void OtaTask(void* task_parameter) {
       RunMainFirmwareUpdateStage();
     }
   }
-  printf("Press and release BOOT once to update Wireless firmware (%s) first, "
-         "then Main firmware (ESP32-P4)\n",
+  printf(
+      "Press and release BOOT once to update Wireless firmware (%s) first, "
+      "then Main firmware (ESP32-P4)\n",
       kWirelessChipName);
 
   bool was_pressed = false;
@@ -1032,8 +1034,9 @@ void OtaTask(void* task_parameter) {
         } else {
           printf("Wi-Fi is not connected; OTA check skipped\n");
         }
-        printf("Press BOOT again to update Wireless firmware (%s) first, then "
-               "Main firmware (ESP32-P4)\n",
+        printf(
+            "Press BOOT again to update Wireless firmware (%s) first, then "
+            "Main firmware (ESP32-P4)\n",
             kWirelessChipName);
       }
     }
@@ -1044,11 +1047,13 @@ void OtaTask(void* task_parameter) {
 
 }  // namespace
 
-extern "C" void app_main(void) {
+extern "C" void app_main() {
   printf(
       "ESP32-P4 BOOT-triggered HTTPS OTA example on %s\n", common::kBoardName);
   if (!common::InitDriver()) {
-    printf("Board driver initialization completed with errors; continuing example\n");
+    printf(
+        "Board driver initialization completed with errors; continuing "
+        "example\n");
   }
 
   if (!MountStorage()) {

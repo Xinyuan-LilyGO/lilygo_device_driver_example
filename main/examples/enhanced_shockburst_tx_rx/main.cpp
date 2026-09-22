@@ -2,10 +2,15 @@
  * @Description: NRF24L01 Enhanced ShockBurst TX/RX on the P4 keyboard expansion
  * @License: GPL 3.0
  */
-#include "common.h"
-
 #include <algorithm>
 #include <array>
+#include <cstddef>
+#include <cstdint>
+#include <cstdio>
+
+#include "common.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 
 namespace {
 
@@ -46,7 +51,8 @@ const char* TransmitResultName(Radio::TransmitResult result) {
 
 bool ReceivePackets(Radio& radio) {
   std::array<uint8_t, Radio::kMaximumPayloadLength> buffer{};
-  // The hardware FIFO holds three packets; bound each pass so BOOT stays responsive.
+  // The hardware FIFO holds three packets; bound each pass so BOOT stays
+  // responsive.
   for (size_t packet = 0; packet < 3; ++packet) {
     bool fifo_empty = true;
     if (!radio.RxFifoEmpty(&fifo_empty)) {
@@ -59,7 +65,8 @@ bool ReceivePackets(Radio& radio) {
 
     size_t received_size = 0;
     uint8_t pipe = 0;
-    if (!radio.ReadRxPayload(buffer.data(), buffer.size(), &received_size, &pipe) ||
+    if (!radio.ReadRxPayload(
+            buffer.data(), buffer.size(), &received_size, &pipe) ||
         !radio.RxFifoEmpty(&fifo_empty) ||
         (fifo_empty && !radio.ClearIrqFlag(Radio::IrqSource::kRxDataReady))) {
       printf("NRF24L01 packet read or RX IRQ clear failed\n");
@@ -79,14 +86,19 @@ bool ReceivePackets(Radio& radio) {
 
 }  // namespace
 
-extern "C" void app_main(void) {
-  printf("NRF24L01 Enhanced ShockBurst TX/RX example on %s\n", common::kBoardName);
+extern "C" void app_main() {
+  printf(
+      "NRF24L01 Enhanced ShockBurst TX/RX example on %s\n", common::kBoardName);
   auto& driver = common::GetDriver();
   if (!common::InitMinimalDriver()) {
-    printf("Minimal device driver initialization completed with errors; continuing example\n");
+    printf(
+        "Minimal device driver initialization completed with errors; "
+        "continuing example\n");
   }
   if (!driver.InitKeyboardExpansion()) {
-    printf("Some keyboard expansion peripherals failed to initialize; continuing example\n");
+    printf(
+        "Some keyboard expansion peripherals failed to initialize; continuing "
+        "example\n");
   }
   if (!driver.IsXl9555Ready() || !driver.IsNrf24l01Ready()) {
     printf("Keyboard expansion NRF24L01 is unavailable\n");
@@ -120,15 +132,19 @@ extern "C" void app_main(void) {
   if (!driver.SetNrf24l01OperatingMode(
           DeviceDriver::Nrf24l01OperatingMode::kStandby) ||
       !radio.Configure(config) ||
-      !radio.SetAddress(Radio::Address::kPipe0, kAddress.data(), kAddress.size()) ||
-      !radio.SetAddress(Radio::Address::kTransmit, kAddress.data(), kAddress.size())) {
+      !radio.SetAddress(
+          Radio::Address::kPipe0, kAddress.data(), kAddress.size()) ||
+      !radio.SetAddress(
+          Radio::Address::kTransmit, kAddress.data(), kAddress.size())) {
     printf("NRF24L01 Enhanced ShockBurst configuration failed\n");
-    driver.SetNrf24l01OperatingMode(DeviceDriver::Nrf24l01OperatingMode::kSleep);
+    driver.SetNrf24l01OperatingMode(
+        DeviceDriver::Nrf24l01OperatingMode::kSleep);
     return;
   }
 
-  printf("Enhanced ShockBurst: channel %u (%u MHz), 250 kbps, "
-         "0 dBm, CRC 16-bit, auto ACK %s, payload %s\n",
+  printf(
+      "Enhanced ShockBurst: channel %u (%u MHz), 250 kbps, "
+      "0 dBm, CRC 16-bit, auto ACK %s, payload %s\n",
       static_cast<unsigned>(kChannel), 2400U + kChannel,
       kAutoAckEnabled ? "enabled" : "disabled",
       kDynamicPayloadEnabled ? "dynamic" : "fixed 32 bytes");
@@ -138,7 +154,8 @@ extern "C" void app_main(void) {
   }
   printf("\n");
 
-  // Static payload mode sends the full width, with unused bytes padded with zero.
+  // Static payload mode sends the full width, with unused bytes padded with
+  // zero.
   std::array<uint8_t, Radio::kMaximumPayloadLength> transmit_buffer{};
   std::copy(kTestPayload.begin(), kTestPayload.end(), transmit_buffer.begin());
   const size_t transmit_size =
@@ -172,7 +189,8 @@ extern "C" void app_main(void) {
   if (!receiving) {
     printf("NRF24L01 receive start/restart failed\n");
   }
-  if (!driver.SetNrf24l01OperatingMode(DeviceDriver::Nrf24l01OperatingMode::kSleep)) {
+  if (!driver.SetNrf24l01OperatingMode(
+          DeviceDriver::Nrf24l01OperatingMode::kSleep)) {
     printf("NRF24L01 sleep failed\n");
   }
 }

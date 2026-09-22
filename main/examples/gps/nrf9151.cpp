@@ -2,15 +2,19 @@
  * @Description: nRF9151 GNSS 定位数据读取示例实现
  * @Author: LILYGO_L
  * @Date: 2026-07-29 00:22:40
- * @LastEditTime: 2026-09-04 17:45:00
+ * @LastEditTime: 2026-09-22 17:03:52
  * @License: GPL 3.0
  */
-#include "common.h"
-#include "gps.h"
-
+#include <cstddef>
+#include <cstdint>
 #include <cstdio>
 #include <string>
 #include <vector>
+
+#include "common.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "gps.h"
 
 #if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR)
 
@@ -67,8 +71,7 @@ void PrintCustomGnssLine(const std::string& line) {
     printf("[nRF9151][FIX] longitude: %.10lf deg\n", longitude);
     printf("[nRF9151][FIX] altitude: %.3f m\n", altitude);
     printf("[nRF9151][FIX] accuracy: %.3f m\n", accuracy);
-    printf("[nRF9151][FIX] speed: %.3f m/s, %.3f km/h\n", speed,
-        speed * 3.6F);
+    printf("[nRF9151][FIX] speed: %.3f m/s, %.3f km/h\n", speed, speed * 3.6F);
     printf("[nRF9151][FIX] heading: %.3f deg\n", heading);
     printf("[nRF9151][FIX] UTC date/time: %s\n", datetime);
     return;
@@ -85,13 +88,13 @@ void PrintCustomGnssLine(const std::string& line) {
 std::string TrimLineEndings(const std::string& value) {
   size_t begin = 0;
   while ((begin < value.size()) &&
-      ((value[begin] == '\r') || (value[begin] == '\n'))) {
+         ((value[begin] == '\r') || (value[begin] == '\n'))) {
     ++begin;
   }
 
   size_t end = value.size();
-  while ((end > begin) &&
-      ((value[end - 1] == '\r') || (value[end - 1] == '\n'))) {
+  while (
+      (end > begin) && ((value[end - 1] == '\r') || (value[end - 1] == '\n'))) {
     --end;
   }
   return value.substr(begin, end - begin);
@@ -180,8 +183,8 @@ void RunNrf9151() {
       "AT#XGNSS=1,0,1",
   };
   for (size_t index = 0;
-       index < (sizeof(startup_commands) / sizeof(startup_commands[0]));
-       ++index) {
+      index < (sizeof(startup_commands) / sizeof(startup_commands[0]));
+      ++index) {
     if (SendCommand(nrf9151, startup_commands[index])) {
       continue;
     }
@@ -198,8 +201,9 @@ void RunNrf9151() {
   }
 
   printf("\n[nRF9151] GNSS continuous navigation started\n");
-  printf("[nRF9151] logging raw NMEA, custom #XGNSS fixes/status, and "
-         "parsed navigation fields\n");
+  printf(
+      "[nRF9151] logging raw NMEA, custom #XGNSS fixes/status, and "
+      "parsed navigation fields\n");
 
   NmeaParser parser;
   if (!parser.IsReady()) {

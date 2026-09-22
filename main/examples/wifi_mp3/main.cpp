@@ -2,26 +2,32 @@
  * @Description: 通过无线网络获取、解码并播放 MP3 音频流
  * @Author: LILYGO_L
  * @Date: 2026-07-28 13:59:02
- * @LastEditTime: 2026-09-10 11:34:14
+ * @LastEditTime: 2026-09-22 17:04:49
  * @License: GPL 3.0
  */
-#include "common.h"
-#include "wifi_mp3.h"
-
 #include <algorithm>
 #include <cassert>
+#include <cinttypes>
+#include <cstddef>
+#include <cstdint>
+#include <cstdio>
 #include <cstring>
 #include <memory>
 
+#include "common.h"
 #include "esp_audio_dec.h"
 #include "esp_audio_dec_default.h"
 #include "esp_crt_bundle.h"
+#include "esp_err.h"
 #include "esp_event.h"
 #include "esp_hosted.h"
 #include "esp_http_client.h"
 #include "esp_timer.h"
 #include "esp_wifi.h"
+#include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
+#include "freertos/task.h"
+#include "wifi_mp3.h"
 
 namespace {
 
@@ -54,8 +60,8 @@ bool SkipHttpBytes(esp_http_client_handle_t client, uint32_t byte_count) {
     const int read_length = esp_http_client_read(
         client, reinterpret_cast<char*>(buffer.get()), chunk);
     if (read_length <= 0) {
-      printf("ID3 skip failed, remaining: %lu bytes\n",
-          static_cast<unsigned long>(remaining));
+      printf("ID3 skip failed, remaining: %" PRIu32 " bytes\n",
+          static_cast<uint32_t>(remaining));
       return false;
     }
     remaining -= static_cast<uint32_t>(read_length);
@@ -72,16 +78,14 @@ size_t ReadPrefixAndSkipId3v2(
     return 0;
   }
 
-  if (read_length != sizeof(header) ||
-      std::memcmp(header, "ID3", 3) != 0) {
+  if (read_length != sizeof(header) || std::memcmp(header, "ID3", 3) != 0) {
     std::memcpy(prefix_buffer, header, read_length);
     return static_cast<size_t>(read_length);
   }
 
   const uint32_t tag_size = SynchsafeToUint32(header + 6);
-  printf("ID3v2.%u tag detected, size: %lu bytes\n",
-      static_cast<unsigned int>(header[3]),
-      static_cast<unsigned long>(tag_size));
+  printf("ID3v2.%u tag detected, size: %" PRIu32 " bytes\n",
+      static_cast<unsigned int>(header[3]), static_cast<uint32_t>(tag_size));
   if (!SkipHttpBytes(client, tag_size)) {
     return 0;
   }
@@ -125,8 +129,8 @@ void HttpStreamPlayTask(void*) {
     vTaskDelete(nullptr);
     return;
   }
-  printf("MP3 stream size: %lld bytes\n",
-      static_cast<long long>(content_length));
+  printf("MP3 stream size: %" PRId64 " bytes\n",
+      static_cast<int64_t>(content_length));
 
   esp_audio_dec_register_default();
   esp_audio_dec_cfg_t decoder_config = {
@@ -144,8 +148,7 @@ void HttpStreamPlayTask(void*) {
 
   auto read_buffer = std::make_unique<uint8_t[]>(kReadBufferSize);
   auto pcm_buffer = std::make_unique<uint8_t[]>(kPcmBufferSize);
-  size_t remaining_bytes =
-      ReadPrefixAndSkipId3v2(client, read_buffer.get());
+  size_t remaining_bytes = ReadPrefixAndSkipId3v2(client, read_buffer.get());
   int64_t total_downloaded = 0;
   const uint32_t start_time = GetSystemTimeMs();
   uint32_t last_print_time = start_time;
@@ -216,12 +219,10 @@ void HttpStreamPlayTask(void*) {
       const float duration_seconds = (now - start_time) / 1000.0f;
       const float speed_kilobytes =
           (total_downloaded / 1024.0f) / duration_seconds;
-      const float progress =
-          content_length > 0
-              ? total_downloaded * 100.0f / content_length
-              : 0.0f;
-      printf(
-          "MP3 progress: %.2f%%, speed: %.2f KB/s, downloaded: %.1f KB\n",
+      const float progress = content_length > 0
+                                 ? total_downloaded * 100.0f / content_length
+                                 : 0.0f;
+      printf("MP3 progress: %.2f%%, speed: %.2f KB/s, downloaded: %.1f KB\n",
           progress, speed_kilobytes, total_downloaded / 1024.0f);
       last_print_time = now;
     }
@@ -280,11 +281,13 @@ void InitWifiStation() {
 
 }  // namespace
 
-extern "C" void app_main(void) {
+extern "C" void app_main() {
   printf("Wi-Fi MP3 example on %s %s\n", common::kBoardName,
       common::GetDriver().device_model_info().version);
   if (!common::InitDriver()) {
-    printf("Device driver initialization completed with errors; continuing example\n");
+    printf(
+        "Device driver initialization completed with errors; continuing "
+        "example\n");
   }
   if (!common::SetWifiCoprocessorPowerEnabled(true)) {
     printf("Wi-Fi coprocessor power enable failed\n");

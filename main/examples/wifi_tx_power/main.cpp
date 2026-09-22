@@ -2,12 +2,14 @@
  * @Description: 在支持的设备上测试 Wi-Fi 发射功率
  * @Author: LILYGO_L
  * @Date: 2026-09-15
- * @LastEditTime: 2026-09-15
+ * @LastEditTime: 2026-09-22 17:04:50
  * @License: GPL 3.0
  */
+#include <cstdint>
 #include <cstdio>
 #include <cstring>
 
+#include "common.h"
 #include "esp_err.h"
 #include "esp_event.h"
 #include "esp_hosted.h"
@@ -15,8 +17,6 @@
 #include "esp_wifi.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-
-#include "common.h"
 
 namespace {
 
@@ -56,8 +56,8 @@ bool InitWifiAp() {
   ap_config.ap.authmode = WIFI_AUTH_OPEN;
   ap_config.ap.max_connection = 1;
   ap_config.ap.beacon_interval = 100;
-  if (!CheckResult(esp_wifi_set_config(WIFI_IF_AP, &ap_config),
-          "AP configuration")) {
+  if (!CheckResult(
+          esp_wifi_set_config(WIFI_IF_AP, &ap_config), "AP configuration")) {
     return false;
   }
 
@@ -68,7 +68,7 @@ bool InitWifiAp() {
   country.max_tx_power = 80;
   country.policy = WIFI_COUNTRY_POLICY_AUTO;
   return CheckResult(esp_wifi_set_country(&country), "country setup") &&
-      CheckResult(esp_wifi_start(), "start");
+         CheckResult(esp_wifi_start(), "start");
 }
 
 bool ConfigureBand(uint8_t cycle) {
@@ -76,20 +76,20 @@ bool ConfigureBand(uint8_t cycle) {
     printf("Wi-Fi transmit test: 2.4 GHz, channel 6, 802.11b\n");
     return CheckResult(esp_wifi_set_band_mode(WIFI_BAND_MODE_2G_ONLY),
                "2.4 GHz band") &&
-        CheckResult(esp_wifi_set_protocol(WIFI_IF_AP, WIFI_PROTOCOL_11B),
-            "802.11b protocol") &&
-        CheckResult(esp_wifi_set_channel(6, WIFI_SECOND_CHAN_NONE),
-            "channel 6");
+           CheckResult(esp_wifi_set_protocol(WIFI_IF_AP, WIFI_PROTOCOL_11B),
+               "802.11b protocol") &&
+           CheckResult(
+               esp_wifi_set_channel(6, WIFI_SECOND_CHAN_NONE), "channel 6");
   }
 
 #if CONFIG_SLAVE_IDF_TARGET_ESP32C5
   printf("Wi-Fi transmit test: 5 GHz, channel 36, 802.11a\n");
-  return CheckResult(esp_wifi_set_band_mode(WIFI_BAND_MODE_5G_ONLY),
-             "5 GHz band") &&
-      CheckResult(esp_wifi_set_protocol(WIFI_IF_AP, WIFI_PROTOCOL_11A),
-          "802.11a protocol") &&
-      CheckResult(esp_wifi_set_channel(36, WIFI_SECOND_CHAN_NONE),
-          "channel 36");
+  return CheckResult(
+             esp_wifi_set_band_mode(WIFI_BAND_MODE_5G_ONLY), "5 GHz band") &&
+         CheckResult(esp_wifi_set_protocol(WIFI_IF_AP, WIFI_PROTOCOL_11A),
+             "802.11a protocol") &&
+         CheckResult(
+             esp_wifi_set_channel(36, WIFI_SECOND_CHAN_NONE), "channel 36");
 #else
   return false;
 #endif
@@ -97,10 +97,12 @@ bool ConfigureBand(uint8_t cycle) {
 
 }  // namespace
 
-extern "C" void app_main(void) {
+extern "C" void app_main() {
   printf("Wi-Fi transmit power test on %s\n", common::kBoardName);
   if (!common::InitDriver()) {
-    printf("Device driver initialization completed with errors; continuing example\n");
+    printf(
+        "Device driver initialization completed with errors; continuing "
+        "example\n");
   }
   if (!common::SetWifiCoprocessorPowerEnabled(true) ||
       !common::RegisterWifiCoprocessorResetCallback()) {
@@ -118,8 +120,7 @@ extern "C" void app_main(void) {
   uint8_t cycle = 0;
   while (true) {
     if (!CheckResult(esp_wifi_stop(), "stop") ||
-        !CheckResult(esp_wifi_start(), "restart") ||
-        !ConfigureBand(cycle) ||
+        !CheckResult(esp_wifi_start(), "restart") || !ConfigureBand(cycle) ||
         !CheckResult(esp_wifi_set_max_tx_power(80), "maximum transmit power")) {
       vTaskDelay(pdMS_TO_TICKS(1000));
       continue;

@@ -2,15 +2,15 @@
  * @Description: 准备无线协处理器固件下载所需的电源和控制信号
  * @Author: LILYGO_L
  * @Date: 2026-07-30 14:57:16
- * @LastEditTime: 2026-07-30 15:10:29
+ * @LastEditTime: 2026-09-22 17:03:43
  * @License: GPL 3.0
  */
+#include <cstdint>
 #include <cstdio>
 
+#include "common.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-
-#include "common.h"
 
 namespace {
 
@@ -73,9 +73,8 @@ void RunBootUartSwitch() {
     if (sampled != stable && now_ms - changed_ms >= 30) {
       stable = sampled;
       if (stable) {
-        const auto next = target == UartTarget::kEsp32c5
-                              ? UartTarget::kEsp32p4
-                              : UartTarget::kEsp32c5;
+        const auto next = target == UartTarget::kEsp32c5 ? UartTarget::kEsp32p4
+                                                         : UartTarget::kEsp32c5;
         if (SwitchUartTarget(next)) {
           target = next;
         }
@@ -99,13 +98,12 @@ bool EnableNrf9151ProgrammingPower() {
   constexpr auto kOutput = cpp_bus_driver::Xl95x5::Mode::kOutput;
   // 只开启编程电源，不初始化串口调制解调器。空白固件无法响应 AT 探测，
   // 调用 InitNrf9151() 会在探测失败后再次关闭电源。
-  bool result = io_expander->GpioWrite(
-      common::board::gpio::xl9535::kNrf9151En, 0);
+  bool result =
+      io_expander->GpioWrite(common::board::gpio::xl9535::kNrf9151En, 0);
   result &= io_expander->SetGpioMode(
       common::board::gpio::xl9535::kNrf9151En, kOutput);
   vTaskDelay(pdMS_TO_TICKS(10));
-  result &= io_expander->GpioWrite(
-      common::board::gpio::xl9535::kNrf9151En, 1);
+  result &= io_expander->GpioWrite(common::board::gpio::xl9535::kNrf9151En, 1);
   return result;
 }
 #endif
@@ -144,14 +142,12 @@ bool PrepareCoprocessors() {
 #elif defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4)
   auto* io_expander = driver.chip().xl9535.get();
   if (io_expander == nullptr ||
-      !io_expander->GpioWrite(
-          common::board::gpio::xl9535::kEsp32c6En, 1)) {
+      !io_expander->GpioWrite(common::board::gpio::xl9535::kEsp32c6En, 1)) {
     printf("Failed to release ESP32-C6 reset control\n");
     return false;
   }
   vTaskDelay(pdMS_TO_TICKS(20));
-  if (!io_expander->SetGpioMode(
-          common::board::gpio::xl9535::kEsp32c6En,
+  if (!io_expander->SetGpioMode(common::board::gpio::xl9535::kEsp32c6En,
           cpp_bus_driver::Xl95x5::Mode::kInput)) {
     printf("Failed to set ESP32-C6 reset control to high impedance\n");
     return false;
@@ -165,12 +161,14 @@ bool PrepareCoprocessors() {
 
 }  // namespace
 
-extern "C" void app_main(void) {
+extern "C" void app_main() {
   printf("Coprocessor download-mode helper on %s %s\n", common::kBoardName,
       common::GetDriver().device_model_info().version);
 
   if (!InitCoprocessorControlHardware()) {
-    printf("Coprocessor control hardware initialization completed with errors; continuing preparation\n");
+    printf(
+        "Coprocessor control hardware initialization completed with errors; "
+        "continuing preparation\n");
   }
   if (!PrepareCoprocessors()) {
     printf("Coprocessor preparation failed\n");

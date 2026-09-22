@@ -2,25 +2,29 @@
  * @Description: 根据当前硬件配置运行麦克风到扬声器的音频回环测试
  * @Author: LILYGO_L
  * @Date: 2026-07-28 13:59:02
- * @LastEditTime: 2026-07-28 14:05:30
+ * @LastEditTime: 2026-09-22 17:04:22
  * @License: GPL 3.0
  */
+#include <cstdio>
+
 #include "common.h"
 #include "microphone_speaker_loopback.h"
 
-extern "C" void app_main(void) {
+extern "C" void app_main() {
   printf("Microphone speaker loopback example on %s %s\n", common::kBoardName,
       common::GetDriver().device_model_info().version);
 
   if (!common::InitDriver()) {
-    printf("Device driver initialization completed with errors; continuing example\n");
+    printf(
+        "Device driver initialization completed with errors; continuing "
+        "example\n");
   }
 
 #if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) && \
     !defined(CONFIG_LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
   RunEs8311MicrophoneSpeakerLoopback();
 #elif defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR) || \
-    (defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) && \
+    (defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) &&      \
         defined(CONFIG_LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2))
   RunEs8389MicrophoneSpeakerLoopback();
 #endif

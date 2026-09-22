@@ -2,23 +2,27 @@
  * @Description: 扫描 Wi-Fi、连接指定网络并周期获取网络时间的示例
  * @Author: LILYGO_L
  * @Date: 2026-07-28 13:59:02
- * @LastEditTime: 2026-07-28 14:05:30
+ * @LastEditTime: 2026-09-22 17:04:52
  * @License: GPL 3.0
  */
-#include <stdlib.h>
-
 #include <algorithm>
 #include <cassert>
+#include <cstdint>
+#include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <ctime>
 #include <vector>
 
 #include "common.h"
+#include "esp_err.h"
 #include "esp_event.h"
 #include "esp_hosted.h"
 #include "esp_netif_sntp.h"
 #include "esp_wifi.h"
+#include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
+#include "freertos/task.h"
 
 namespace {
 
@@ -103,10 +107,11 @@ void WifiEventHandler(
     // Registered after the default handler, which performs MAC/netif setup.
     xEventGroupSetBits(g_wifi_events, kWifiStartedBit);
   } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_SCAN_DONE) {
-    const auto* event = static_cast<const wifi_event_sta_scan_done_t*>(event_data);
-    xEventGroupSetBits(g_wifi_events,
-        event != nullptr && event->status == 0 ? kWifiScanDoneBit
-                                             : kWifiScanFailedBit);
+    const auto* event =
+        static_cast<const wifi_event_sta_scan_done_t*>(event_data);
+    xEventGroupSetBits(g_wifi_events, event != nullptr && event->status == 0
+                                          ? kWifiScanDoneBit
+                                          : kWifiScanFailedBit);
   } else if (event_base == WIFI_EVENT &&
              event_id == WIFI_EVENT_STA_DISCONNECTED) {
     xEventGroupClearBits(g_wifi_events, kWifiConnectedBit);
@@ -140,17 +145,18 @@ bool InitWifiStation() {
   wifi_config_t empty_config = {};
   ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &empty_config));
   ESP_ERROR_CHECK(esp_wifi_start());
-  const EventBits_t bits = xEventGroupWaitBits(g_wifi_events, kWifiStartedBit,
-      pdFALSE, pdTRUE, pdMS_TO_TICKS(15000));
+  const EventBits_t bits = xEventGroupWaitBits(
+      g_wifi_events, kWifiStartedBit, pdFALSE, pdTRUE, pdMS_TO_TICKS(15000));
   if ((bits & kWifiStartedBit) == 0) {
-    printf("Timed out waiting for Wi-Fi station start; scan/connect cancelled\n");
+    printf(
+        "Timed out waiting for Wi-Fi station start; scan/connect cancelled\n");
     return false;
   }
   // The default handler can return early on a Hosted GetMAC RPC error.
   uint8_t mac[6] = {};
   if (esp_netif_get_mac(station, mac) != ESP_OK ||
-      std::all_of(mac, mac + sizeof(mac),
-          [](uint8_t byte) { return byte == 0; })) {
+      std::all_of(
+          mac, mac + sizeof(mac), [](uint8_t byte) { return byte == 0; })) {
     printf("Wi-Fi station MAC setup failed; scan/connect cancelled\n");
     return false;
   }
@@ -166,9 +172,9 @@ bool ScanWifi() {
     printf("Wi-Fi scan start failed: %s\n", esp_err_to_name(result));
     return false;
   }
-  const EventBits_t bits = xEventGroupWaitBits(g_wifi_events,
-      kWifiScanDoneBit | kWifiScanFailedBit, pdTRUE, pdFALSE,
-      pdMS_TO_TICKS(30000));
+  const EventBits_t bits =
+      xEventGroupWaitBits(g_wifi_events, kWifiScanDoneBit | kWifiScanFailedBit,
+          pdTRUE, pdFALSE, pdMS_TO_TICKS(30000));
   if ((bits & kWifiScanDoneBit) == 0 || (bits & kWifiScanFailedBit) != 0) {
     printf("Wi-Fi scan %s; connection cancelled\n",
         (bits & kWifiScanFailedBit) != 0 ? "failed" : "timed out");
@@ -266,11 +272,13 @@ bool FetchAndPrintRealTime() {
 
 }  // namespace
 
-extern "C" void app_main(void) {
+extern "C" void app_main() {
   printf("Wi-Fi scan, connect, and time example on %s %s\n", common::kBoardName,
       common::GetDriver().device_model_info().version);
   if (!common::InitDriver()) {
-    printf("Device driver initialization completed with errors; continuing example\n");
+    printf(
+        "Device driver initialization completed with errors; continuing "
+        "example\n");
   }
   if (!common::SetWifiCoprocessorPowerEnabled(true)) {
     printf("Wi-Fi coprocessor power enable failed\n");

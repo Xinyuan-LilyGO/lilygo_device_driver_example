@@ -2,15 +2,18 @@
  * @Description: ES8389 SD 卡 MP3 音频输出实现
  * @Author: LILYGO_L
  * @Date: 2026-07-28 13:59:02
- * @LastEditTime: 2026-07-28 14:05:30
+ * @LastEditTime: 2026-09-22 17:04:36
  * @License: GPL 3.0
  */
+#include <cstddef>
+#include <cstdint>
+
 #include "common.h"
 #include "sd_mp3.h"
 
 #if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR) || \
-    defined(CONFIG_LILYGO_DEVICE_DRIVER_T_GLASSES_P4) || \
-    (defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) && \
+    defined(CONFIG_LILYGO_DEVICE_DRIVER_T_GLASSES_P4) ||     \
+    (defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) &&    \
         defined(CONFIG_LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2))
 
 namespace {

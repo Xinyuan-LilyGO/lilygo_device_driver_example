@@ -2,27 +2,28 @@
  * @Description: 从 SD 卡读取、解码并播放 MP3 音频文件
  * @Author: LILYGO_L
  * @Date: 2026-07-28 13:59:02
- * @LastEditTime: 2026-07-30 16:40:27
+ * @LastEditTime: 2026-09-22 17:04:37
  * @License: GPL 3.0
  */
-#include "audio/mp3_metadata.h"
-#include "common.h"
-#include "sd_mp3.h"
-
+#include <cstddef>
+#include <cstdint>
 #include <cstdio>
 #include <cstring>
 #include <memory>
 #include <string>
 
+#include "audio/mp3_metadata.h"
+#include "common.h"
 #include "esp_audio_dec.h"
 #include "esp_audio_dec_default.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "sd_mp3.h"
 
 namespace {
 
 constexpr size_t kReadBufferSize = 4 * 1024;
 constexpr size_t kPcmBufferSize = 8 * 1024;
-const std::string kMp3FilePath =
-    std::string(common::board::device::sd::kBasePath) + "/music.mp3";
 
 cpp_bus_driver::PlatformHal g_platform_hal;
 
@@ -43,8 +44,8 @@ bool PlayMp3File(const char* path) {
     printf("Open MP3 file failed: %s\n", path);
     return false;
   }
-  if (fseek(
-          file, static_cast<long>(metadata.audio_data_offset), SEEK_SET) != 0) {
+  if (fseek(file, static_cast<long>(metadata.audio_data_offset), SEEK_SET) !=
+      0) {
     printf("Seek to MP3 audio stream failed\n");
     fclose(file);
     return false;
@@ -144,17 +145,20 @@ bool BootButtonPressed() {
 
 }  // namespace
 
-extern "C" void app_main(void) {
+extern "C" void app_main() {
+  const std::string mp3_file_path =
+      std::string(common::board::device::sd::kBasePath) + "/music.mp3";
   printf("SD MP3 example on %s %s\n", common::kBoardName,
       common::GetDriver().device_model_info().version);
   if (!common::InitDriver()) {
-    printf("Device driver initialization completed with errors; continuing example\n");
+    printf(
+        "Device driver initialization completed with errors; continuing "
+        "example\n");
   }
 
   auto& driver = common::GetDriver();
   if (!driver.IsSdmmcReady() &&
-      !driver.InitSdmmc(
-          common::board::device::sd::kBasePath, SDMMC_FREQ_52M)) {
+      !driver.InitSdmmc(common::board::device::sd::kBasePath, SDMMC_FREQ_52M)) {
     printf("SD card initialization failed\n");
     return;
   }
@@ -167,7 +171,7 @@ extern "C" void app_main(void) {
     return;
   }
 
-  printf("Press BOOT to play: %s\n", kMp3FilePath.c_str());
+  printf("Press BOOT to play: %s\n", mp3_file_path.c_str());
   bool was_pressed = false;
   while (true) {
     const bool pressed = BootButtonPressed();
@@ -175,7 +179,7 @@ extern "C" void app_main(void) {
       vTaskDelay(pdMS_TO_TICKS(30));
       if (BootButtonPressed()) {
         printf("MP3 playback started\n");
-        const bool played = PlayMp3File(kMp3FilePath.c_str());
+        const bool played = PlayMp3File(mp3_file_path.c_str());
         printf("MP3 playback %s\n", played ? "finished" : "failed");
       }
     }

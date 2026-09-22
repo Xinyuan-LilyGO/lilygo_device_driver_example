@@ -2,22 +2,33 @@
  * @Description: 使用 LVGL 读取触摸输入并在屏幕上绘图的示例
  * @Author: LILYGO_L
  * @Date: 2026-07-28 13:59:02
- * @LastEditTime: 2026-07-28 14:05:30
+ * @LastEditTime: 2026-09-22 17:04:34
  * @License: GPL 3.0
  */
+#include <cstddef>
+#include <cstdint>
+#include <cstdio>
 #include <ctime>
 #include <vector>
 
 #include "display/lvgl.h"
+#include "esp_timer.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include "lvgl.h"
 
 namespace {
 
-std::vector<lv_point_t> g_points;
 lv_obj_t* g_canvas = nullptr;
 lv_layer_t g_layer;
 time_t g_last_touch_time = 0;
 bool g_needs_clear = false;
+
+std::vector<lv_point_t>& GetPoints() {
+  // LVGL 回调使用同一份点集，保持进程生命周期。
+  static auto* const points = new std::vector<lv_point_t>;
+  return *points;
+}
 
 bool TouchReady() {
   auto& driver = common::GetDriver();
@@ -53,9 +64,8 @@ bool ReadSingleTouch(int& x, int& y) {
 template <typename Touch>
 void PrintMultipleTouchFrom(Touch* touch) {
   cpp_bus_driver::TouchFrame frame;
-  if (touch == nullptr ||
-      touch->ReadTouchFrame(&frame) !=
-          cpp_bus_driver::TouchReadStatus::kSuccess) {
+  if (touch == nullptr || touch->ReadTouchFrame(&frame) !=
+                              cpp_bus_driver::TouchReadStatus::kSuccess) {
     return;
   }
   printf("Touch finger: %u edge touch flag: %u\n",
@@ -98,24 +108,24 @@ void DrawPoint(lv_event_t* event) {
   if (code == LV_EVENT_PRESSING) {
     lv_point_t point;
     lv_indev_get_point(lv_indev_get_act(), &point);
-    g_points.push_back(point);
-    if (g_points.size() >= 2) {
+    GetPoints().push_back(point);
+    if (GetPoints().size() >= 2) {
       lv_draw_line_dsc_t line;
       lv_draw_line_dsc_init(&line);
       line.color = lv_palette_main(LV_PALETTE_RED);
       line.width = 4;
       line.round_start = 1;
       line.round_end = 1;
-      line.p1 = lv_point_to_precise(&g_points[0]);
-      line.p2 = lv_point_to_precise(&g_points[1]);
+      line.p1 = lv_point_to_precise(&GetPoints()[0]);
+      line.p2 = lv_point_to_precise(&GetPoints()[1]);
       lv_draw_line(&g_layer, &line);
       lv_canvas_finish_layer(g_canvas, &g_layer);
-      g_points.erase(g_points.begin());
+      GetPoints().erase(GetPoints().begin());
     }
     g_last_touch_time = time(nullptr);
     g_needs_clear = true;
   } else if (code == LV_EVENT_RELEASED) {
-    g_points.clear();
+    GetPoints().clear();
   }
 }
 
@@ -137,17 +147,19 @@ void CreateCanvas(const common::LvglPort& lvgl_port) {
 void ClearCanvasTimer(lv_timer_t*) {
   if (g_needs_clear && time(nullptr) - g_last_touch_time > 5) {
     lv_canvas_fill_bg(g_canvas, lv_color_hex3(0xccc), LV_OPA_COVER);
-    g_points.clear();
+    GetPoints().clear();
     g_needs_clear = false;
   }
 }
 
 }  // namespace
 
-extern "C" void app_main(void) {
+extern "C" void app_main() {
   printf("LVGL touch drawing example on %s\n", common::kBoardName);
   if (!common::InitDriver()) {
-    printf("Device driver initialization completed with errors; continuing example\n");
+    printf(
+        "Device driver initialization completed with errors; continuing "
+        "example\n");
   }
   if (!TouchReady()) {
     printf("Screen or touch init failed\n");
@@ -169,9 +181,9 @@ extern "C" void app_main(void) {
 
   uint32_t next_log_time = 0;
   while (true) {
-    if (esp_log_timestamp() >= next_log_time) {
+    if (static_cast<uint32_t>(esp_timer_get_time() / 1000) >= next_log_time) {
       PrintMultipleTouch();
-      next_log_time = esp_log_timestamp() + 1000;
+      next_log_time = static_cast<uint32_t>(esp_timer_get_time() / 1000) + 1000;
     }
     vTaskDelay(pdMS_TO_TICKS(10));
   }

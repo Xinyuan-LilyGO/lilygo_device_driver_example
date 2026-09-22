@@ -2,11 +2,15 @@
  * @Description: AXP517 充电、电池状态、ADC 与中断监测实现
  * @Author: LILYGO_L
  * @Date: 2026-07-28 13:59:02
- * @LastEditTime: 2026-09-03 16:57:00
+ * @LastEditTime: 2026-09-22 17:03:37
  * @License: GPL 3.0
  */
-#include "battery_management.h"
 #include "chip/i2c/axp517.h"
+
+#include <cinttypes>
+#include <cstdint>
+
+#include "battery_management.h"
 #include "common.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -42,7 +46,8 @@ const char* SinkStateName(cpp_bus_driver::Axp517Sink::State state) {
   return "unknown";
 }
 
-const char* PsReadyResultName(cpp_bus_driver::Axp517Sink::PsReadyResult result) {
+const char* PsReadyResultName(
+    cpp_bus_driver::Axp517Sink::PsReadyResult result) {
   using Result = cpp_bus_driver::Axp517Sink::PsReadyResult;
   switch (result) {
     case Result::kNotSeen:
@@ -78,16 +83,15 @@ void PrintSink() {
   BatteryLogPrintf("\nBattery PD / PPS:\n");
   BatteryLogPrintf("  Selected battery: %s\n",
       snapshot.external_battery_selected ? "external" : "internal");
-  BatteryLogPrintf("  PD service running: %s\n",
-      snapshot.service_running ? "yes" : "no");
+  BatteryLogPrintf(
+      "  PD service running: %s\n", snapshot.service_running ? "yes" : "no");
   BatteryLogPrintf("  PD enabled by board: %s, battery present: %s\n",
-      status.enabled ? "yes" : "no",
-      status.battery_present ? "yes" : "no");
+      status.enabled ? "yes" : "no", status.battery_present ? "yes" : "no");
   BatteryLogPrintf("  Type-C attached: %s\n", status.attached ? "yes" : "no");
   BatteryLogPrintf("  State: %s\n", SinkStateName(status.state));
   if (status.state == cpp_bus_driver::Axp517Sink::State::kError) {
-    BatteryLogPrintf("  Failed from: %s\n",
-        SinkStateName(status.failure_stage));
+    BatteryLogPrintf(
+        "  Failed from: %s\n", SinkStateName(status.failure_stage));
   }
   BatteryLogPrintf("  Last PD alerts: 0x%04X\n", status.last_pd_alerts);
   BatteryLogPrintf("  PD RX: %u, SourceCaps: %u, Request TX: %u\n",
@@ -123,8 +127,8 @@ void PrintSink() {
       status.pps ? "PPS" : "fixed / none", status.voltage_mv,
       status.current_ma);
   if (status.charge_current_managed) {
-    BatteryLogPrintf("  PD charge current limit: %u mA\n",
-        status.charge_current_ma);
+    BatteryLogPrintf(
+        "  PD charge current limit: %u mA\n", status.charge_current_ma);
   } else {
     BatteryLogPrintf("  PD charge current limit: managed by caller\n");
   }
@@ -133,9 +137,7 @@ void PrintSink() {
 #endif
 
 // 分类之间保留空行，分类中的项目统一缩进两个空格。
-void PrintSection(const char* title) {
-  BatteryLogPrintf("\n%s:\n", title);
-}
+void PrintSection(const char* title) { BatteryLogPrintf("\n%s:\n", title); }
 
 // 将充电阶段转换为显示文本。
 const char* ChargeName(cpp_bus_driver::Axp517::ChargeStatus value) {
@@ -288,12 +290,12 @@ void PrintAxp517(cpp_bus_driver::Axp517& chip) {
   if (chip.GetTcpcId(tcpc_id)) {
     BatteryLogPrintf("  TCPC vendor ID: 0x%04X\n", tcpc_id.vendor_id);
     BatteryLogPrintf("  TCPC product ID: 0x%04X\n", tcpc_id.product_id);
-    BatteryLogPrintf("  TCPC device revision: 0x%04X\n",
-        tcpc_id.device_revision);
+    BatteryLogPrintf(
+        "  TCPC device revision: 0x%04X\n", tcpc_id.device_revision);
     BatteryLogPrintf("  Type-C revision: 0x%04X\n", tcpc_id.type_c_revision);
     BatteryLogPrintf("  TCPC PD revision: 0x%04X\n", tcpc_id.pd_revision);
-    BatteryLogPrintf("  TCPC interface revision: 0x%04X\n",
-        tcpc_id.interface_revision);
+    BatteryLogPrintf(
+        "  TCPC interface revision: 0x%04X\n", tcpc_id.interface_revision);
   } else {
     BatteryLogPrintf("  TCPC ID: read failed\n");
   }
@@ -301,18 +303,15 @@ void PrintAxp517(cpp_bus_driver::Axp517& chip) {
   PrintSection("Power status");
   cpp_bus_driver::Axp517::Status status;
   if (chip.GetStatus(status)) {
-    BatteryLogPrintf("  Battery present: %s\n",
-        status.battery_present ? "yes" : "no");
-    BatteryLogPrintf("  Battery active: %s\n",
-        status.battery_active ? "yes" : "no");
-    BatteryLogPrintf("  VBUS good: %s\n",
-        status.vbus_good ? "yes" : "no");
-    BatteryLogPrintf("  System on: %s\n",
-        status.system_on ? "yes" : "no");
-    BatteryLogPrintf("  BATFET on: %s\n",
-        status.batfet_on ? "yes" : "no");
-    BatteryLogPrintf("  Input current limited: %s\n",
-        status.current_limited ? "yes" : "no");
+    BatteryLogPrintf(
+        "  Battery present: %s\n", status.battery_present ? "yes" : "no");
+    BatteryLogPrintf(
+        "  Battery active: %s\n", status.battery_active ? "yes" : "no");
+    BatteryLogPrintf("  VBUS good: %s\n", status.vbus_good ? "yes" : "no");
+    BatteryLogPrintf("  System on: %s\n", status.system_on ? "yes" : "no");
+    BatteryLogPrintf("  BATFET on: %s\n", status.batfet_on ? "yes" : "no");
+    BatteryLogPrintf(
+        "  Input current limited: %s\n", status.current_limited ? "yes" : "no");
     BatteryLogPrintf("  Input voltage regulation active: %s\n",
         status.vindpm_active ? "yes" : "no");
     BatteryLogPrintf("  Thermal regulation active: %s\n",
@@ -402,8 +401,8 @@ void PrintAxp517(cpp_bus_driver::Axp517& chip) {
   }
   bool model_updated = false;
   if (chip.IsBatteryModelUpdated(model_updated)) {
-    BatteryLogPrintf("  Battery model updated: %s\n",
-        model_updated ? "yes" : "no");
+    BatteryLogPrintf(
+        "  Battery model updated: %s\n", model_updated ? "yes" : "no");
   } else {
     BatteryLogPrintf("  Battery model updated: read failed\n");
   }
@@ -475,29 +474,27 @@ void PrintAxp517(cpp_bus_driver::Axp517& chip) {
     BatteryLogPrintf("  CC2: %s\n", CcName(cc.cc2));
     BatteryLogPrintf("  Looking for connection: %s\n",
         cc.looking_for_connection ? "yes" : "no");
-    BatteryLogPrintf("  Attached as Sink: %s\n",
-        cc.sink_attached ? "yes" : "no");
-    BatteryLogPrintf("  Attached as Source: %s\n",
-        cc.source_attached ? "yes" : "no");
-    BatteryLogPrintf("  Audio accessory: %s\n",
-        cc.audio_accessory ? "yes" : "no");
-    BatteryLogPrintf("  Debug accessory: %s\n",
-        cc.debug_accessory ? "yes" : "no");
+    BatteryLogPrintf(
+        "  Attached as Sink: %s\n", cc.sink_attached ? "yes" : "no");
+    BatteryLogPrintf(
+        "  Attached as Source: %s\n", cc.source_attached ? "yes" : "no");
+    BatteryLogPrintf(
+        "  Audio accessory: %s\n", cc.audio_accessory ? "yes" : "no");
+    BatteryLogPrintf(
+        "  Debug accessory: %s\n", cc.debug_accessory ? "yes" : "no");
   } else {
     BatteryLogPrintf("  CC status: read failed\n");
   }
   cpp_bus_driver::Axp517::TcpcStatus tcpc;
   if (chip.GetTcpcStatus(tcpc)) {
-    BatteryLogPrintf("  TCPC VBUS present: %s\n",
-        tcpc.vbus_present ? "yes" : "no");
-    BatteryLogPrintf("  Sourcing VBUS: %s\n",
-        tcpc.sourcing_vbus ? "yes" : "no");
-    BatteryLogPrintf("  Sinking VBUS: %s\n",
-        tcpc.sinking_vbus ? "yes" : "no");
-    BatteryLogPrintf("  VCONN present: %s\n",
-        tcpc.vconn_present ? "yes" : "no");
-    BatteryLogPrintf("  VBUS safe 0 V: %s\n",
-        tcpc.vbus_safe0v ? "yes" : "no");
+    BatteryLogPrintf(
+        "  TCPC VBUS present: %s\n", tcpc.vbus_present ? "yes" : "no");
+    BatteryLogPrintf(
+        "  Sourcing VBUS: %s\n", tcpc.sourcing_vbus ? "yes" : "no");
+    BatteryLogPrintf("  Sinking VBUS: %s\n", tcpc.sinking_vbus ? "yes" : "no");
+    BatteryLogPrintf(
+        "  VCONN present: %s\n", tcpc.vconn_present ? "yes" : "no");
+    BatteryLogPrintf("  VBUS safe 0 V: %s\n", tcpc.vbus_safe0v ? "yes" : "no");
     BatteryLogPrintf("  TCPC power status: 0x%02X\n", tcpc.power);
     BatteryLogPrintf("  TCPC fault status: 0x%02X\n", tcpc.fault);
     BatteryLogPrintf("  TCPC extended status: 0x%02X\n", tcpc.extended_status);
@@ -515,8 +512,8 @@ void PrintAxp517(cpp_bus_driver::Axp517& chip) {
   cpp_bus_driver::Axp517::FaultStatus fault;
   if (chip.GetFaultStatus(fault)) {
     BatteryLogPrintf("  NTC fault: %s\n", NtcFaultName(fault.ntc));
-    BatteryLogPrintf("  System overvoltage: %s\n",
-        fault.system_overvoltage ? "yes" : "no");
+    BatteryLogPrintf(
+        "  System overvoltage: %s\n", fault.system_overvoltage ? "yes" : "no");
     BatteryLogPrintf("  Battery undervoltage: %s\n",
         fault.battery_undervoltage ? "yes" : "no");
   } else {
@@ -524,14 +521,14 @@ void PrintAxp517(cpp_bus_driver::Axp517& chip) {
   }
   uint64_t irq = 0;
   if (chip.GetIrqStatus(irq)) {
-    BatteryLogPrintf("  Power IRQ status (latched): 0x%010llX\n",
-        static_cast<unsigned long long>(irq));
+    BatteryLogPrintf("  Power IRQ status (latched): 0x%010" PRIX64 "\n",
+        static_cast<uint64_t>(irq));
   } else {
     BatteryLogPrintf("  Power IRQ status (latched): read failed\n");
   }
   if (chip.GetIrqEnable(irq)) {
-    BatteryLogPrintf("  Power IRQ enable mask: 0x%010llX\n",
-        static_cast<unsigned long long>(irq));
+    BatteryLogPrintf("  Power IRQ enable mask: 0x%010" PRIX64 "\n",
+        static_cast<uint64_t>(irq));
   } else {
     BatteryLogPrintf("  Power IRQ enable mask: read failed\n");
   }
@@ -558,8 +555,8 @@ void RunAxp517Example() {
   }
 #if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) && \
     defined(CONFIG_LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
-  BatteryLogPrintf("External charge current target: %u mA\n",
-      kExternalChargeCurrentMa);
+  BatteryLogPrintf(
+      "External charge current target: %u mA\n", kExternalChargeCurrentMa);
 #endif
   constexpr uint8_t kAdcChannels =
       static_cast<uint8_t>(

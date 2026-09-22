@@ -5,15 +5,18 @@
  * @LastEditTime: 2026-07-29 15:19:19
  * @License: GPL 3.0
  */
+#include <cstdio>
+
 #include "common.h"
 #include "lora_rx_sensitivity.h"
 
-extern "C" void app_main(void) {
-  printf("LoRa RX sensitivity example on %s\n",
-      common::kBoardName);
+extern "C" void app_main() {
+  printf("LoRa RX sensitivity example on %s\n", common::kBoardName);
 
   if (!common::InitDriver()) {
-    printf("Device driver initialization completed with errors; continuing example\n");
+    printf(
+        "Device driver initialization completed with errors; continuing "
+        "example\n");
   }
 
 #if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) && \

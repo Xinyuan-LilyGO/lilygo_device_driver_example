@@ -5,12 +5,15 @@
  * @LastEditTime: 2026-09-03 16:57:00
  * @License: GPL 3.0
  */
-#include "common.h"
-#include "lora_rx_sensitivity.h"
-
 #include <array>
+#include <cstdint>
+#include <cstdio>
 
-#include "esp_log.h"
+#include "common.h"
+#include "esp_timer.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "lora_rx_sensitivity.h"
 
 #if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) && \
     !defined(CONFIG_LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
@@ -41,7 +44,8 @@ void RunSx1262() {
   }
 
   cpp_bus_driver::PlatformHal platform_hal;
-  if (!platform_hal.SetGpioMode(common::BootButtonGpio(),
+  if (!platform_hal.SetGpioMode(
+          common::BootButtonGpio(),
           cpp_bus_driver::PlatformHal::GpioMode::kInput,
           cpp_bus_driver::PlatformHal::GpioStatus::kPullup)) {
     printf("BOOT button initialization failed\n");
@@ -58,8 +62,7 @@ void RunSx1262() {
   lora_config.coding_rate = SX126X_LORA_CR_4_5;
   lora_config.preamble_length = 8;
   lora_config.sync_word = kSyncWord;
-  lora_config.max_payload_length =
-      static_cast<uint8_t>(kPayloadLength);
+  lora_config.max_payload_length = static_cast<uint8_t>(kPayloadLength);
   lora_config.crc_enabled = true;
   lora_config.invert_iq = false;
   lora_config.rx_boosted = true;
@@ -78,42 +81,41 @@ void RunSx1262() {
     if (button_pressed && !button_was_pressed) {
       vTaskDelay(pdMS_TO_TICKS(30));
       if (ButtonPressed(platform_hal)) {
-        if (!sx1262.ClearIrqStatus(SX126X_IRQ_ALL) ||
-            !sx1262.StartReceive()) {
+        if (!sx1262.ClearIrqStatus(SX126X_IRQ_ALL) || !sx1262.StartReceive()) {
           printf("SX1262 button restart receive failed\n");
           return;
         }
-        session.Restart(esp_log_timestamp());
+        session.Restart(static_cast<uint32_t>(esp_timer_get_time() / 1000));
       }
     }
 
     bool restart_receive = false;
     if (xl9535.GpioRead(common::board::gpio::xl9535::kRadioDio1) == 1) {
-      const uint32_t current_time = esp_log_timestamp();
+      const uint32_t current_time =
+          static_cast<uint32_t>(esp_timer_get_time() / 1000);
       sx126x_irq_mask_t irq_status = SX126X_IRQ_NONE;
       if (!sx1262.GetIrqStatus(irq_status) ||
           !sx1262.ClearIrqStatus(irq_status)) {
         session.RecordDriverError();
         restart_receive = true;
       } else if ((irq_status & SX126X_IRQ_HEADER_ERROR) != 0) {
-        session.RecordPacketError(
-            PacketError::kHeader, current_time);
+        session.RecordPacketError(PacketError::kHeader, current_time);
       } else if ((irq_status & SX126X_IRQ_CRC_ERROR) != 0) {
         session.RecordPacketError(PacketError::kCrc, current_time);
       } else if ((irq_status & SX126X_IRQ_RX_DONE) != 0) {
         uint8_t received_size = 0;
         usp_cpp_bus_driver::Sx126x::PacketMetrics metrics;
-        if (sx1262.ReadPacket(receive_buffer.data(),
-                receive_buffer.size(), received_size, &metrics)) {
-          session.RecordPacket(receive_buffer.data(), received_size,
+        if (sx1262.ReadPacket(receive_buffer.data(), receive_buffer.size(),
+                              received_size, &metrics)) {
+          session.RecordPacket(
+              receive_buffer.data(), received_size,
               {
                   .packet_rssi_dbm =
                       static_cast<float>(metrics.rssi_quarter_dbm) / 4.0F,
                   .signal_rssi_dbm =
                       static_cast<float>(metrics.signal_rssi_quarter_dbm) /
                       4.0F,
-                  .snr_db =
-                      static_cast<float>(metrics.snr_quarter_db) / 4.0F,
+                  .snr_db = static_cast<float>(metrics.snr_quarter_db) / 4.0F,
                   .has_signal_rssi = true,
               },
               current_time);
@@ -132,7 +134,7 @@ void RunSx1262() {
       return;
     }
 
-    session.Poll(esp_log_timestamp());
+    session.Poll(static_cast<uint32_t>(esp_timer_get_time() / 1000));
     button_was_pressed = button_pressed;
     vTaskDelay(pdMS_TO_TICKS(1));
   }

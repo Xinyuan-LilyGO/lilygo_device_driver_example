@@ -2,15 +2,18 @@
  * @Description: 实现 LR1121 的 LoRa 接收灵敏度测试
  * @Author: LILYGO_L
  * @Date: 2026-07-29 15:09:12
- * @LastEditTime: 2026-09-03 16:57:00
+ * @LastEditTime: 2026-09-22 17:04:04
  * @License: GPL 3.0
  */
-#include "common.h"
-#include "lora_rx_sensitivity.h"
-
 #include <array>
+#include <cstdint>
+#include <cstdio>
 
-#include "esp_log.h"
+#include "common.h"
+#include "esp_timer.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "lora_rx_sensitivity.h"
 
 #if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR)
 
@@ -18,8 +21,7 @@ namespace lora_rx_sensitivity {
 namespace {
 
 constexpr lr11xx_radio_lora_bw_t kLoraBandwidth =
-    kUseHighFrequencyPath ? LR11XX_RADIO_LORA_BW_400
-                          : LR11XX_RADIO_LORA_BW_125;
+    kUseHighFrequencyPath ? LR11XX_RADIO_LORA_BW_400 : LR11XX_RADIO_LORA_BW_125;
 constexpr lr11xx_system_irq_mask_t kRadioIrqMask =
     LR11XX_SYSTEM_IRQ_RX_DONE | LR11XX_SYSTEM_IRQ_HEADER_ERROR |
     LR11XX_SYSTEM_IRQ_CRC_ERROR | LR11XX_SYSTEM_IRQ_TIMEOUT;
@@ -35,20 +37,18 @@ lr11xx_radio_pkt_params_lora_t MakePacketConfig() {
 }
 
 bool SetPacketConfig(usp_cpp_bus_driver::Lr11xx& lr1121) {
-  const lr11xx_radio_pkt_params_lora_t packet_config =
-      MakePacketConfig();
-  return lr1121.Invoke(lr11xx_radio_set_lora_pkt_params,
-             &packet_config) == LR11XX_STATUS_OK;
+  const lr11xx_radio_pkt_params_lora_t packet_config = MakePacketConfig();
+  return lr1121.Invoke(lr11xx_radio_set_lora_pkt_params, &packet_config) ==
+         LR11XX_STATUS_OK;
 }
 
 bool StartReceive(usp_cpp_bus_driver::Lr11xx& lr1121) {
   return SetPacketConfig(lr1121) && lr1121.StartReceive(0);
 }
 
-bool ReadAndClearIrq(usp_cpp_bus_driver::Lr11xx& lr1121,
-    lr11xx_system_irq_mask_t& irq_status) {
-  return lr1121.Invoke(
-             lr11xx_system_get_and_clear_irq_status, &irq_status) ==
+bool ReadAndClearIrq(
+    usp_cpp_bus_driver::Lr11xx& lr1121, lr11xx_system_irq_mask_t& irq_status) {
+  return lr1121.Invoke(lr11xx_system_get_and_clear_irq_status, &irq_status) ==
          LR11XX_STATUS_OK;
 }
 
@@ -97,13 +97,11 @@ void RunLr1121() {
       .rx_boosted = true,
       .pa =
           {
-              .pa_sel =
-                  kUseHighFrequencyPath ? LR11XX_RADIO_PA_SEL_HF
-                                        : LR11XX_RADIO_PA_SEL_HP,
-              .pa_reg_supply =
-                  kUseHighFrequencyPath
-                      ? LR11XX_RADIO_PA_REG_SUPPLY_VREG
-                      : LR11XX_RADIO_PA_REG_SUPPLY_VBAT,
+              .pa_sel = kUseHighFrequencyPath ? LR11XX_RADIO_PA_SEL_HF
+                                              : LR11XX_RADIO_PA_SEL_HP,
+              .pa_reg_supply = kUseHighFrequencyPath
+                                   ? LR11XX_RADIO_PA_REG_SUPPLY_VREG
+                                   : LR11XX_RADIO_PA_REG_SUPPLY_VBAT,
               .pa_duty_cycle = kUseHighFrequencyPath ? 0x00 : 0x04,
               .pa_hp_sel = kUseHighFrequencyPath ? 0x00 : 0x07,
           },
@@ -137,31 +135,29 @@ void RunLr1121() {
           printf("LR1121 button restart receive failed\n");
           return;
         }
-        session.Restart(esp_log_timestamp());
+        session.Restart(static_cast<uint32_t>(esp_timer_get_time() / 1000));
       }
     }
 
     if (platform_hal.GpioRead(common::board::gpio::lr1121::kInt)) {
-      const uint32_t current_time = esp_log_timestamp();
+      const uint32_t current_time =
+          static_cast<uint32_t>(esp_timer_get_time() / 1000);
       lr11xx_system_irq_mask_t irq_status = LR11XX_SYSTEM_IRQ_NONE;
       if (!ReadAndClearIrq(lr1121, irq_status)) {
         session.RecordDriverError();
       } else if ((irq_status & LR11XX_SYSTEM_IRQ_HEADER_ERROR) != 0) {
-        session.RecordPacketError(
-            PacketError::kHeader, current_time);
+        session.RecordPacketError(PacketError::kHeader, current_time);
       } else if ((irq_status & LR11XX_SYSTEM_IRQ_CRC_ERROR) != 0) {
         session.RecordPacketError(PacketError::kCrc, current_time);
       } else if ((irq_status & LR11XX_SYSTEM_IRQ_RX_DONE) != 0) {
         lr11xx_radio_rx_buffer_status_t buffer_status = {};
         usp_cpp_bus_driver::Lr11xx::PacketMetrics metrics;
-        if (lr1121.Invoke(
-                lr11xx_radio_get_rx_buffer_status, &buffer_status) ==
+        if (lr1121.Invoke(lr11xx_radio_get_rx_buffer_status, &buffer_status) ==
                 LR11XX_STATUS_OK &&
             buffer_status.pld_len_in_bytes > 0 &&
             buffer_status.pld_len_in_bytes <= receive_buffer.size() &&
             lr1121.ReadBuffer(buffer_status.buffer_start_pointer,
-                receive_buffer.data(),
-                buffer_status.pld_len_in_bytes) &&
+                receive_buffer.data(), buffer_status.pld_len_in_bytes) &&
             lr1121.ReadLoraPacketMetrics(&metrics)) {
           session.RecordPacket(receive_buffer.data(),
               buffer_status.pld_len_in_bytes,
@@ -171,8 +167,7 @@ void RunLr1121() {
                   .signal_rssi_dbm =
                       static_cast<float>(metrics.signal_rssi_quarter_dbm) /
                       4.0F,
-                  .snr_db =
-                      static_cast<float>(metrics.snr_quarter_db) / 4.0F,
+                  .snr_db = static_cast<float>(metrics.snr_quarter_db) / 4.0F,
                   .has_signal_rssi = true,
               },
               current_time);
@@ -189,7 +184,7 @@ void RunLr1121() {
       }
     }
 
-    session.Poll(esp_log_timestamp());
+    session.Poll(static_cast<uint32_t>(esp_timer_get_time() / 1000));
     button_was_pressed = button_pressed;
     vTaskDelay(pdMS_TO_TICKS(1));
   }

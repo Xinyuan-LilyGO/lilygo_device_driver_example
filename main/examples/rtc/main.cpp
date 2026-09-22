@@ -1,4 +1,9 @@
+
+#include <cstdio>
+
 #include "common.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include "rtc.h"
 
 namespace {
@@ -10,12 +15,10 @@ cpp_bus_driver::PlatformHal g_platform_hal;
 bool WaitForRtcReset() {
   static bool was_pressed = false;
   for (int i = 0; i < 50; ++i) {
-    const bool pressed =
-        g_platform_hal.GpioRead(common::BootButtonGpio()) == 0;
+    const bool pressed = g_platform_hal.GpioRead(common::BootButtonGpio()) == 0;
     if (pressed != was_pressed) {
       vTaskDelay(pdMS_TO_TICKS(30));
-      if ((g_platform_hal.GpioRead(common::BootButtonGpio()) == 0) ==
-          pressed) {
+      if ((g_platform_hal.GpioRead(common::BootButtonGpio()) == 0) == pressed) {
         was_pressed = pressed;
         if (pressed) {
           return true;
@@ -27,11 +30,13 @@ bool WaitForRtcReset() {
   return false;
 }
 
-extern "C" void app_main(void) {
+extern "C" void app_main() {
   printf("RTC example on %s %s\n", common::kBoardName,
       common::GetDriver().device_model_info().version);
   if (!common::InitDriver()) {
-    printf("Device driver initialization completed with errors; continuing example\n");
+    printf(
+        "Device driver initialization completed with errors; continuing "
+        "example\n");
   }
   if (!g_platform_hal.SetGpioMode(common::BootButtonGpio(),
           cpp_bus_driver::PlatformHal::GpioMode::kInput,

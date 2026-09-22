@@ -65,7 +65,7 @@ elseif(example_name STREQUAL "wifi_mp3")
         "${example_path}/es8311.cpp"
         "${example_path}/es8389.cpp")
 elseif(example_name STREQUAL "screen_lvgl")
-    set(example_extra_sources "${example_path}/lvgl_demo_ui.c")
+    set(example_extra_sources "${example_path}/lvgl_demo_ui.cpp")
 elseif(example_name STREQUAL "st25r3916")
     list(APPEND example_requires "stsw-st25rfal002_cpp_bus_driver")
 elseif(example_name MATCHES "^(usb_ethernet_iperf|usb_ethernet_iperf_host_msc|usb_host_msc)$")
@@ -101,6 +101,10 @@ if(example_name MATCHES "^(usb_ethernet_iperf|usb_ethernet_iperf_host_msc|usb_ho
             fatfs
         )
     endif()
+endif()
+
+if(example_name MATCHES "^(lora_rx_sensitivity|lora_tx_rx|screen_lvgl_touch_draw)$")
+    idf_component_optional_requires(PRIVATE esp_timer)
 endif()
 
 if(example_name STREQUAL "screen_camera")

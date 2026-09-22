@@ -2,11 +2,10 @@
  * @Description: 声明 LoRa 接收灵敏度与丢包率测试的公共接口
  * @Author: LILYGO_L
  * @Date: 2026-07-29 15:09:12
- * @LastEditTime: 2026-09-11 10:56:44
+ * @LastEditTime: 2026-09-22 17:04:02
  * @License: GPL 3.0
  */
 #pragma once
-
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -23,16 +22,13 @@ inline constexpr uint32_t kFrequency915MHz = 915000000U;
 inline constexpr uint32_t kFrequency2400MHz = 2400000000U;
 // LR2021、SX1262和LR1121统一使用的默认载波频率，修改此处即可切换
 inline constexpr uint32_t kFrequencyHz = kFrequency433MHz;
-static_assert(kFrequencyHz == kFrequency433MHz ||
-        kFrequencyHz == kFrequency868MHz ||
-        kFrequencyHz == kFrequency915MHz ||
-        kFrequencyHz == kFrequency2400MHz,
+static_assert(
+    kFrequencyHz == kFrequency433MHz || kFrequencyHz == kFrequency868MHz ||
+        kFrequencyHz == kFrequency915MHz || kFrequencyHz == kFrequency2400MHz,
     "Select one of the predefined LoRa frequencies");
 // 公共默认带宽：HF射频通路250 kHz，Sub-GHz使用125 kHz。
-inline constexpr bool kUseHighFrequencyPath =
-    kFrequencyHz == kFrequency2400MHz;
-inline constexpr uint32_t kBandwidthKhz =
-    kUseHighFrequencyPath ? 250U : 125U;
+inline constexpr bool kUseHighFrequencyPath = kFrequencyHz == kFrequency2400MHz;
+inline constexpr uint32_t kBandwidthKhz = kUseHighFrequencyPath ? 250U : 125U;
 // Semtech数据手册灵敏度测试使用的Payload长度
 inline constexpr size_t kPayloadLength = 64;
 // 每个输入功率点要求信号发生器发送的总包数
@@ -43,8 +39,8 @@ inline constexpr uint32_t kIdleFinishTimeMs = 10000;
 inline constexpr uint32_t kProgressPrintIntervalMs = 5000;
 // 可修改的LoRa扩频因子，LR2021、SX1262和LR1121统一使用该值
 inline constexpr ral_lora_sf_t kSpreadingFactor = RAL_LORA_SF7;
-static_assert(kSpreadingFactor >= RAL_LORA_SF5 &&
-        kSpreadingFactor <= RAL_LORA_SF12,
+static_assert(
+    kSpreadingFactor >= RAL_LORA_SF5 && kSpreadingFactor <= RAL_LORA_SF12,
     "LoRa spreading factor must be between SF5 and SF12");
 // LoRa公共网络同步字
 inline constexpr uint8_t kSyncWord =
@@ -52,14 +48,70 @@ inline constexpr uint8_t kSyncWord =
 
 // 信号发生器选择All 1时生成的固定64字节测试Payload
 inline constexpr std::array<uint8_t, kPayloadLength> kExpectedPayload = {
-    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+    0xFF,
+    0xFF,
+    0xFF,
+    0xFF,
+    0xFF,
+    0xFF,
+    0xFF,
+    0xFF,
+    0xFF,
+    0xFF,
+    0xFF,
+    0xFF,
+    0xFF,
+    0xFF,
+    0xFF,
+    0xFF,
+    0xFF,
+    0xFF,
+    0xFF,
+    0xFF,
+    0xFF,
+    0xFF,
+    0xFF,
+    0xFF,
+    0xFF,
+    0xFF,
+    0xFF,
+    0xFF,
+    0xFF,
+    0xFF,
+    0xFF,
+    0xFF,
+    0xFF,
+    0xFF,
+    0xFF,
+    0xFF,
+    0xFF,
+    0xFF,
+    0xFF,
+    0xFF,
+    0xFF,
+    0xFF,
+    0xFF,
+    0xFF,
+    0xFF,
+    0xFF,
+    0xFF,
+    0xFF,
+    0xFF,
+    0xFF,
+    0xFF,
+    0xFF,
+    0xFF,
+    0xFF,
+    0xFF,
+    0xFF,
+    0xFF,
+    0xFF,
+    0xFF,
+    0xFF,
+    0xFF,
+    0xFF,
+    0xFF,
+    0xFF,
 };
 
 // 最近一个正确数据包的信号质量数据
@@ -111,7 +163,6 @@ class TestSession {
    */
   bool IsLocked() const { return locked_; }
 
-
   /**
    * @brief 校验并统计一个硬件CRC正确的接收数据包
    * @param payload 接收Payload地址
@@ -127,8 +178,7 @@ class TestSession {
    * @param error 数据包错误类型
    * @param current_time_ms 当前系统时间，单位为ms
    */
-  void RecordPacketError(
-      PacketError error, uint32_t current_time_ms);
+  void RecordPacketError(PacketError error, uint32_t current_time_ms);
 
   /**
    * @brief 统计一次不直接代表数据包的驱动或传输错误
@@ -136,16 +186,12 @@ class TestSession {
   void RecordDriverError();
 
  private:
-  /**
-   * @brief 输出当前无线芯片和射频测试参数
-   */
-  void PrintConfiguration() const;
   // 保存一项信号质量数据的样本数量、总和与范围
   struct MetricStatistics {
-    uint32_t count = 0;     // 已累计的有效样本数
-    float sum = 0.0f;       // 全部有效样本之和
-    float minimum = 0.0f;   // 最小样本值
-    float maximum = 0.0f;   // 最大样本值
+    uint32_t count = 0;    // 已累计的有效样本数
+    float sum = 0.0f;      // 全部有效样本之和
+    float minimum = 0.0f;  // 最小样本值
+    float maximum = 0.0f;  // 最大样本值
 
     /**
      * @brief 添加一个信号质量样本
@@ -159,6 +205,11 @@ class TestSession {
      */
     float Average() const;
   };
+
+  /**
+   * @brief 输出当前无线芯片和射频测试参数
+   */
+  void PrintConfiguration() const;
 
   /**
    * @brief 清空历史数据并开始一个新的输入功率点
@@ -197,25 +248,25 @@ class TestSession {
    */
   uint32_t ObservedPackets() const;
 
-  const char* radio_name_;  // 当前无线芯片名称
-  uint32_t frequency_hz_;   // 当前测试频率，单位为Hz
-  bool running_ = false;    // 当前功率点是否正在统计
-  bool locked_ = false;     // 完成一轮后锁定，等待BOOT
-  uint32_t start_time_ms_ = 0;  // 当前测试开始时间，单位为ms
-  uint32_t last_activity_time_ms_ = 0;  // 最近包事件时间，单位为ms
-  uint32_t last_progress_time_ms_ = 0;  // 最近状态日志输出时间，单位为ms
+  const char* radio_name_;               // 当前无线芯片名称
+  uint32_t frequency_hz_;                // 当前测试频率，单位为Hz
+  bool running_ = false;                 // 当前功率点是否正在统计
+  bool locked_ = false;                  // 完成一轮后锁定，等待BOOT
+  uint32_t start_time_ms_ = 0;           // 当前测试开始时间，单位为ms
+  uint32_t last_activity_time_ms_ = 0;   // 最近包事件时间，单位为ms
+  uint32_t last_progress_time_ms_ = 0;   // 最近状态日志输出时间，单位为ms
   bool progress_timer_started_ = false;  // 状态日志计时器是否已经启动
-  bool activity_seen_ = false;  // 当前测试是否观察到过包事件
-  uint32_t good_packets_ = 0;   // Payload完全正确的数据包数
-  uint32_t header_errors_ = 0;  // LoRa Header错误包数
-  uint32_t crc_errors_ = 0;     // Payload CRC错误包数
-  uint32_t length_errors_ = 0;  // 无线芯片报告的长度错误包数
-  uint32_t payload_errors_ = 0;  // Payload长度或内容不匹配包数
-  uint32_t read_errors_ = 0;     // 接收FIFO或缓冲区读取失败包数
-  uint32_t driver_errors_ = 0;  // 不直接代表数据包的驱动错误数
-  MetricStatistics packet_rssi_;  // 正确包的Packet RSSI统计
-  MetricStatistics signal_rssi_;  // 正确包的Signal RSSI统计
-  MetricStatistics snr_;          // 正确包的SNR统计
+  bool activity_seen_ = false;           // 当前测试是否观察到过包事件
+  uint32_t good_packets_ = 0;            // Payload完全正确的数据包数
+  uint32_t header_errors_ = 0;           // LoRa Header错误包数
+  uint32_t crc_errors_ = 0;              // Payload CRC错误包数
+  uint32_t length_errors_ = 0;           // 无线芯片报告的长度错误包数
+  uint32_t payload_errors_ = 0;          // Payload长度或内容不匹配包数
+  uint32_t read_errors_ = 0;             // 接收FIFO或缓冲区读取失败包数
+  uint32_t driver_errors_ = 0;           // 不直接代表数据包的驱动错误数
+  MetricStatistics packet_rssi_;         // 正确包的Packet RSSI统计
+  MetricStatistics signal_rssi_;         // 正确包的Signal RSSI统计
+  MetricStatistics snr_;                 // 正确包的SNR统计
 };
 
 /**

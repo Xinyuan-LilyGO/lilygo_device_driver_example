@@ -5,6 +5,9 @@
  * @LastEditTime: 2026-07-28 14:05:30
  * @License: GPL 3.0
  */
+#include <cstddef>
+#include <cstdint>
+
 #include "common.h"
 #include "sd_mp3.h"
 

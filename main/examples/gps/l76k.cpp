@@ -2,13 +2,17 @@
  * @Description: L76K GNSS 定位数据读取示例实现
  * @Author: LILYGO_L
  * @Date: 2026-07-29 00:22:40
- * @LastEditTime: 2026-09-04 17:42:00
+ * @LastEditTime: 2026-09-22 17:03:50
  * @License: GPL 3.0
  */
-#include "common.h"
-#include "gps.h"
-
+#include <cstdint>
+#include <cstdio>
 #include <memory>
+
+#include "common.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "gps.h"
 
 #if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4)
 
@@ -28,7 +32,8 @@ void RunL76k() {
   printf("[%s] enable GPS + BeiDou + GLONASS: %s\n", kSource,
       l76k->SetGnssConstellation(
           cpp_bus_driver::L76k::GnssConstellation::kGpsBeidouGlonass)
-          ? "success" : "failed");
+          ? "success"
+          : "failed");
   cpp_bus_driver::L76k::NmeaOutputConfig nmea_config;
   nmea_config.rmc = 1;
   nmea_config.gga = 1;
@@ -38,8 +43,9 @@ void RunL76k() {
   nmea_config.vtg = 1;
   nmea_config.zda = 1;
   nmea_config.ant = 1;
-  printf("[%s] enable RMC/GGA/GLL/GSA/VTG/ZDA/ANT every update and GSV "
-         "every five updates: %s\n",
+  printf(
+      "[%s] enable RMC/GGA/GLL/GSA/VTG/ZDA/ANT every update and GSV "
+      "every five updates: %s\n",
       kSource, l76k->SetNmeaOutputConfig(nmea_config) ? "success" : "failed");
   printf("[%s] UART baud rate: %u, update interval: %u ms\n", kSource,
       static_cast<unsigned int>(l76k->GetBaudRate()),

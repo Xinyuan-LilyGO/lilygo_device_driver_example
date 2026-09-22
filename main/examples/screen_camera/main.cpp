@@ -2,7 +2,7 @@
  * @Description: 采集摄像头画面并实时显示到屏幕的示例
  * @Author: LILYGO_L
  * @Date: 2026-07-28 13:59:02
- * @LastEditTime: 2026-07-28 14:05:30
+ * @LastEditTime: 2026-09-22 17:04:29
  * @License: GPL 3.0
  */
 #include <fcntl.h>
@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <array>
 #include <cerrno>
+#include <cinttypes>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -26,6 +27,8 @@
 #include "esp_private/esp_cache_private.h"
 #include "esp_video_device.h"
 #include "esp_video_init.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include "linux/videodev2.h"
 
 namespace {
@@ -45,12 +48,18 @@ std::array<void*, kCameraBufferCount> g_frame_buffers = {};
 std::array<size_t, kCameraBufferCount> g_frame_buffer_sizes = {};
 uint32_t g_frame_width = 0;
 uint32_t g_frame_height = 0;
-std::unique_ptr<uint8_t, void (*)(void*)> g_output_buffer(
-    nullptr, heap_caps_free);
 size_t g_output_buffer_size = 0;
 uint32_t g_output_width = 0;
 uint32_t g_output_height = 0;
 uint32_t g_clear_output_frames_remaining = 0;
+
+using OutputBuffer = std::unique_ptr<uint8_t, void (*)(void*)>;
+
+OutputBuffer& GetOutputBuffer() {
+  // 保持管理器的进程生命周期，图像内存仍由显式清理流程释放。
+  static auto* const buffer = new OutputBuffer(nullptr, heap_caps_free);
+  return *buffer;
+}
 
 size_t AlignUp(size_t value, size_t alignment) {
   return (value + alignment - 1) & ~(alignment - 1);
@@ -86,8 +95,8 @@ ppa_srm_color_mode_t ScreenColorMode() {
 
 bool ShowWhiteScreen() {
   const auto& screen = common::GetDriver().screen_info();
-  const size_t buffer_size = static_cast<size_t>(screen.width) *
-                             screen.height * screen.bits_per_pixel / 8;
+  const size_t buffer_size = static_cast<size_t>(screen.width) * screen.height *
+                             screen.bits_per_pixel / 8;
   auto buffer = std::unique_ptr<uint8_t, void (*)(void*)>(
       static_cast<uint8_t*>(
           heap_caps_aligned_alloc(16, buffer_size, MALLOC_CAP_SPIRAM)),
@@ -97,33 +106,30 @@ bool ShowWhiteScreen() {
     return false;
   }
   std::memset(buffer.get(), 0xff, buffer_size);
-  return common::SendScreen(
-      0, 0, screen.width, screen.height, buffer.get());
+  return common::SendScreen(0, 0, screen.width, screen.height, buffer.get());
 }
 
 bool RenderCameraFrame(uint8_t* buffer, uint32_t width, uint32_t height) {
-  if (buffer == nullptr || g_output_buffer == nullptr || width == 0 ||
+  if (buffer == nullptr || GetOutputBuffer() == nullptr || width == 0 ||
       height == 0) {
     return false;
   }
 
-  const float scale =
-      std::min(static_cast<float>(g_output_width) / width,
-          static_cast<float>(g_output_height) / height);
-  const uint32_t scaled_width = std::max<uint32_t>(
-      1, static_cast<uint32_t>(std::round(width * scale)));
-  const uint32_t scaled_height = std::max<uint32_t>(
-      1, static_cast<uint32_t>(std::round(height * scale)));
-  const uint32_t output_offset_x = g_output_width > scaled_width
-                                       ? (g_output_width - scaled_width) / 2
-                                       : 0;
+  const float scale = std::min(static_cast<float>(g_output_width) / width,
+      static_cast<float>(g_output_height) / height);
+  const uint32_t scaled_width =
+      std::max<uint32_t>(1, static_cast<uint32_t>(std::round(width * scale)));
+  const uint32_t scaled_height =
+      std::max<uint32_t>(1, static_cast<uint32_t>(std::round(height * scale)));
+  const uint32_t output_offset_x =
+      g_output_width > scaled_width ? (g_output_width - scaled_width) / 2 : 0;
   const uint32_t output_offset_y = g_output_height > scaled_height
                                        ? (g_output_height - scaled_height) / 2
                                        : 0;
 
   if (g_clear_output_frames_remaining > 0 || output_offset_x > 0 ||
       output_offset_y > 0) {
-    std::memset(g_output_buffer.get(), 0xff, g_output_buffer_size);
+    std::memset(GetOutputBuffer().get(), 0xff, g_output_buffer_size);
     if (g_clear_output_frames_remaining > 0) {
       --g_clear_output_frames_remaining;
     }
@@ -138,7 +144,7 @@ bool RenderCameraFrame(uint8_t* buffer, uint32_t width, uint32_t height) {
   config.in.block_offset_x = 0;
   config.in.block_offset_y = 0;
   config.in.srm_cm = CameraColorMode();
-  config.out.buffer = g_output_buffer.get();
+  config.out.buffer = GetOutputBuffer().get();
   config.out.buffer_size = g_output_buffer_size;
   config.out.pic_w = g_output_width;
   config.out.pic_h = g_output_height;
@@ -159,7 +165,7 @@ bool RenderCameraFrame(uint8_t* buffer, uint32_t width, uint32_t height) {
     return false;
   }
   if (!common::SendScreen(
-          0, 0, g_output_width, g_output_height, g_output_buffer.get())) {
+          0, 0, g_output_width, g_output_height, GetOutputBuffer().get())) {
     printf("Screen transfer failed\n");
     return false;
   }
@@ -183,7 +189,7 @@ void DeinitializeCamera() {
     close(g_video_fd);
     g_video_fd = -1;
   }
-  g_output_buffer.reset();
+  GetOutputBuffer().reset();
   g_output_buffer_size = 0;
   g_output_width = 0;
   g_output_height = 0;
@@ -311,14 +317,14 @@ bool InitializeCamera() {
   const size_t bytes_per_pixel = screen.bits_per_pixel / 8;
   g_output_buffer_size = AlignUp(
       g_output_width * g_output_height * bytes_per_pixel, g_cache_line_size);
-  void* output_buffer = heap_caps_aligned_calloc(g_cache_line_size, 1,
-      g_output_buffer_size, MALLOC_CAP_SPIRAM);
+  void* output_buffer = heap_caps_aligned_calloc(
+      g_cache_line_size, 1, g_output_buffer_size, MALLOC_CAP_SPIRAM);
   if (output_buffer == nullptr) {
     printf("Camera output buffer allocation failed\n");
     return false;
   }
-  g_output_buffer.reset(static_cast<uint8_t*>(output_buffer));
-  std::memset(g_output_buffer.get(), 0xff, g_output_buffer_size);
+  GetOutputBuffer().reset(static_cast<uint8_t*>(output_buffer));
+  std::memset(GetOutputBuffer().get(), 0xff, g_output_buffer_size);
   g_clear_output_frames_remaining = kCameraOutputClearFrameCount;
 
   int type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
@@ -327,9 +333,9 @@ bool InitializeCamera() {
     return false;
   }
   g_streaming = true;
-  printf("Camera preview started (%lux%lu)\n",
-      static_cast<unsigned long>(g_frame_width),
-      static_cast<unsigned long>(g_frame_height));
+  printf("Camera preview started (%" PRIu32 "x%" PRIu32 ")\n",
+      static_cast<uint32_t>(g_frame_width),
+      static_cast<uint32_t>(g_frame_height));
   return true;
 }
 
@@ -348,13 +354,13 @@ void RunCameraPreview() {
     }
 
     if (buffer.index >= kCameraBufferCount) {
-      printf("Camera returned invalid buffer index: %lu\n",
-          static_cast<unsigned long>(buffer.index));
+      printf("Camera returned invalid buffer index: %" PRIu32 "\n",
+          static_cast<uint32_t>(buffer.index));
       return;
     }
-    const bool rendered = RenderCameraFrame(
-        static_cast<uint8_t*>(g_frame_buffers[buffer.index]),
-        g_frame_width, g_frame_height);
+    const bool rendered =
+        RenderCameraFrame(static_cast<uint8_t*>(g_frame_buffers[buffer.index]),
+            g_frame_width, g_frame_height);
     if (ioctl(g_video_fd, VIDIOC_QBUF, &buffer) != 0) {
       printf("VIDIOC_QBUF failed while streaming\n");
       return;
@@ -368,10 +374,12 @@ void RunCameraPreview() {
 
 }  // namespace
 
-extern "C" void app_main(void) {
+extern "C" void app_main() {
   printf("Camera screen example on %s\n", common::kBoardName);
   if (!common::InitDriver()) {
-    printf("Device driver initialization completed with errors; continuing example\n");
+    printf(
+        "Device driver initialization completed with errors; continuing "
+        "example\n");
   }
   if (!common::IsScreenReady()) {
     printf("Screen init failed\n");

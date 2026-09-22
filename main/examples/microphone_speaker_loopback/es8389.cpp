@@ -2,23 +2,27 @@
  * @Description: ES8389 麦克风采集与扬声器播放回环实现
  * @Author: LILYGO_L
  * @Date: 2026-07-28 13:59:02
- * @LastEditTime: 2026-07-28 14:05:30
+ * @LastEditTime: 2026-09-22 17:04:20
  * @License: GPL 3.0
  */
-#include "common.h"
-#include "microphone_speaker_loopback.h"
-
+#include <cstddef>
+#include <cstdint>
+#include <cstdio>
 #include <memory>
 
+#include "common.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "microphone_speaker_loopback.h"
+
 #if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR) || \
-    (defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) && \
+    (defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) &&    \
         defined(CONFIG_LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2))
 
 namespace {
 
 constexpr size_t kAudioBufferSampleCount = 1024;
-constexpr size_t kAudioBufferSize =
-    kAudioBufferSampleCount * sizeof(int16_t);
+constexpr size_t kAudioBufferSize = kAudioBufferSampleCount * sizeof(int16_t);
 
 }  // namespace
 
@@ -31,10 +35,8 @@ void RunEs8389MicrophoneSpeakerLoopback() {
     return;
   }
 
-  esp_codec_dev_handle_t input_codec_dev =
-      driver.es8389_input_codec_dev();
-  esp_codec_dev_handle_t output_codec_dev =
-      driver.es8389_output_codec_dev();
+  esp_codec_dev_handle_t input_codec_dev = driver.es8389_input_codec_dev();
+  esp_codec_dev_handle_t output_codec_dev = driver.es8389_output_codec_dev();
   if (input_codec_dev == nullptr || output_codec_dev == nullptr) {
     printf("ES8389 codec device is unavailable\n");
     return;

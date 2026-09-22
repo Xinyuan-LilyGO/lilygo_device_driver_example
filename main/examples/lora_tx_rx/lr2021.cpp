@@ -2,13 +2,18 @@
  * @Description: LR2021 LoRa 数据发送与接收实现
  * @Author: LILYGO_L
  * @Date: 2026-07-28 13:59:02
- * @LastEditTime: 2026-07-29 18:22:36
+ * @LastEditTime: 2026-09-22 17:04:12
  * @License: GPL 3.0
  */
-#include "common.h"
-#include "lora_tx_rx.h"
-
 #include <array>
+#include <cinttypes>
+#include <cstdint>
+#include <cstdio>
+
+#include "common.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "lora_tx_rx.h"
 
 #if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) || \
     defined(CONFIG_LILYGO_DEVICE_DRIVER_T_GLASSES_P4)
@@ -17,14 +22,12 @@ namespace lora_tx_rx {
 namespace {
 
 constexpr lr20xx_radio_lora_bw_t kLoraBandwidth =
-    kUseHighFrequencyPath ? LR20XX_RADIO_LORA_BW_203
-                          : LR20XX_RADIO_LORA_BW_125;
+    kUseHighFrequencyPath ? LR20XX_RADIO_LORA_BW_203 : LR20XX_RADIO_LORA_BW_125;
 constexpr lr20xx_radio_common_rx_path_t kReceivePath =
     kUseHighFrequencyPath ? LR20XX_RADIO_COMMON_RX_PATH_HF
                           : LR20XX_RADIO_COMMON_RX_PATH_LF;
 // T-Display-P4的LR2021在1 GHz及以上必须限制为最大+5 dBm
-constexpr bool kApplyBoardHighFrequencyPowerLimit =
-    kFrequencyHz >= 1000000000U;
+constexpr bool kApplyBoardHighFrequencyPowerLimit = kFrequencyHz >= 1000000000U;
 constexpr uint8_t kUnusedLfPaDutyCycle = 6;
 constexpr uint8_t kLfPaDutyCycle = 7;
 constexpr uint8_t kLfPaSlices = 7;
@@ -51,15 +54,13 @@ bool SetPayloadLength(
     usp_cpp_bus_driver::Lr20xx& lr2021, uint8_t payload_length) {
   const lr20xx_radio_lora_pkt_params_t packet_config =
       MakePacketConfig(payload_length);
-  return lr2021.Invoke(
-             lr20xx_radio_lora_set_packet_params, &packet_config) ==
+  return lr2021.Invoke(lr20xx_radio_lora_set_packet_params, &packet_config) ==
          LR20XX_STATUS_OK;
 }
 
-bool ReadAndClearIrq(usp_cpp_bus_driver::Lr20xx& lr2021,
-    lr20xx_system_irq_mask_t& irq_status) {
-  return lr2021.Invoke(
-             lr20xx_system_get_and_clear_irq_status, &irq_status) ==
+bool ReadAndClearIrq(
+    usp_cpp_bus_driver::Lr20xx& lr2021, lr20xx_system_irq_mask_t& irq_status) {
+  return lr2021.Invoke(lr20xx_system_get_and_clear_irq_status, &irq_status) ==
          LR20XX_STATUS_OK;
 }
 
@@ -69,11 +70,10 @@ bool StartReceive(usp_cpp_bus_driver::Lr20xx& lr2021) {
 }
 
 bool CalibrateFrontEnd(usp_cpp_bus_driver::Lr20xx& lr2021) {
-  constexpr lr20xx_radio_common_front_end_calibration_value_t
-      kCalibration = {
-          .rx_path = kReceivePath,
-          .frequency_in_hertz = kFrequencyHz,
-      };
+  constexpr lr20xx_radio_common_front_end_calibration_value_t kCalibration = {
+      .rx_path = kReceivePath,
+      .frequency_in_hertz = kFrequencyHz,
+  };
   for (uint8_t attempt = 0; attempt < 10; ++attempt) {
     if (lr2021.Invoke(lr20xx_radio_common_calibrate_front_end_helper,
             &kCalibration, static_cast<uint8_t>(1)) == LR20XX_STATUS_OK) {
@@ -89,9 +89,9 @@ bool ButtonPressed(cpp_bus_driver::PlatformHal& platform_hal) {
 }
 
 bool RadioIrqAsserted() {
-#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_GLASSES_P4) || \
+#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_GLASSES_P4) ||  \
     (defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) && \
-     defined(CONFIG_LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2))
+        defined(CONFIG_LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2))
   cpp_bus_driver::PlatformHal platform_hal;
   return platform_hal.GpioRead(common::board::gpio::lr2021::kInt);
 #else
@@ -153,38 +153,33 @@ void RunLr2021() {
           },
       .sync_word = kSyncWord,
       .rx_path = kReceivePath,
-      .rx_boost_mode =
-          LR20XX_RADIO_COMMON_RX_PATH_BOOST_MODE_7,
+      .rx_boost_mode = LR20XX_RADIO_COMMON_RX_PATH_BOOST_MODE_7,
       .pa =
           {
-              .pa_sel =
-                  kUseHighFrequencyPath
-                      ? LR20XX_RADIO_COMMON_PA_SEL_HF
-                      : LR20XX_RADIO_COMMON_PA_SEL_LF,
+              .pa_sel = kUseHighFrequencyPath ? LR20XX_RADIO_COMMON_PA_SEL_HF
+                                              : LR20XX_RADIO_COMMON_PA_SEL_LF,
               .pa_lf_mode = LR20XX_RADIO_COMMON_PA_LF_MODE_FSM,
               .pa_lf_duty_cycle =
-                  kUseHighFrequencyPath ? kUnusedLfPaDutyCycle
-                                        : kLfPaDutyCycle,
+                  kUseHighFrequencyPath ? kUnusedLfPaDutyCycle : kLfPaDutyCycle,
               .pa_lf_slices = kLfPaSlices,
               // T-Display-P4的LR2021在1 GHz以上最大只允许+5 dBm。
               // 官方HF PA表中+5 dBm对应duty cycle 31。
-              .pa_hf_duty_cycle =
-                  kApplyBoardHighFrequencyPowerLimit
-                      ? kHfPaDutyCycle5Dbm
-                      : kUnusedHfPaDutyCycle,
+              .pa_hf_duty_cycle = kApplyBoardHighFrequencyPowerLimit
+                                      ? kHfPaDutyCycle5Dbm
+                                      : kUnusedHfPaDutyCycle,
           },
       // HF PA的+5 dBm表项要求SetTxParams写入15个半dBm单位。
-      .output_power_half_dbm =
-          kApplyBoardHighFrequencyPowerLimit ? kHfOutputPower5Dbm
-                                             : kLfOutputPower22Dbm,
+      .output_power_half_dbm = kApplyBoardHighFrequencyPowerLimit
+                                   ? kHfOutputPower5Dbm
+                                   : kLfOutputPower22Dbm,
       .ramp_time = LR20XX_RADIO_COMMON_RAMP_48_US,
   };
 
   if (!CalibrateFrontEnd(lr2021) || !lr2021.Configure(lora_config) ||
       lr2021.Invoke(lr20xx_system_clear_irq_status,
           LR20XX_SYSTEM_IRQ_ALL_MASK) != LR20XX_STATUS_OK ||
-      lr2021.Invoke(lr20xx_system_set_dio_irq_cfg,
-          LR20XX_SYSTEM_DIO_11, kRadioIrqMask) != LR20XX_STATUS_OK ||
+      lr2021.Invoke(lr20xx_system_set_dio_irq_cfg, LR20XX_SYSTEM_DIO_11,
+          kRadioIrqMask) != LR20XX_STATUS_OK ||
       !StartReceive(lr2021)) {
     printf("LR2021 LoRa configuration failed\n");
     return;
@@ -204,8 +199,7 @@ void RunLr2021() {
         const bool transmit_started =
             lr2021.Invoke(lr20xx_system_clear_irq_status,
                 LR20XX_SYSTEM_IRQ_ALL_MASK) == LR20XX_STATUS_OK &&
-            lr2021.Invoke(lr20xx_radio_fifo_clear_tx) ==
-                LR20XX_STATUS_OK &&
+            lr2021.Invoke(lr20xx_radio_fifo_clear_tx) == LR20XX_STATUS_OK &&
             SetPayloadLength(
                 lr2021, static_cast<uint8_t>(kTestPayload.size())) &&
             lr2021.WriteBuffer(kTestPayload.data(), kTestPayload.size()) &&
@@ -230,17 +224,15 @@ void RunLr2021() {
       } else if ((irq_status & LR20XX_SYSTEM_IRQ_TX_DONE) != 0) {
         printf("LR2021 send completed\n");
         transmitting = false;
-      } else if ((irq_status &
-                     (LR20XX_SYSTEM_IRQ_LORA_HEADER_ERROR |
-                         LR20XX_SYSTEM_IRQ_CRC_ERROR |
-                         LR20XX_SYSTEM_IRQ_LEN_ERROR)) != 0) {
-        printf("LR2021 receive packet error (IRQ: 0x%08lX)\n",
-            static_cast<unsigned long>(irq_status));
+      } else if ((irq_status & (LR20XX_SYSTEM_IRQ_LORA_HEADER_ERROR |
+                                   LR20XX_SYSTEM_IRQ_CRC_ERROR |
+                                   LR20XX_SYSTEM_IRQ_LEN_ERROR)) != 0) {
+        printf("LR2021 receive packet error (IRQ: 0x%08" PRIX32 ")\n",
+            static_cast<uint32_t>(irq_status));
       } else if ((irq_status & LR20XX_SYSTEM_IRQ_RX_DONE) != 0) {
         lr20xx_radio_lora_packet_status_t packet_status = {};
-        if (lr2021.Invoke(
-                lr20xx_radio_lora_get_packet_status, &packet_status) ==
-                LR20XX_STATUS_OK &&
+        if (lr2021.Invoke(lr20xx_radio_lora_get_packet_status,
+                &packet_status) == LR20XX_STATUS_OK &&
             packet_status.packet_length_bytes > 0 &&
             packet_status.packet_length_bytes <= receive_buffer.size() &&
             lr2021.ReadBuffer(
@@ -250,8 +242,7 @@ void RunLr2021() {
               static_cast<float>(packet_status.rssi_pkt_half_dbm_count) * 0.5f;
           const float signal_rssi =
               static_cast<float>(packet_status.rssi_signal_pkt_in_dbm) -
-              static_cast<float>(
-                  packet_status.rssi_signal_pkt_half_dbm_count) *
+              static_cast<float>(packet_status.rssi_signal_pkt_half_dbm_count) *
                   0.5f;
           const float snr =
               static_cast<float>(packet_status.snr_pkt_raw) * 0.25f;
@@ -259,10 +250,9 @@ void RunLr2021() {
               "LR2021 receive RSSI: %.2f dBm, signal RSSI: %.2f dBm, "
               "SNR: %.2f dB\n",
               packet_rssi, signal_rssi, snr);
-          for (uint8_t index = 0;
-               index < packet_status.packet_length_bytes; ++index) {
-            printf("LR2021 data[%u]: %u\n",
-                static_cast<unsigned int>(index),
+          for (uint8_t index = 0; index < packet_status.packet_length_bytes;
+              ++index) {
+            printf("LR2021 data[%u]: %u\n", static_cast<unsigned int>(index),
                 static_cast<unsigned int>(receive_buffer[index]));
           }
         } else {

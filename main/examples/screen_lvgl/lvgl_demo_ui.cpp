@@ -1,0 +1,216 @@
+/*
+ * @Description: LVGL 仪表盘示例界面的控件与样式实现
+ * @Author: LILYGO_L
+ * @Date: 2026-07-28 13:59:02
+ * @LastEditTime: 2026-09-22 17:04:31
+ * @License: GPL 3.0
+ */
+/*
+ * SPDX-FileCopyrightText: 2023-2024 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: CC0-1.0
+ */
+#include "lvgl_demo_ui.h"
+
+#include <cstdint>
+
+namespace {
+
+lv_style_t g_style_bullet;
+lv_obj_t* g_scale = nullptr;
+constexpr const lv_font_t* kFontNormal = &lv_font_montserrat_26;
+
+lv_obj_t* CreateScaleBox(lv_obj_t* parent, const char* text1, const char* text2,
+    const char* text3, bool compact) {
+  lv_obj_t* scale = lv_scale_create(parent);
+  lv_obj_center(scale);
+  lv_obj_set_size(scale, compact ? 336 : 600, compact ? 336 : 600);
+  lv_scale_set_mode(scale, LV_SCALE_MODE_ROUND_OUTER);
+  lv_scale_set_label_show(scale, false);
+  lv_scale_set_post_draw(scale, true);
+  if (!compact) {
+    // 为圆角屏幕预留边距，保持仪表为正方形。
+    const int32_t width =
+        lv_display_get_horizontal_resolution(lv_obj_get_display(parent));
+    const int32_t diameter = LV_MIN(600, width - 96);
+    lv_obj_set_size(scale, diameter, diameter);
+    lv_obj_set_style_pad_all(parent, 48, 0);
+    lv_obj_set_style_pad_column(parent, 16, 0);
+    lv_obj_set_style_pad_row(parent, 16, 0);
+    lv_obj_remove_flag(parent, LV_OBJ_FLAG_SCROLLABLE);
+  }
+  lv_obj_set_style_pad_all(scale, compact ? 20 : 30, 0);
+
+  lv_obj_t* bullet1 = lv_obj_create(parent);
+  lv_obj_set_size(bullet1, 13, 13);
+  lv_obj_remove_style(bullet1, nullptr, LV_PART_SCROLLBAR);
+  lv_obj_add_style(bullet1, &g_style_bullet, 0);
+  lv_obj_set_style_bg_color(
+      bullet1, lv_palette_main(compact ? LV_PALETTE_BLUE : LV_PALETTE_RED), 0);
+  lv_obj_t* label1 = lv_label_create(parent);
+  lv_label_set_text(label1, text1);
+
+  lv_obj_t* bullet2 = lv_obj_create(parent);
+  lv_obj_set_size(bullet2, 13, 13);
+  lv_obj_remove_style(bullet2, nullptr, LV_PART_SCROLLBAR);
+  lv_obj_add_style(bullet2, &g_style_bullet, 0);
+  lv_obj_set_style_bg_color(
+      bullet2, lv_palette_main(compact ? LV_PALETTE_RED : LV_PALETTE_BLUE), 0);
+  lv_obj_t* label2 = lv_label_create(parent);
+  lv_label_set_text(label2, text2);
+
+  lv_obj_t* bullet3 = lv_obj_create(parent);
+  lv_obj_set_size(bullet3, 13, 13);
+  lv_obj_remove_style(bullet3, nullptr, LV_PART_SCROLLBAR);
+  lv_obj_add_style(bullet3, &g_style_bullet, 0);
+  lv_obj_set_style_bg_color(bullet3, lv_palette_main(LV_PALETTE_GREEN), 0);
+  lv_obj_t* label3 = lv_label_create(parent);
+  lv_label_set_text(label3, text3);
+
+  if (compact) {
+    static constexpr int32_t kCompactColumns[] = {
+        336, 13, LV_GRID_FR(1), LV_GRID_TEMPLATE_LAST};
+    static constexpr int32_t kCompactRows[] = {LV_GRID_FR(1), LV_GRID_CONTENT,
+        LV_GRID_CONTENT, LV_GRID_CONTENT, LV_GRID_FR(1), LV_GRID_TEMPLATE_LAST};
+    lv_obj_set_style_pad_all(parent, 16, 0);
+    lv_obj_set_style_pad_column(parent, 12, 0);
+    lv_obj_set_style_pad_row(parent, 16, 0);
+    lv_obj_remove_flag(parent, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_grid_dsc_array(parent, kCompactColumns, kCompactRows);
+    lv_obj_set_grid_cell(
+        scale, LV_GRID_ALIGN_CENTER, 0, 1, LV_GRID_ALIGN_CENTER, 0, 5);
+    lv_obj_set_grid_cell(
+        bullet1, LV_GRID_ALIGN_CENTER, 1, 1, LV_GRID_ALIGN_CENTER, 1, 1);
+    lv_obj_set_grid_cell(
+        bullet2, LV_GRID_ALIGN_CENTER, 1, 1, LV_GRID_ALIGN_CENTER, 2, 1);
+    lv_obj_set_grid_cell(
+        bullet3, LV_GRID_ALIGN_CENTER, 1, 1, LV_GRID_ALIGN_CENTER, 3, 1);
+    lv_obj_set_grid_cell(
+        label1, LV_GRID_ALIGN_STRETCH, 2, 1, LV_GRID_ALIGN_CENTER, 1, 1);
+    lv_obj_set_grid_cell(
+        label2, LV_GRID_ALIGN_STRETCH, 2, 1, LV_GRID_ALIGN_CENTER, 2, 1);
+    lv_obj_set_grid_cell(
+        label3, LV_GRID_ALIGN_STRETCH, 2, 1, LV_GRID_ALIGN_CENTER, 3, 1);
+    return scale;
+  }
+
+  static constexpr int32_t kGridColumns[] = {
+      LV_GRID_CONTENT, LV_GRID_FR(1), LV_GRID_TEMPLATE_LAST};
+  static constexpr int32_t kGridRows[] = {LV_GRID_CONTENT, LV_GRID_CONTENT,
+      LV_GRID_CONTENT, LV_GRID_CONTENT, LV_GRID_CONTENT, LV_GRID_TEMPLATE_LAST};
+  lv_obj_set_grid_dsc_array(parent, kGridColumns, kGridRows);
+  lv_obj_set_grid_cell(
+      scale, LV_GRID_ALIGN_CENTER, 0, 2, LV_GRID_ALIGN_START, 1, 1);
+  lv_obj_set_grid_cell(
+      bullet1, LV_GRID_ALIGN_START, 0, 1, LV_GRID_ALIGN_START, 2, 1);
+  lv_obj_set_grid_cell(
+      bullet2, LV_GRID_ALIGN_START, 0, 1, LV_GRID_ALIGN_START, 3, 1);
+  lv_obj_set_grid_cell(
+      bullet3, LV_GRID_ALIGN_START, 0, 1, LV_GRID_ALIGN_START, 4, 1);
+  lv_obj_set_grid_cell(
+      label1, LV_GRID_ALIGN_STRETCH, 1, 1, LV_GRID_ALIGN_START, 2, 1);
+  lv_obj_set_grid_cell(
+      label2, LV_GRID_ALIGN_STRETCH, 1, 1, LV_GRID_ALIGN_START, 3, 1);
+  lv_obj_set_grid_cell(
+      label3, LV_GRID_ALIGN_STRETCH, 1, 1, LV_GRID_ALIGN_START, 4, 1);
+  return scale;
+}
+
+void AnimateRevenue(void* var, int32_t v) {
+  lv_arc_set_value(static_cast<lv_obj_t*>(var), v);
+
+  lv_obj_t* card = lv_obj_get_parent(g_scale);
+  lv_obj_t* label = lv_obj_get_child(card, -5);
+  lv_label_set_text_fmt(label, "Revenue: %" LV_PRId32 " %%", v);
+}
+
+void AnimateSales(void* var, int32_t v) {
+  lv_arc_set_value(static_cast<lv_obj_t*>(var), v);
+
+  lv_obj_t* card = lv_obj_get_parent(g_scale);
+  lv_obj_t* label = lv_obj_get_child(card, -3);
+  lv_label_set_text_fmt(label, "Sales: %" LV_PRId32 " %%", v);
+}
+
+void AnimateCosts(void* var, int32_t v) {
+  lv_arc_set_value(static_cast<lv_obj_t*>(var), v);
+
+  lv_obj_t* card = lv_obj_get_parent(g_scale);
+  lv_obj_t* label = lv_obj_get_child(card, -1);
+  lv_label_set_text_fmt(label, "Costs: %" LV_PRId32 " %%", v);
+}
+
+}  // namespace
+
+void CreateLvglDemoUi(lv_display_t* disp) {
+  // init default theme
+  lv_theme_default_init(disp, lv_palette_main(LV_PALETTE_BLUE),
+      lv_palette_main(LV_PALETTE_RED), LV_THEME_DEFAULT_DARK, kFontNormal);
+  // bullet style
+  lv_style_init(&g_style_bullet);
+  lv_style_set_border_width(&g_style_bullet, 0);
+  lv_style_set_radius(&g_style_bullet, LV_RADIUS_CIRCLE);
+
+  lv_obj_t* parent = lv_display_get_screen_active(disp);
+
+  // create scale widget
+  const bool compact = lv_display_get_horizontal_resolution(disp) == 640 &&
+                       lv_display_get_vertical_resolution(disp) == 400;
+  g_scale = CreateScaleBox(parent, "Revenue", "Sales", "Costs", compact);
+
+  // create arc indicators
+  lv_obj_t* arc = lv_arc_create(g_scale);
+  lv_obj_remove_style(arc, nullptr, LV_PART_KNOB);
+  lv_obj_remove_style(arc, nullptr, LV_PART_MAIN);
+  lv_obj_set_size(arc, lv_pct(100), lv_pct(100));
+  lv_obj_set_style_arc_opa(arc, 0, 0);
+  lv_obj_set_style_arc_width(arc, 15, LV_PART_INDICATOR);
+  lv_obj_set_style_arc_color(
+      arc, lv_palette_main(LV_PALETTE_BLUE), LV_PART_INDICATOR);
+  lv_obj_remove_flag(arc, LV_OBJ_FLAG_CLICKABLE);
+
+  // animation
+  lv_anim_t a;
+  lv_anim_init(&a);
+  lv_anim_set_values(&a, 20, 100);
+  lv_anim_set_repeat_count(&a, LV_ANIM_REPEAT_INFINITE);
+  lv_anim_set_exec_cb(&a, AnimateRevenue);
+  lv_anim_set_var(&a, arc);
+  lv_anim_set_duration(&a, 4100);
+  lv_anim_set_playback_duration(&a, 2700);
+  lv_anim_start(&a);
+
+  arc = lv_arc_create(g_scale);
+  lv_obj_remove_style(arc, nullptr, LV_PART_KNOB);
+  lv_obj_set_size(arc, lv_pct(100), lv_pct(100));
+  lv_obj_set_style_margin_all(arc, 20, 0);
+  lv_obj_set_style_arc_opa(arc, 0, 0);
+  lv_obj_set_style_arc_width(arc, 15, LV_PART_INDICATOR);
+  lv_obj_set_style_arc_color(
+      arc, lv_palette_main(LV_PALETTE_RED), LV_PART_INDICATOR);
+  lv_obj_remove_flag(arc, LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_center(arc);
+
+  lv_anim_set_exec_cb(&a, AnimateSales);
+  lv_anim_set_var(&a, arc);
+  lv_anim_set_duration(&a, 2600);
+  lv_anim_set_playback_duration(&a, 3200);
+  lv_anim_start(&a);
+
+  arc = lv_arc_create(g_scale);
+  lv_obj_remove_style(arc, nullptr, LV_PART_KNOB);
+  lv_obj_set_size(arc, lv_pct(100), lv_pct(100));
+  lv_obj_set_style_margin_all(arc, 40, 0);
+  lv_obj_set_style_arc_opa(arc, 0, 0);
+  lv_obj_set_style_arc_width(arc, 15, LV_PART_INDICATOR);
+  lv_obj_set_style_arc_color(
+      arc, lv_palette_main(LV_PALETTE_GREEN), LV_PART_INDICATOR);
+  lv_obj_remove_flag(arc, LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_center(arc);
+
+  lv_anim_set_exec_cb(&a, AnimateCosts);
+  lv_anim_set_var(&a, arc);
+  lv_anim_set_duration(&a, 2800);
+  lv_anim_set_playback_duration(&a, 1800);
+  lv_anim_start(&a);
+}

@@ -2,22 +2,16 @@
  * @Description: 在 T-Display-P4 V2.0 上使用 USB RTL8152B 网卡进行 iperf 测试
  * @Author: LILYGO_L
  * @Date: 2026-05-05 18:15:09
- * @LastEditTime: 2026-09-11 17:24:33
+ * @LastEditTime: 2026-09-22 17:04:42
  * @License: GPL 3.0
  */
-#include <stdint.h>
-#include <stdio.h>
+#include <cstdint>
+#include <cstdio>
 
-// 0: 板载 RTL8152B；1: Type-A 接口外接 RTL8152B。
-#define USB_ETHERNET_IPERF_USE_EXTERNAL_ADAPTER 0
-// 1: 从 ESP32-P4 eFuse MAC 派生地址，并启用混杂接收；0: 使用网卡的 ECM MAC。
-#define USB_ETHERNET_IPERF_USE_SOFTWARE_MAC 1
-
-#include "esp_check.h"
 #include "esp_console.h"
+#include "esp_err.h"
 #include "esp_event.h"
 #include "esp_intr_alloc.h"
-#include "esp_log.h"
 #include "esp_netif.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -26,9 +20,14 @@
 #include "usb/host.h"
 #include "usb/usb_host.h"
 
-static const char* TAG = "rtl8152b_iperf";
+// 0: 板载 RTL8152B；1: Type-A 接口外接 RTL8152B。
+#define USB_ETHERNET_IPERF_USE_EXTERNAL_ADAPTER 0
+// 1: 从 ESP32-P4 eFuse MAC 派生地址，并启用混杂接收；0: 使用网卡的 ECM MAC。
+#define USB_ETHERNET_IPERF_USE_SOFTWARE_MAC 1
 
-static void usb_lib_task(void* arg) {
+namespace {
+
+void UsbLibraryTask(void* arg) {
   const usb_host_config_t host_config = {
       .skip_phy_setup = false,
       .root_port_unpowered = false,
@@ -47,9 +46,9 @@ static void usb_lib_task(void* arg) {
     ESP_ERROR_CHECK(usb_host_lib_handle_events(portMAX_DELAY, &event_flags));
 
     if (event_flags & USB_HOST_LIB_EVENT_FLAGS_NO_CLIENTS) {
-      ESP_LOGI(TAG, "USB host has no clients");
+      printf("USB host has no clients\n");
       if (usb_host_device_free_all() == ESP_OK) {
-        ESP_LOGI(TAG, "All USB devices are free");
+        printf("All USB devices are free\n");
         has_clients = false;
       } else {
         has_devices = true;
@@ -57,12 +56,12 @@ static void usb_lib_task(void* arg) {
     }
 
     if (has_devices && (event_flags & USB_HOST_LIB_EVENT_FLAGS_ALL_FREE)) {
-      ESP_LOGI(TAG, "All USB devices are free");
+      printf("All USB devices are free\n");
       has_clients = false;
     }
   }
 
-  ESP_LOGI(TAG, "Uninstall USB Host library");
+  printf("Uninstall USB Host library\n");
   vTaskDelay(pdMS_TO_TICKS(100));
   ESP_ERROR_CHECK(usb_host_uninstall());
   common::usb_host::DisablePower();
@@ -72,7 +71,7 @@ static void usb_lib_task(void* arg) {
 /**
  * @brief 根据主控制台配置，通过 USB Serial/JTAG 或 UART 接收 iperf 命令。
  */
-static void start_iperf_console(void) {
+void StartIperfConsole() {
   esp_console_repl_t* repl = nullptr;
   esp_console_repl_config_t repl_config = ESP_CONSOLE_REPL_CONFIG_DEFAULT();
 
@@ -86,15 +85,16 @@ static void start_iperf_console(void) {
       ESP_CONSOLE_DEV_USB_SERIAL_JTAG_CONFIG_DEFAULT();
   ESP_ERROR_CHECK(
       esp_console_new_repl_usb_serial_jtag(&usb_config, &repl_config, &repl));
-  ESP_LOGI(TAG, "iperf console: USB Serial/JTAG");
+  printf("iperf console: USB Serial/JTAG\n");
 #elif CONFIG_ESP_CONSOLE_UART_DEFAULT || CONFIG_ESP_CONSOLE_UART_CUSTOM
   esp_console_dev_uart_config_t uart_config =
       ESP_CONSOLE_DEV_UART_CONFIG_DEFAULT();
   ESP_ERROR_CHECK(esp_console_new_repl_uart(&uart_config, &repl_config, &repl));
-  ESP_LOGI(TAG, "iperf console: UART");
+  printf("iperf console: UART\n");
 #if CONFIG_ESP_CONSOLE_SECONDARY_USB_SERIAL_JTAG
-  ESP_LOGW(TAG, "USB is log-only; select USB Serial/JTAG as the primary "
-               "console in menuconfig to enter commands over USB");
+  printf(
+      "USB is log-only; select USB Serial/JTAG as the primary "
+      "console in menuconfig to enter commands over USB\n");
 #endif
 #else
 #error "iperf requires a USB Serial/JTAG or UART primary console"
@@ -113,7 +113,9 @@ static void start_iperf_console(void) {
   ESP_ERROR_CHECK(esp_console_start_repl(repl));
 }
 
-extern "C" void app_main(void) {
+}  // namespace
+
+extern "C" void app_main() {
 #if USB_ETHERNET_IPERF_USE_EXTERNAL_ADAPTER
   printf("External Type-A Ethernet iperf test; onboard Ethernet skipped\n");
 #else
@@ -121,14 +123,14 @@ extern "C" void app_main(void) {
 #endif
 
   if (!common::usb_host::InitPower()) {
-    ESP_LOGE(TAG, "USB host power initialization failed");
+    printf("USB host power initialization failed\n");
     return;
   }
 
   ESP_ERROR_CHECK(esp_netif_init());
   ESP_ERROR_CHECK(esp_event_loop_create_default());
 
-  BaseType_t task_created = xTaskCreatePinnedToCore(usb_lib_task, "usb_lib",
+  BaseType_t task_created = xTaskCreatePinnedToCore(UsbLibraryTask, "usb_lib",
       4096, xTaskGetCurrentTaskHandle(), 5, nullptr, 0);
   ESP_ERROR_CHECK(task_created == pdPASS ? ESP_OK : ESP_FAIL);
 
@@ -137,20 +139,22 @@ extern "C" void app_main(void) {
 
   const common::usb_ethernet::Config ethernet_config = {
       .adapter = USB_ETHERNET_IPERF_USE_EXTERNAL_ADAPTER
-          ? common::usb_ethernet::Adapter::kExternal
-          : common::usb_ethernet::Adapter::kOnboard,
+                     ? common::usb_ethernet::Adapter::kExternal
+                     : common::usb_ethernet::Adapter::kOnboard,
       .use_software_mac = USB_ETHERNET_IPERF_USE_SOFTWARE_MAC != 0,
   };
   ESP_ERROR_CHECK(common::usb_ethernet::Init(ethernet_config));
 
 #if USB_ETHERNET_IPERF_USE_EXTERNAL_ADAPTER
-  ESP_LOGI(TAG, "Connect the external RTL8152B to Type-A and its Ethernet "
-               "cable to a DHCP router; keep connected while waiting for IP");
+  printf(
+      "Connect the external RTL8152B to Type-A and its Ethernet "
+      "cable to a DHCP router; keep connected while waiting for IP\n");
 #else
-  ESP_LOGI(TAG, "Connect the onboard RTL8152B Ethernet cable to a DHCP router "
-               "and keep it connected while waiting for IP");
+  printf(
+      "Connect the onboard RTL8152B Ethernet cable to a DHCP router "
+      "and keep it connected while waiting for IP\n");
 #endif
-  start_iperf_console();
+  StartIperfConsole();
 
   common::usb_ethernet::WaitForIp();
   vTaskSuspend(nullptr);

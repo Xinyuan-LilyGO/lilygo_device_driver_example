@@ -5,6 +5,8 @@
  * @LastEditTime: 2026-07-28 14:05:30
  * @License: GPL 3.0
  */
+#include <cstddef>
+
 #include "common.h"
 #include "wifi_mp3.h"
 

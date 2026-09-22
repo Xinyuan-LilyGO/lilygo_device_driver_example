@@ -2,25 +2,36 @@
  * @Description: 根据当前硬件配置运行对应的电池管理示例
  * @Author: LILYGO_L
  * @Date: 2026-07-28 13:59:02
- * @LastEditTime: 2026-07-28 14:05:30
+ * @LastEditTime: 2026-09-22 17:03:41
  * @License: GPL 3.0
  */
-#include "battery_management.h"
-#include "display/lvgl.h"
-
 #include <cstdarg>
+#include <cstddef>
+#include <cstdint>
 #include <cstdio>
 #include <string>
+
+#include "battery_management.h"
+#include "display/lvgl.h"
 
 namespace {
 
 // 静态生命周期保证芯片初始化失败、app_main 返回后 LVGL 任务仍可显示错误。
 common::LvglPort g_lvgl_port;
 lv_obj_t* g_log_label = nullptr;
-std::string g_log_text;
-std::string g_startup_text;
 bool g_snapshot_active = false;
 bool g_startup_saved = false;
+
+struct LogBuffers {
+  std::string text;
+  std::string startup_text;
+};
+
+LogBuffers& GetLogBuffers() {
+  // 保持进程生命周期，app_main 返回后屏幕仍可显示日志。
+  static LogBuffers* const buffers = new LogBuffers;
+  return *buffers;
+}
 
 template <typename Touch>
 bool ReadTouch(Touch* touch, lv_indev_data_t* data) {
@@ -59,7 +70,7 @@ void UpdateLogScreen() {
   g_lvgl_port.Lock();
   auto* screen = lv_display_get_screen_active(g_lvgl_port.display());
   const int32_t scroll_y = lv_obj_get_scroll_y(screen);
-  lv_label_set_text(g_log_label, g_log_text.c_str());
+  lv_label_set_text(g_log_label, GetLogBuffers().text.c_str());
   lv_obj_update_layout(screen);
   // 更新数据时不跳回顶部，便于持续查看屏幕下方的分类。
   lv_obj_scroll_to_y(screen, scroll_y, LV_ANIM_OFF);
@@ -104,7 +115,7 @@ void InitLogScreen() {
 #endif
   lv_obj_set_style_text_line_space(g_log_label, 4, LV_PART_MAIN);
   lv_obj_align(g_log_label, LV_ALIGN_TOP_LEFT, 0, 0);
-  lv_label_set_text(g_log_label, g_log_text.c_str());
+  lv_label_set_text(g_log_label, GetLogBuffers().text.c_str());
   common::StartBacklight();
   lv_refr_now(g_lvgl_port.display());
   if (!g_lvgl_port.Start()) {
@@ -131,7 +142,7 @@ void BatteryLogPrintf(const char* format, ...) {
   if (length > 0) {
     std::string line(static_cast<size_t>(length) + 1, '\0');
     vsnprintf(&line[0], line.size(), format, screen_args);
-    g_log_text.append(line.data(), static_cast<size_t>(length));
+    GetLogBuffers().text.append(line.data(), static_cast<size_t>(length));
   }
   va_end(screen_args);
   if (!g_snapshot_active) {
@@ -141,10 +152,10 @@ void BatteryLogPrintf(const char* format, ...) {
 
 void BatteryLogBeginSnapshot() {
   if (!g_startup_saved) {
-    g_startup_text = g_log_text;
+    GetLogBuffers().startup_text = GetLogBuffers().text;
     g_startup_saved = true;
   }
-  g_log_text = g_startup_text;
+  GetLogBuffers().text = GetLogBuffers().startup_text;
   g_snapshot_active = true;
 }
 
@@ -153,7 +164,7 @@ void BatteryLogEndSnapshot() {
   UpdateLogScreen();
 }
 
-extern "C" void app_main(void) {
+extern "C" void app_main() {
   BatteryLogPrintf("Battery management example on %s %s\n", common::kBoardName,
       common::GetDriver().device_model_info().version);
 #if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) && \
@@ -163,7 +174,9 @@ extern "C" void app_main(void) {
   const bool initialized = common::InitDriver();
 #endif
   if (!initialized) {
-    BatteryLogPrintf("Device driver initialization completed with errors; continuing example\n");
+    BatteryLogPrintf(
+        "Device driver initialization completed with errors; continuing "
+        "example\n");
   }
   InitLogScreen();
 
@@ -171,7 +184,7 @@ extern "C" void app_main(void) {
     !defined(CONFIG_LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
   RunBq27220Example();
 #elif defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR) || \
-    (defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) && \
+    (defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) &&      \
         defined(CONFIG_LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2))
   RunAxp517Example();
 #endif

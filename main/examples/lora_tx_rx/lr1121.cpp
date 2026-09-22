@@ -2,13 +2,19 @@
  * @Description: LR1121 LoRa 数据发送与接收实现
  * @Author: LILYGO_L
  * @Date: 2026-07-28 13:59:02
- * @LastEditTime: 2026-09-03 16:57:00
+ * @LastEditTime: 2026-09-22 17:04:11
  * @License: GPL 3.0
  */
-#include "common.h"
-#include "lora_tx_rx.h"
-
 #include <array>
+#include <cinttypes>
+#include <cstddef>
+#include <cstdint>
+#include <cstdio>
+
+#include "common.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "lora_tx_rx.h"
 
 #if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR)
 
@@ -16,8 +22,7 @@ namespace lora_tx_rx {
 namespace {
 
 constexpr lr11xx_radio_lora_bw_t kLoraBandwidth =
-    kUseHighFrequencyPath ? LR11XX_RADIO_LORA_BW_200
-                          : LR11XX_RADIO_LORA_BW_125;
+    kUseHighFrequencyPath ? LR11XX_RADIO_LORA_BW_200 : LR11XX_RADIO_LORA_BW_125;
 constexpr lr11xx_system_irq_mask_t kRadioIrqMask =
     LR11XX_SYSTEM_IRQ_TX_DONE | LR11XX_SYSTEM_IRQ_RX_DONE |
     LR11XX_SYSTEM_IRQ_HEADER_ERROR | LR11XX_SYSTEM_IRQ_CRC_ERROR |
@@ -41,16 +46,15 @@ bool SetPayloadLength(
          LR11XX_STATUS_OK;
 }
 
-bool ReadAndClearIrq(usp_cpp_bus_driver::Lr11xx& lr1121,
-    lr11xx_system_irq_mask_t& irq_status) {
-  return lr1121.Invoke(
-             lr11xx_system_get_and_clear_irq_status, &irq_status) ==
+bool ReadAndClearIrq(
+    usp_cpp_bus_driver::Lr11xx& lr1121, lr11xx_system_irq_mask_t& irq_status) {
+  return lr1121.Invoke(lr11xx_system_get_and_clear_irq_status, &irq_status) ==
          LR11XX_STATUS_OK;
 }
 
 bool WaitForIrq(cpp_bus_driver::PlatformHal& platform_hal,
-    usp_cpp_bus_driver::Lr11xx& lr1121,
-    lr11xx_system_irq_mask_t& irq_status, uint32_t timeout_ms) {
+    usp_cpp_bus_driver::Lr11xx& lr1121, lr11xx_system_irq_mask_t& irq_status,
+    uint32_t timeout_ms) {
   const int64_t deadline_ms = platform_hal.GetSystemTimeMs() + timeout_ms;
   while (platform_hal.GetSystemTimeMs() < deadline_ms) {
     if (platform_hal.GpioRead(common::board::gpio::lr1121::kInt)) {
@@ -110,13 +114,11 @@ void RunLr1121() {
       .rx_boosted = true,
       .pa =
           {
-              .pa_sel =
-                  kUseHighFrequencyPath ? LR11XX_RADIO_PA_SEL_HF
-                                        : LR11XX_RADIO_PA_SEL_HP,
-              .pa_reg_supply =
-                  kUseHighFrequencyPath
-                      ? LR11XX_RADIO_PA_REG_SUPPLY_VREG
-                      : LR11XX_RADIO_PA_REG_SUPPLY_VBAT,
+              .pa_sel = kUseHighFrequencyPath ? LR11XX_RADIO_PA_SEL_HF
+                                              : LR11XX_RADIO_PA_SEL_HP,
+              .pa_reg_supply = kUseHighFrequencyPath
+                                   ? LR11XX_RADIO_PA_REG_SUPPLY_VREG
+                                   : LR11XX_RADIO_PA_REG_SUPPLY_VBAT,
               .pa_duty_cycle = kUseHighFrequencyPath ? 0x00 : 0x04,
               .pa_hp_sel = kUseHighFrequencyPath ? 0x00 : 0x07,
           },
@@ -152,8 +154,8 @@ void RunLr1121() {
         if (!transmit_started ||
             !WaitForIrq(platform_hal, lr1121, irq_status, 6000) ||
             (irq_status & LR11XX_SYSTEM_IRQ_TX_DONE) == 0) {
-          printf("LR1121 send failed (IRQ: 0x%08lX)\n",
-              static_cast<unsigned long>(irq_status));
+          printf("LR1121 send failed (IRQ: 0x%08" PRIX32 ")\n",
+              static_cast<uint32_t>(irq_status));
         } else {
           printf("LR1121 send completed\n");
         }
@@ -176,8 +178,7 @@ void RunLr1121() {
         lr11xx_radio_rx_buffer_status_t buffer_status = {};
         usp_cpp_bus_driver::Lr11xx::PacketMetrics metrics;
         std::array<uint8_t, 255> receive_buffer = {};
-        if (lr1121.Invoke(
-                lr11xx_radio_get_rx_buffer_status, &buffer_status) ==
+        if (lr1121.Invoke(lr11xx_radio_get_rx_buffer_status, &buffer_status) ==
                 LR11XX_STATUS_OK &&
             buffer_status.pld_len_in_bytes > 0 &&
             lr1121.ReadBuffer(buffer_status.buffer_start_pointer,
@@ -187,11 +188,9 @@ void RunLr1121() {
               static_cast<double>(metrics.rssi_quarter_dbm) / 4.0,
               static_cast<double>(metrics.snr_quarter_db) / 4.0);
           for (size_t index = 0;
-               index < static_cast<size_t>(
-                           buffer_status.pld_len_in_bytes);
-               ++index) {
-            printf("LR1121 data[%u]: %u\n",
-                static_cast<unsigned int>(index),
+              index < static_cast<size_t>(buffer_status.pld_len_in_bytes);
+              ++index) {
+            printf("LR1121 data[%u]: %u\n", static_cast<unsigned int>(index),
                 static_cast<unsigned int>(receive_buffer[index]));
           }
         } else {
@@ -199,8 +198,8 @@ void RunLr1121() {
         }
       } else if ((irq_status & (LR11XX_SYSTEM_IRQ_HEADER_ERROR |
                                    LR11XX_SYSTEM_IRQ_CRC_ERROR)) != 0) {
-        printf("LR1121 receive packet error (IRQ: 0x%08lX)\n",
-            static_cast<unsigned long>(irq_status));
+        printf("LR1121 receive packet error (IRQ: 0x%08" PRIX32 ")\n",
+            static_cast<uint32_t>(irq_status));
       } else if ((irq_status & LR11XX_SYSTEM_IRQ_TIMEOUT) != 0) {
         printf("LR1121 radio timeout\n");
       }

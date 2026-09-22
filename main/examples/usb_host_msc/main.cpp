@@ -2,27 +2,28 @@
  * @Description: 在 T-Display-P4 V2.0 上插入 U 盘自动读写测试，按 BOOT 安全卸载
  * @Author: LILYGO_L
  * @Date: 2026-05-20
- * @LastEditTime: 2026-09-11 17:24:33
+ * @LastEditTime: 2026-09-22 17:04:46
  * @License: GPL 3.0
  */
 #include <dirent.h>
-#include <errno.h>
-#include <inttypes.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <string.h>
 #include <sys/stat.h>
 
-#include "esp_check.h"
+#include <cerrno>
+#include <cinttypes>
+#include <cstddef>
+#include <cstdint>
+#include <cstdio>
+#include <cstring>
+
+#include "esp_err.h"
 #include "esp_intr_alloc.h"
-#include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
 #include "freertos/task.h"
 #include "sdkconfig.h"
+#include "usb/host.h"
 #include "usb/msc_host.h"
 #include "usb/msc_host_vfs.h"
-#include "usb/host.h"
 #include "usb/usb_host.h"
 
 #ifndef USB_HOST_MSC_ENABLE_RW_TEST
@@ -31,13 +32,11 @@
 
 namespace {
 
-static const char* TAG = "usb_host_msc";
-
-static constexpr char MSC_MOUNT_ROOT[] = "/usb";
-static constexpr int MAX_MSC_DEVICES = CONFIG_FATFS_VOLUME_COUNT;
+constexpr char kMscMountRoot[] = "/usb";
+constexpr int kMaxMscDevices = CONFIG_FATFS_VOLUME_COUNT;
 #if USB_HOST_MSC_ENABLE_RW_TEST
-static constexpr size_t MSC_RW_TEST_FILE_SIZE = 4096;
-static constexpr char MSC_RW_TEST_FILE_NAME[] = "usb_host_msc_test.txt";
+constexpr size_t kMscRwTestFileSize = 4096;
+constexpr char kMscRwTestFileName[] = "usb_host_msc_test.txt";
 #endif
 
 struct MscDeviceEntry {
@@ -51,10 +50,11 @@ struct MscDeviceEntry {
 };
 
 struct AppMessage {
-  enum {
-    DEVICE_CONNECTED,
-    DEVICE_DISCONNECTED,
-  } id;
+  enum class Id {
+    kDeviceConnected,
+    kDeviceDisconnected,
+  };
+  Id id;
 
   union {
     uint8_t new_dev_address;
@@ -62,55 +62,55 @@ struct AppMessage {
   } data;
 };
 
-static QueueHandle_t s_app_queue = nullptr;
-static MscDeviceEntry s_msc_devices[MAX_MSC_DEVICES] = {};
+QueueHandle_t g_app_queue = nullptr;
+MscDeviceEntry g_msc_devices[kMaxMscDevices] = {};
 
 #if USB_HOST_MSC_ENABLE_RW_TEST
-static uint8_t s_write_buffer[MSC_RW_TEST_FILE_SIZE] = {};
-static uint8_t s_read_buffer[MSC_RW_TEST_FILE_SIZE] = {};
+uint8_t g_write_buffer[kMscRwTestFileSize] = {};
+uint8_t g_read_buffer[kMscRwTestFileSize] = {};
 #endif
 
-static bool usb_host_enum_filter_cb(
-    const usb_device_desc_t* dev_desc, uint8_t* bConfigurationValue) {
-  *bConfigurationValue = 1;
-  ESP_LOGI(TAG, "USB device VID:%04X PID:%04X use config %u",
-      dev_desc->idVendor, dev_desc->idProduct, *bConfigurationValue);
+bool SelectUsbConfiguration(
+    const usb_device_desc_t* dev_desc, uint8_t* configuration_value) {
+  *configuration_value = 1;
+  printf("USB device VID:%04X PID:%04X use config %u\n", dev_desc->idVendor,
+      dev_desc->idProduct, *configuration_value);
   return true;
 }
 
-static int find_free_msc_slot(void) {
-  for (int i = 0; i < MAX_MSC_DEVICES; ++i) {
-    if (!s_msc_devices[i].mounted) {
+int FindFreeMscSlot() {
+  for (int i = 0; i < kMaxMscDevices; ++i) {
+    if (!g_msc_devices[i].mounted) {
       return i;
     }
   }
   return -1;
 }
 
-static int find_msc_slot_by_handle(msc_host_device_handle_t handle) {
-  for (int i = 0; i < MAX_MSC_DEVICES; ++i) {
-    if (s_msc_devices[i].mounted && s_msc_devices[i].msc_device == handle) {
+int FindMscSlotByHandle(msc_host_device_handle_t handle) {
+  for (int i = 0; i < kMaxMscDevices; ++i) {
+    if (g_msc_devices[i].mounted && g_msc_devices[i].msc_device == handle) {
       return i;
     }
   }
   return -1;
 }
 
-static void make_mount_path(int slot, char* buffer, size_t buffer_size) {
-  snprintf(buffer, buffer_size, "%s%d", MSC_MOUNT_ROOT, slot);
+void MakeMountPath(int slot, char* buffer, size_t buffer_size) {
+  snprintf(buffer, buffer_size, "%s%d", kMscMountRoot, slot);
 }
 
-static void scan_msc_files(int slot) {
+void ScanMscFiles(int slot) {
   char mount_path[16] = {};
-  make_mount_path(slot, mount_path, sizeof(mount_path));
+  MakeMountPath(slot, mount_path, sizeof(mount_path));
 
   DIR* dir = opendir(mount_path);
   if (dir == nullptr) {
-    ESP_LOGW(TAG, "Open %s failed: errno=%d", mount_path, errno);
+    printf("Open %s failed: errno=%d\n", mount_path, errno);
     return;
   }
 
-  ESP_LOGI(TAG, "Listing %s", mount_path);
+  printf("Listing %s\n", mount_path);
   int entry_count = 0;
   struct dirent* entry = nullptr;
 
@@ -122,34 +122,34 @@ static void scan_msc_files(int slot) {
     char path[256] = {};
     if (snprintf(path, sizeof(path), "%s/%s", mount_path, entry->d_name) >=
         static_cast<int>(sizeof(path))) {
-      ESP_LOGW(TAG, "Skip long path: %s/%s", mount_path, entry->d_name);
+      printf("Skip long path: %s/%s\n", mount_path, entry->d_name);
       continue;
     }
 
     struct stat st = {};
     if (stat(path, &st) != 0) {
-      ESP_LOGW(TAG, "stat %s failed: errno=%d", path, errno);
+      printf("stat %s failed: errno=%d\n", path, errno);
       continue;
     }
 
     ++entry_count;
     if (S_ISDIR(st.st_mode)) {
-      ESP_LOGI(TAG, "[DIR ] %s", path);
+      printf("[DIR ] %s\n", path);
     } else {
-      ESP_LOGI(TAG, "[FILE] %s (%lld bytes)", path,
-          static_cast<long long>(st.st_size));
+      printf("[FILE] %s (%" PRId64 " bytes)\n", path,
+          static_cast<int64_t>(st.st_size));
     }
   }
 
   closedir(dir);
 
   if (entry_count == 0) {
-    ESP_LOGI(TAG, "%s is empty", mount_path);
+    printf("%s is empty\n", mount_path);
   }
 }
 
 #if USB_HOST_MSC_ENABLE_RW_TEST
-static void fill_text_test_buffer(
+void FillTextTestBuffer(
     uint8_t* buffer, size_t size, int slot, uint32_t counter) {
   if (size == 0) {
     return;
@@ -172,7 +172,7 @@ static void fill_text_test_buffer(
   }
 }
 
-static FILE* open_rw_test_file_for_write(const char* path) {
+FILE* OpenRwTestFileForWrite(const char* path) {
   FILE* file = fopen(path, "r+b");
   if (file == nullptr && errno == ENOENT) {
     file = fopen(path, "w+b");
@@ -180,14 +180,14 @@ static FILE* open_rw_test_file_for_write(const char* path) {
   return file;
 }
 
-static esp_err_t close_file_checked(
+esp_err_t CloseFileChecked(
     FILE** file, const char* path, const char* operation) {
   if (*file == nullptr) {
     return ESP_OK;
   }
 
   if (fclose(*file) != 0) {
-    ESP_LOGW(TAG, "Close %s after %s failed: errno=%d", path, operation, errno);
+    printf("Close %s after %s failed: errno=%d\n", path, operation, errno);
     *file = nullptr;
     return ESP_FAIL;
   }
@@ -196,115 +196,115 @@ static esp_err_t close_file_checked(
   return ESP_OK;
 }
 
-static esp_err_t run_msc_rw_test_once(int slot) {
-  MscDeviceEntry* entry = &s_msc_devices[slot];
+esp_err_t RunMscRwTestOnce(int slot) {
+  MscDeviceEntry* entry = &g_msc_devices[slot];
   if (!entry->mounted) {
     return ESP_ERR_INVALID_STATE;
   }
 
   char mount_path[16] = {};
-  make_mount_path(slot, mount_path, sizeof(mount_path));
+  MakeMountPath(slot, mount_path, sizeof(mount_path));
 
   char file_path[64] = {};
-  snprintf(file_path, sizeof(file_path), "%s/%s", mount_path,
-      MSC_RW_TEST_FILE_NAME);
+  snprintf(
+      file_path, sizeof(file_path), "%s/%s", mount_path, kMscRwTestFileName);
 
   const uint32_t counter = ++entry->rw_test_counter;
-  fill_text_test_buffer(s_write_buffer, MSC_RW_TEST_FILE_SIZE, slot, counter);
-  memset(s_read_buffer, 0, MSC_RW_TEST_FILE_SIZE);
+  FillTextTestBuffer(g_write_buffer, kMscRwTestFileSize, slot, counter);
+  memset(g_read_buffer, 0, kMscRwTestFileSize);
 
   esp_err_t ret = ESP_OK;
-  FILE* file = open_rw_test_file_for_write(file_path);
+  FILE* file = OpenRwTestFileForWrite(file_path);
   if (file == nullptr) {
-    ESP_LOGW(TAG, "Open %s for write failed: errno=%d", file_path, errno);
+    printf("Open %s for write failed: errno=%d\n", file_path, errno);
     return ESP_FAIL;
   }
 
   if (fseek(file, 0, SEEK_SET) != 0) {
-    ESP_LOGW(TAG, "Seek %s for write failed: errno=%d", file_path, errno);
+    printf("Seek %s for write failed: errno=%d\n", file_path, errno);
     ret = ESP_FAIL;
-    close_file_checked(&file, file_path, "seek-write");
+    CloseFileChecked(&file, file_path, "seek-write");
     goto cleanup;
   }
 
-  if (fwrite(s_write_buffer, 1, MSC_RW_TEST_FILE_SIZE, file) !=
-      MSC_RW_TEST_FILE_SIZE) {
-    ESP_LOGW(TAG, "Write %s failed: errno=%d", file_path, errno);
+  if (fwrite(g_write_buffer, 1, kMscRwTestFileSize, file) !=
+      kMscRwTestFileSize) {
+    printf("Write %s failed: errno=%d\n", file_path, errno);
     ret = ESP_FAIL;
-    close_file_checked(&file, file_path, "write");
+    CloseFileChecked(&file, file_path, "write");
     goto cleanup;
   }
 
   if (fflush(file) != 0) {
-    ESP_LOGW(TAG, "Flush %s failed: errno=%d", file_path, errno);
+    printf("Flush %s failed: errno=%d\n", file_path, errno);
     ret = ESP_FAIL;
-    close_file_checked(&file, file_path, "flush");
+    CloseFileChecked(&file, file_path, "flush");
     goto cleanup;
   }
 
-  ret = close_file_checked(&file, file_path, "write");
+  ret = CloseFileChecked(&file, file_path, "write");
   if (ret != ESP_OK) {
     goto cleanup;
   }
 
   file = fopen(file_path, "rb");
   if (file == nullptr) {
-    ESP_LOGW(TAG, "Open %s for read failed: errno=%d", file_path, errno);
+    printf("Open %s for read failed: errno=%d\n", file_path, errno);
     ret = ESP_FAIL;
     goto cleanup;
   }
 
-  if (fread(s_read_buffer, 1, MSC_RW_TEST_FILE_SIZE, file) !=
-      MSC_RW_TEST_FILE_SIZE) {
-    ESP_LOGW(TAG, "Read %s failed: errno=%d", file_path, errno);
+  if (fread(g_read_buffer, 1, kMscRwTestFileSize, file) != kMscRwTestFileSize) {
+    printf("Read %s failed: errno=%d\n", file_path, errno);
     ret = ESP_FAIL;
-    close_file_checked(&file, file_path, "read");
+    CloseFileChecked(&file, file_path, "read");
     goto cleanup;
   }
 
-  ret = close_file_checked(&file, file_path, "read");
+  ret = CloseFileChecked(&file, file_path, "read");
   if (ret != ESP_OK) {
     goto cleanup;
   }
 
-  if (memcmp(s_write_buffer, s_read_buffer, MSC_RW_TEST_FILE_SIZE) != 0) {
-    ESP_LOGE(TAG, "MSC RW verify failed: %s", file_path);
+  if (memcmp(g_write_buffer, g_read_buffer, kMscRwTestFileSize) != 0) {
+    printf("MSC RW verify failed: %s\n", file_path);
     ret = ESP_FAIL;
     goto cleanup;
   }
 
-  ESP_LOGI(TAG, "MSC RW verify OK: %s (%u bytes)", file_path,
-      static_cast<unsigned>(MSC_RW_TEST_FILE_SIZE));
+  printf("MSC RW verify OK: %s (%u bytes)\n", file_path,
+      static_cast<unsigned>(kMscRwTestFileSize));
 
 cleanup:
   if (file != nullptr) {
-    close_file_checked(&file, file_path, "cleanup");
+    CloseFileChecked(&file, file_path, "cleanup");
   }
   return ret;
 }
 
-static void run_msc_rw_tests(void) {
-  for (int slot = 0; slot < MAX_MSC_DEVICES; ++slot) {
-    if (!s_msc_devices[slot].mounted || s_msc_devices[slot].vfs_handle == nullptr) {
+void RunMscRwTests() {
+  for (int slot = 0; slot < kMaxMscDevices; ++slot) {
+    if (!g_msc_devices[slot].mounted ||
+        g_msc_devices[slot].vfs_handle == nullptr) {
       continue;
     }
 
-    const esp_err_t ret = run_msc_rw_test_once(slot);
+    const esp_err_t ret = RunMscRwTestOnce(slot);
     if (ret != ESP_OK) {
-      ESP_LOGW(TAG, "MSC RW test slot %d failed: %s", slot, esp_err_to_name(ret));
+      printf("MSC RW test slot %d failed: %s\n", slot, esp_err_to_name(ret));
     }
   }
 }
 #endif
 
-static esp_err_t allocate_new_msc_device(uint8_t usb_addr) {
-  const int slot = find_free_msc_slot();
+esp_err_t AllocateNewMscDevice(uint8_t usb_addr) {
+  const int slot = FindFreeMscSlot();
   if (slot < 0) {
-    ESP_LOGW(TAG, "No free MSC slots, max=%d", MAX_MSC_DEVICES);
+    printf("No free MSC slots, max=%d\n", kMaxMscDevices);
     return ESP_ERR_NOT_FOUND;
   }
 
-  MscDeviceEntry* entry = &s_msc_devices[slot];
+  MscDeviceEntry* entry = &g_msc_devices[slot];
   *entry = {};
 
   esp_err_t ret = msc_host_install_device(usb_addr, &entry->msc_device);
@@ -325,17 +325,18 @@ static esp_err_t allocate_new_msc_device(uint8_t usb_addr) {
   };
 
   char mount_path[16] = {};
-  make_mount_path(slot, mount_path, sizeof(mount_path));
+  MakeMountPath(slot, mount_path, sizeof(mount_path));
 
   ret = msc_host_vfs_register(
       entry->msc_device, mount_path, &mount_config, &entry->vfs_handle);
   if (ret != ESP_OK) {
     const esp_err_t mount_ret = ret;
-    ESP_LOGE(TAG, "msc_host_vfs_register %s failed: %s", mount_path,
+    printf("msc_host_vfs_register %s failed: %s\n", mount_path,
         esp_err_to_name(ret));
-    const esp_err_t uninstall_ret = msc_host_uninstall_device(entry->msc_device);
+    const esp_err_t uninstall_ret =
+        msc_host_uninstall_device(entry->msc_device);
     if (uninstall_ret != ESP_OK) {
-      ESP_LOGW(TAG, "msc_host_uninstall_device after mount failure failed: %s",
+      printf("msc_host_uninstall_device after mount failure failed: %s\n",
           esp_err_to_name(uninstall_ret));
     } else {
       *entry = {};
@@ -349,14 +350,13 @@ static esp_err_t allocate_new_msc_device(uint8_t usb_addr) {
     const uint64_t capacity_mb =
         (static_cast<uint64_t>(info.sector_size) * info.sector_count) /
         (1024 * 1024);
-    ESP_LOGI(TAG,
-        "MSC mounted at %s: VID=0x%04X PID=0x%04X capacity=%" PRIu64
-        "MB sector=%" PRIu32 " count=%" PRIu32,
+    printf("MSC mounted at %s: VID=0x%04X PID=0x%04X capacity=%" PRIu64
+           "MB sector=%" PRIu32 " count=%" PRIu32 "\n",
         mount_path, info.idVendor, info.idProduct, capacity_mb,
         info.sector_size, info.sector_count);
   }
 
-  scan_msc_files(slot);
+  ScanMscFiles(slot);
   return ESP_OK;
 }
 
@@ -365,17 +365,17 @@ static esp_err_t allocate_new_msc_device(uint8_t usb_addr) {
  * @param slot U 盘槽位编号，无效或空槽位视为已释放。
  * @return 文件系统和设备均释放成功返回 true，否则返回 false。
  */
-static bool free_msc_device(int slot) {
-  if (slot < 0 || slot >= MAX_MSC_DEVICES || !s_msc_devices[slot].mounted) {
+bool FreeMscDevice(int slot) {
+  if (slot < 0 || slot >= kMaxMscDevices || !g_msc_devices[slot].mounted) {
     return true;
   }
 
-  MscDeviceEntry* entry = &s_msc_devices[slot];
+  MscDeviceEntry* entry = &g_msc_devices[slot];
 
   if (entry->vfs_handle != nullptr) {
     const esp_err_t ret = msc_host_vfs_unregister(entry->vfs_handle);
     if (ret != ESP_OK) {
-      ESP_LOGW(TAG, "msc_host_vfs_unregister slot %d failed: %s", slot,
+      printf("msc_host_vfs_unregister slot %d failed: %s\n", slot,
           esp_err_to_name(ret));
       return false;
     }
@@ -384,7 +384,7 @@ static bool free_msc_device(int slot) {
   if (entry->msc_device != nullptr) {
     const esp_err_t ret = msc_host_uninstall_device(entry->msc_device);
     if (ret != ESP_OK) {
-      ESP_LOGW(TAG, "msc_host_uninstall_device slot %d failed: %s", slot,
+      printf("msc_host_uninstall_device slot %d failed: %s\n", slot,
           esp_err_to_name(ret));
       return false;
     }
@@ -392,32 +392,32 @@ static bool free_msc_device(int slot) {
   }
 
   *entry = {};
-  ESP_LOGI(TAG, "MSC slot %d unmounted", slot);
+  printf("MSC slot %d unmounted\n", slot);
   return true;
 }
 
-static void msc_event_cb(const msc_host_event_t* event, void* arg) {
-  if (s_app_queue == nullptr) {
+void MscEventCallback(const msc_host_event_t* event, void* arg) {
+  if (g_app_queue == nullptr) {
     return;
   }
 
   AppMessage message = {};
   if (event->event == msc_host_event_t::MSC_DEVICE_CONNECTED) {
-    ESP_LOGI(TAG, "MSC device connected, usb_addr=%u", event->device.address);
-    message.id = AppMessage::DEVICE_CONNECTED;
+    printf("MSC device connected, usb_addr=%u\n", event->device.address);
+    message.id = AppMessage::Id::kDeviceConnected;
     message.data.new_dev_address = event->device.address;
-    xQueueSend(s_app_queue, &message, portMAX_DELAY);
+    xQueueSend(g_app_queue, &message, portMAX_DELAY);
   } else if (event->event == msc_host_event_t::MSC_DEVICE_DISCONNECTED) {
-    ESP_LOGI(TAG, "MSC device disconnected");
-    message.id = AppMessage::DEVICE_DISCONNECTED;
+    printf("MSC device disconnected\n");
+    message.id = AppMessage::Id::kDeviceDisconnected;
     message.data.device_handle = event->device.handle;
-    xQueueSend(s_app_queue, &message, portMAX_DELAY);
+    xQueueSend(g_app_queue, &message, portMAX_DELAY);
   } else {
-    ESP_LOGW(TAG, "Unsupported MSC event: %d", event->event);
+    printf("Unsupported MSC event: %d\n", event->event);
   }
 }
 
-static void msc_app_task(void* arg) {
+void MscAppTask(void* arg) {
   bool eject_failed = false;
 #if USB_HOST_MSC_ENABLE_RW_TEST
   TickType_t last_test_finished = 0;
@@ -426,15 +426,15 @@ static void msc_app_task(void* arg) {
     AppMessage msg = {};
     const TickType_t wait_ticks = pdMS_TO_TICKS(50);
 
-    if (xQueueReceive(s_app_queue, &msg, wait_ticks) == pdTRUE) {
-      if (msg.id == AppMessage::DEVICE_CONNECTED) {
-        esp_err_t ret = allocate_new_msc_device(msg.data.new_dev_address);
+    if (xQueueReceive(g_app_queue, &msg, wait_ticks) == pdTRUE) {
+      if (msg.id == AppMessage::Id::kDeviceConnected) {
+        esp_err_t ret = AllocateNewMscDevice(msg.data.new_dev_address);
         if (ret != ESP_OK) {
-          ESP_LOGE(TAG, "Install MSC device failed: %s", esp_err_to_name(ret));
+          printf("Install MSC device failed: %s\n", esp_err_to_name(ret));
         }
-      } else if (msg.id == AppMessage::DEVICE_DISCONNECTED) {
-        const int slot = find_msc_slot_by_handle(msg.data.device_handle);
-        if (!free_msc_device(slot)) {
+      } else if (msg.id == AppMessage::Id::kDeviceDisconnected) {
+        const int slot = FindMscSlotByHandle(msg.data.device_handle);
+        if (!FreeMscDevice(slot)) {
           eject_failed = true;
         }
       }
@@ -443,16 +443,18 @@ static void msc_app_task(void* arg) {
     // 卸载和文件读写均由本任务执行，按键任务只提交请求。
     if (common::usb_host::TakeMscEjectRequest()) {
       bool all_released = true;
-      for (int slot = 0; slot < MAX_MSC_DEVICES; ++slot) {
-        all_released &= free_msc_device(slot);
+      for (int slot = 0; slot < kMaxMscDevices; ++slot) {
+        all_released &= FreeMscDevice(slot);
       }
       eject_failed = !all_released;
       if (all_released) {
-        ESP_LOGI(TAG, "MSC unmounted; safe to remove USB drives. "
-                      "Unplug and reconnect to test again.");
+        printf(
+            "MSC unmounted; safe to remove USB drives. "
+            "Unplug and reconnect to test again.\n");
       } else {
-        ESP_LOGE(TAG, "MSC eject failed; RW paused. "
-                      "Do not remove USB drives; press BOOT to retry.");
+        printf(
+            "MSC eject failed; RW paused. "
+            "Do not remove USB drives; press BOOT to retry.\n");
       }
       continue;
     }
@@ -463,19 +465,19 @@ static void msc_app_task(void* arg) {
     }
 #if USB_HOST_MSC_ENABLE_RW_TEST
     if (xTaskGetTickCount() - last_test_finished >= pdMS_TO_TICKS(1000)) {
-      run_msc_rw_tests();
+      RunMscRwTests();
       last_test_finished = xTaskGetTickCount();
     }
 #endif
   }
 }
 
-static void usb_lib_task(void* arg) {
+void UsbLibraryTask(void* arg) {
   const usb_host_config_t host_config = {
       .skip_phy_setup = false,
       .root_port_unpowered = false,
       .intr_flags = ESP_INTR_FLAG_LEVEL1,
-      .enum_filter_cb = usb_host_enum_filter_cb,
+      .enum_filter_cb = SelectUsbConfiguration,
       .fifo_settings_custom = {},
       .peripheral_map = 0,
   };
@@ -486,7 +488,7 @@ static void usb_lib_task(void* arg) {
       .task_priority = 5,
       .stack_size = 4096,
       .core_id = 0,
-      .callback = msc_event_cb,
+      .callback = MscEventCallback,
       .callback_arg = nullptr,
   };
   ESP_ERROR_CHECK(msc_host_install(&msc_config));
@@ -500,9 +502,9 @@ static void usb_lib_task(void* arg) {
     ESP_ERROR_CHECK(usb_host_lib_handle_events(portMAX_DELAY, &event_flags));
 
     if (event_flags & USB_HOST_LIB_EVENT_FLAGS_NO_CLIENTS) {
-      ESP_LOGI(TAG, "USB host has no clients");
+      printf("USB host has no clients\n");
       if (usb_host_device_free_all() == ESP_OK) {
-        ESP_LOGI(TAG, "All USB devices are free");
+        printf("All USB devices are free\n");
         has_clients = false;
       } else {
         has_devices = true;
@@ -510,12 +512,12 @@ static void usb_lib_task(void* arg) {
     }
 
     if (has_devices && (event_flags & USB_HOST_LIB_EVENT_FLAGS_ALL_FREE)) {
-      ESP_LOGI(TAG, "All USB devices are free");
+      printf("All USB devices are free\n");
       has_clients = false;
     }
   }
 
-  ESP_LOGI(TAG, "Uninstall USB Host library");
+  printf("Uninstall USB Host library\n");
   vTaskDelay(pdMS_TO_TICKS(100));
   msc_host_uninstall();
   ESP_ERROR_CHECK(usb_host_uninstall());
@@ -525,42 +527,42 @@ static void usb_lib_task(void* arg) {
 
 }  // namespace
 
-extern "C" void app_main(void) {
+extern "C" void app_main() {
   printf("Ciallo\n");
 
   if (!common::usb_host::InitPower()) {
-    ESP_LOGE(TAG, "USB host power initialization failed");
+    printf("USB host power initialization failed\n");
     return;
   }
 
   if (!common::usb_host::InitMscTestControl()) {
-    ESP_LOGE(TAG, "BOOT control initialization failed");
+    printf("BOOT control initialization failed\n");
     common::usb_host::DisablePower();
     return;
   }
 #if USB_HOST_MSC_ENABLE_RW_TEST
-  ESP_LOGI(TAG,
+  printf(
       "MSC RW starts on insertion; press BOOT to safely eject "
-      "(%u bytes, 1000 ms interval)",
-      static_cast<unsigned>(MSC_RW_TEST_FILE_SIZE));
+      "(%u bytes, 1000 ms interval)\n",
+      static_cast<unsigned>(kMscRwTestFileSize));
 #else
-  ESP_LOGI(TAG, "MSC RW test disabled; press BOOT to safely eject");
+  printf("MSC RW test disabled; press BOOT to safely eject\n");
 #endif
 
-  s_app_queue = xQueueCreate(8, sizeof(AppMessage));
-  ESP_ERROR_CHECK(s_app_queue != nullptr ? ESP_OK : ESP_ERR_NO_MEM);
+  g_app_queue = xQueueCreate(8, sizeof(AppMessage));
+  ESP_ERROR_CHECK(g_app_queue != nullptr ? ESP_OK : ESP_ERR_NO_MEM);
 
   BaseType_t task_created =
-      xTaskCreate(msc_app_task, "msc_app", 4096, nullptr, 4, nullptr);
+      xTaskCreate(MscAppTask, "msc_app", 4096, nullptr, 4, nullptr);
   ESP_ERROR_CHECK(task_created == pdPASS ? ESP_OK : ESP_FAIL);
 
-  task_created = xTaskCreatePinnedToCore(usb_lib_task, "usb_lib", 4096,
+  task_created = xTaskCreatePinnedToCore(UsbLibraryTask, "usb_lib", 4096,
       xTaskGetCurrentTaskHandle(), 5, nullptr, 0);
   ESP_ERROR_CHECK(task_created == pdPASS ? ESP_OK : ESP_FAIL);
 
   uint32_t notify_value = ulTaskNotifyTake(pdFALSE, pdMS_TO_TICKS(1000));
   ESP_ERROR_CHECK(notify_value > 0 ? ESP_OK : ESP_ERR_TIMEOUT);
 
-  ESP_LOGI(TAG, "Connect a USB flash drive");
+  printf("Connect a USB flash drive\n");
   vTaskSuspend(nullptr);
 }
