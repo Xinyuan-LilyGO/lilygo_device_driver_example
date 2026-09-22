@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint>
+
 #include "esp_err.h"
 #include "usb/usb_host.h"
 
@@ -31,7 +33,8 @@ bool SelectUsbConfiguration(
  * @param config 网卡位置与 MAC 来源配置
  * @return 成功返回 ESP_OK，否则返回错误码
  * @note 调用前须初始化 ESP-NETIF、默认事件循环和 USB Host，并使用
- * SelectUsbConfiguration 作为枚举回调。每次启动仅调用一次，失败时由应用终止启动。
+ * SelectUsbConfiguration
+ * 作为枚举回调。每次启动仅调用一次，失败时由应用终止启动。
  */
 esp_err_t Init(const Config& config);
 

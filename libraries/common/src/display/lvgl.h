@@ -7,13 +7,14 @@
  */
 #pragma once
 
+#include <lvgl.h>
+
 #include <cstddef>
 #include <cstdint>
 
 #include "common.h"
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
-#include <lvgl.h>
 #include "sys/lock.h"
 
 namespace common {

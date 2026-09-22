@@ -1,7 +1,8 @@
 #pragma once
 
-#include "iot_usbh_cdc.h"
+#include "esp_err.h"
 #include "ethernet.h"
+#include "iot_usbh_cdc.h"
 
 namespace common::usb_ethernet::internal {
 

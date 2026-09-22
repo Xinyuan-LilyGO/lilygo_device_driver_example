@@ -6,6 +6,7 @@
  * @License: GPL 3.0
  */
 #include "battery/axp517_pd_service.h"
+
 #include "common.h"
 
 #if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) && \
@@ -13,6 +14,7 @@
 
 #include <algorithm>
 #include <atomic>
+#include <cstdio>
 #include <memory>
 
 #include "esp_timer.h"
@@ -38,9 +40,10 @@ struct PdService {
   Axp517PdSnapshot snapshot;
 };
 
-PdService& Service() {
-  static PdService service;
-  return service;
+PdService& GetPdService() {
+  // 服务由 Start/Stop 显式管理，不依赖静态析构顺序。
+  static PdService* const service = new PdService;
+  return *service;
 }
 
 void RunPdService(void* argument) {
@@ -52,8 +55,7 @@ void RunPdService(void* argument) {
       service.sink->Restart(now_ms);
     }
     const bool external = driver.IsExternalBatterySelected();
-    const bool success = service.sink->Poll(
-        now_ms, true,
+    const bool success = service.sink->Poll(now_ms, true,
         external ? service.external_charge_current_ma
                  : service.internal_charge_current_ma);
     xSemaphoreTake(service.mutex, portMAX_DELAY);
@@ -62,17 +64,19 @@ void RunPdService(void* argument) {
     service.snapshot.service_running = true;
     xSemaphoreGive(service.mutex);
     const auto state = service.sink->status().state;
-    const uint32_t delay_ms = !success ? 100
-        : state == cpp_bus_driver::Axp517Sink::State::kReady ? 10
-        : state == cpp_bus_driver::Axp517Sink::State::kDisabled ? 20 : 2;
+    const uint32_t delay_ms =
+        !success                                                ? 100
+        : state == cpp_bus_driver::Axp517Sink::State::kReady    ? 10
+        : state == cpp_bus_driver::Axp517Sink::State::kDisabled ? 20
+                                                                : 2;
     const TickType_t delay = pdMS_TO_TICKS(delay_ms);
     vTaskDelay(delay > 0 ? delay : 1);
   }
 
   // 应用层停止轮询时撤销高压合同，再允许板级驱动释放 AXP517。
-  const bool stopped = service.sink->Poll(
-      static_cast<uint64_t>(esp_timer_get_time() / 1000), false,
-      service.internal_charge_current_ma);
+  const bool stopped =
+      service.sink->Poll(static_cast<uint64_t>(esp_timer_get_time() / 1000),
+          false, service.internal_charge_current_ma);
   service.stop_result.store(stopped);
   xSemaphoreTake(service.mutex, portMAX_DELAY);
   service.snapshot.status = service.sink->status();
@@ -88,25 +92,39 @@ bool InitDriver(uint16_t external_charge_current_ma) {
   const bool result = GetDriver().Init(DeviceDriver::InitMode::kSync);
   if (GetDriver().IsAxp517Ready() &&
       !StartAxp517PdService(external_charge_current_ma)) {
-    printf("AXP517 PD application task unavailable; charging stays conservative\n");
+    printf(
+        "AXP517 PD application task unavailable; charging stays "
+        "conservative\n");
   }
   return result;
 }
 
 bool StartAxp517PdService(uint16_t external_charge_current_ma) {
-  auto& service = Service();
+  auto& service = GetPdService();
   if (external_charge_current_ma < 64 || external_charge_current_ma > 5120 ||
-      external_charge_current_ma % 64 != 0) return false;
+      external_charge_current_ma % 64 != 0) {
+    return false;
+  }
   if (service.task != nullptr) {
     return service.external_charge_current_ma == external_charge_current_ma;
   }
   auto& driver = GetDriver();
-  if (!driver.IsAxp517Ready() || driver.chip().axp517 == nullptr) return false;
+  if (!driver.IsAxp517Ready() || driver.chip().axp517 == nullptr) {
+    return false;
+  }
   const auto* default_pd_config = driver.battery_info().default_pd_config;
-  if (default_pd_config == nullptr) return false;
-  if (service.mutex == nullptr) service.mutex = xSemaphoreCreateMutex();
-  if (service.stopped == nullptr) service.stopped = xSemaphoreCreateBinary();
-  if (service.mutex == nullptr || service.stopped == nullptr) return false;
+  if (default_pd_config == nullptr) {
+    return false;
+  }
+  if (service.mutex == nullptr) {
+    service.mutex = xSemaphoreCreateMutex();
+  }
+  if (service.stopped == nullptr) {
+    service.stopped = xSemaphoreCreateBinary();
+  }
+  if (service.mutex == nullptr || service.stopped == nullptr) {
+    return false;
+  }
 
   auto config = *default_pd_config;
   service.internal_charge_current_ma = config.contract_charge_current_ma;
@@ -132,8 +150,10 @@ bool StartAxp517PdService(uint16_t external_charge_current_ma) {
 }
 
 bool StopAxp517PdService() {
-  auto& service = Service();
-  if (service.task == nullptr) return true;
+  auto& service = GetPdService();
+  if (service.task == nullptr) {
+    return true;
+  }
   service.stop_requested.store(true);
   service.restart_requested.store(false);
   if (xSemaphoreTake(service.stopped, pdMS_TO_TICKS(kStopTimeoutMs)) !=
@@ -146,19 +166,26 @@ bool StopAxp517PdService() {
 }
 
 bool RequestAxp517PdRestart() {
-  auto& service = Service();
-  if (service.mutex == nullptr || service.stop_requested.load()) return false;
+  auto& service = GetPdService();
+  if (service.mutex == nullptr || service.stop_requested.load()) {
+    return false;
+  }
   xSemaphoreTake(service.mutex, portMAX_DELAY);
   const bool accepted = service.snapshot.service_running &&
-      service.snapshot.status.state == cpp_bus_driver::Axp517Sink::State::kError;
-  if (accepted) service.restart_requested.store(true);
+                        service.snapshot.status.state ==
+                            cpp_bus_driver::Axp517Sink::State::kError;
+  if (accepted) {
+    service.restart_requested.store(true);
+  }
   xSemaphoreGive(service.mutex);
   return accepted;
 }
 
 bool GetAxp517PdSnapshot(Axp517PdSnapshot& snapshot) {
-  auto& service = Service();
-  if (service.mutex == nullptr) return false;
+  auto& service = GetPdService();
+  if (service.mutex == nullptr) {
+    return false;
+  }
   xSemaphoreTake(service.mutex, portMAX_DELAY);
   snapshot = service.snapshot;
   xSemaphoreGive(service.mutex);

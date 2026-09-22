@@ -1,9 +1,9 @@
 #include "host.h"
 
 #include <atomic>
+#include <cstdio>
 
 #include "common.h"
-#include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "lilygo_device_driver.h"
@@ -11,11 +11,8 @@
 namespace common::usb_host {
 namespace {
 
-constexpr char kTag[] = "usb_host_power";
-
-constexpr char kMscTag[] = "usb_msc_control";
-std::atomic<bool> s_eject_requested{false};
-TaskHandle_t s_button_task = nullptr;
+std::atomic<bool> g_eject_requested{false};
+TaskHandle_t g_button_task = nullptr;
 
 /**
  * @brief 独立采样 BOOT 按键并消抖，避免文件读写期间漏掉按键。
@@ -38,8 +35,7 @@ void ButtonTask(void* arg) {
       previous_pressed = pressed;
       changed_at = now;
     }
-    if (pressed == stable_pressed ||
-        now - changed_at < pdMS_TO_TICKS(30)) {
+    if (pressed == stable_pressed || now - changed_at < pdMS_TO_TICKS(30)) {
       continue;
     }
     stable_pressed = pressed;
@@ -47,8 +43,8 @@ void ButtonTask(void* arg) {
       armed = true;
     } else if (armed) {
       armed = false;
-      s_eject_requested.store(true);
-      ESP_LOGI(kMscTag, "BOOT: MSC eject requested; waiting for current round");
+      g_eject_requested.store(true);
+      printf("BOOT: MSC eject requested; waiting for current round\n");
     }
   }
 }
@@ -59,7 +55,7 @@ bool DisablePower() {
   auto& driver = lilygo_device_driver::TDisplayP4Driver::GetInstance();
   const bool result = driver.SetUsbHostPowerEnabled(false);
   if (!result) {
-    ESP_LOGE(kTag, "Failed to disable USB host power");
+    printf("Failed to disable USB host power\n");
   }
   return result;
 }
@@ -67,19 +63,21 @@ bool DisablePower() {
 bool InitPower() {
   auto& driver = lilygo_device_driver::TDisplayP4Driver::GetInstance();
   if (!driver.InitMinimal()) {
-    ESP_LOGW(kTag, "Minimal device driver initialization completed with errors; continuing USB host power setup");
+    printf(
+        "Minimal device driver initialization completed with errors; "
+        "continuing USB host power setup\n");
   }
 
   if (!driver.InitUsbHostPower() || !driver.SetUsbHostPowerEnabled(true)) {
     DisablePower();
     return false;
   }
-  ESP_LOGI(kTag, "T-Display-P4 V2.0: Type-A 5 V enabled, Type-C remains sink");
+  printf("T-Display-P4 V2.0: Type-A 5 V enabled, Type-C remains sink\n");
   return true;
 }
 
 bool InitMscTestControl() {
-  if (s_button_task != nullptr) {
+  if (g_button_task != nullptr) {
     return true;
   }
   cpp_bus_driver::PlatformHal platform_hal;
@@ -88,13 +86,11 @@ bool InitMscTestControl() {
           cpp_bus_driver::PlatformHal::GpioStatus::kPullup)) {
     return false;
   }
-  s_eject_requested.store(false);
+  g_eject_requested.store(false);
   return xTaskCreate(ButtonTask, "msc_boot", 3072, nullptr, 4,
-             &s_button_task) == pdPASS;
+             &g_button_task) == pdPASS;
 }
 
-bool TakeMscEjectRequest() {
-  return s_eject_requested.exchange(false);
-}
+bool TakeMscEjectRequest() { return g_eject_requested.exchange(false); }
 
 }  // namespace common::usb_host

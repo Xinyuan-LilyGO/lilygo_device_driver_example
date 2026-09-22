@@ -9,8 +9,9 @@
 
 #include <cstdint>
 #include <cstdio>
-#include <cstdio>
 
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include "lilygo_device_driver.h"
 
 #if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) && \
@@ -36,12 +37,11 @@ using DeviceDriver = lilygo_device_driver::TGlassesP4Driver;
 // 当前构建使用的板级命名空间
 namespace board = lilygo_device_driver::t_glasses_p4;
 #else
-#error "These examples support T-Display-P4, T-Display-P4-Air and T-Glasses-P4 only"
+#error "Only T-Display-P4, T-Display-P4-Air and T-Glasses-P4 are supported"
 #endif
 
 // 当前构建的设备型号名称
-inline constexpr const char* kBoardName =
-    board::device::kDeviceModelInfo.name;
+inline constexpr const char* kBoardName = board::device::kDeviceModelInfo.name;
 
 /**
  * @brief 获取当前板卡的设备驱动单例
@@ -194,15 +194,13 @@ inline void StartBacklight() {
 #if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4)
 #if defined(CONFIG_LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
   if (IsHi8561Screen() && driver.IsScreenBacklightReady()) {
-    driver.chip().sy7200a->FadeTo(
-        {.value = 1, .scale = 1}, 500,
+    driver.chip().sy7200a->FadeTo({.value = 1, .scale = 1}, 500,
         cpp_bus_driver::Pwm::FadeMode::kWaitForCompletion);
     return;
   }
 #else
   if (IsHi8561Screen() && driver.IsScreenBacklightReady()) {
-    driver.chip().pt4103->FadeTo(
-        {.value = 1, .scale = 1}, 500,
+    driver.chip().pt4103->FadeTo({.value = 1, .scale = 1}, 500,
         cpp_bus_driver::Pwm::FadeMode::kWaitForCompletion);
     return;
   }
@@ -224,8 +222,7 @@ inline void StartBacklight() {
   }
 #elif defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR)
   if (driver.IsScreenBacklightReady()) {
-    driver.chip().sy7200a->FadeTo(
-        {.value = 1, .scale = 1}, 500,
+    driver.chip().sy7200a->FadeTo({.value = 1, .scale = 1}, 500,
         cpp_bus_driver::Pwm::FadeMode::kWaitForCompletion);
   }
 #elif defined(CONFIG_LILYGO_DEVICE_DRIVER_T_GLASSES_P4)
@@ -234,8 +231,7 @@ inline void StartBacklight() {
     constexpr uint16_t kFadeSteps = 32;
     constexpr uint16_t kTargetBrightnessGain = 256;
     for (uint16_t step = 0; step <= kFadeSteps; ++step) {
-      const uint16_t gain =
-          kTargetBrightnessGain * step / kFadeSteps;
+      const uint16_t gain = kTargetBrightnessGain * step / kFadeSteps;
       if (!driver.chip().s023msafjf10111e1->SetBrightnessGain(gain)) {
         printf("Screen brightness gain update failed\n");
         return;

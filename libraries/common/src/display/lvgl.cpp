@@ -1,6 +1,7 @@
 /*
  * @Description: 显示示例共用的 LVGL 显示、输入和任务管理
- * @Author: LILYGO_L
+ * @Author:
+ * LILYGO_L
  * @Date: 2026-07-13 00:00:00
  * @LastEditTime: 2026-07-13 00:00:00
  * @License: GPL 3.0
@@ -8,7 +9,10 @@
 #include "display/lvgl.h"
 
 #include <algorithm>
+#include <cstdio>
 
+#include "common.h"
+#include "esp_err.h"
 #include "esp_heap_caps.h"
 #include "esp_lcd_mipi_dsi.h"
 #include "esp_timer.h"
@@ -118,8 +122,7 @@ void LvglPort::FlushCallback(
     lv_display_t* display, const lv_area_t* area, uint8_t* pixels) {
   auto* port = static_cast<LvglPort*>(lv_display_get_user_data(display));
   if (port == nullptr ||
-      !SendScreen(
-          area->x1, area->y1, area->x2 + 1, area->y2 + 1, pixels)) {
+      !SendScreen(area->x1, area->y1, area->x2 + 1, area->y2 + 1, pixels)) {
     lv_display_flush_ready(display);
   }
 }
