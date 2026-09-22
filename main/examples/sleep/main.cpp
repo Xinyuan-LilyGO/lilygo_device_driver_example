@@ -42,6 +42,14 @@ extern "C" void app_main(void) {
     printf("Device initialization reported a failure; continuing shutdown\n");
   }
 
+#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) && \
+    defined(CONFIG_LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
+  if (!common::StopAxp517PdService()) {
+    printf("AXP517 PD shutdown failed; deep sleep cancelled\n");
+    return;
+  }
+#endif
+
   if (!driver.PrepareDriversForPowerOff()) {
     printf("Device sleep preparation failed; deep sleep cancelled\n");
     return;

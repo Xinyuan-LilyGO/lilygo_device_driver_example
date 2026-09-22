@@ -1,6 +1,11 @@
 set(requires "lilygo_device_driver" "esp_lcd" "esp_timer")
 set(sources "./src/common.cpp")
 
+if(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 AND
+   CONFIG_LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
+    list(APPEND sources "./src/battery/axp517_pd_service.cpp")
+endif()
+
 if(CONFIG_EXAMPLE_BUILD_BATTERY_MANAGEMENT OR
    CONFIG_EXAMPLE_BUILD_SCREEN_LVGL OR
    CONFIG_EXAMPLE_BUILD_SCREEN_LVGL_TOUCH_DRAW)

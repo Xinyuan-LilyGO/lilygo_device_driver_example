@@ -156,7 +156,13 @@ void BatteryLogEndSnapshot() {
 extern "C" void app_main(void) {
   BatteryLogPrintf("Battery management example on %s %s\n", common::kBoardName,
       common::GetDriver().device_model_info().version);
-  if (!common::InitDriver()) {
+#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) && \
+    defined(CONFIG_LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
+  const bool initialized = common::InitDriver(kExternalChargeCurrentMa);
+#else
+  const bool initialized = common::InitDriver();
+#endif
+  if (!initialized) {
     BatteryLogPrintf("Device driver initialization completed with errors; continuing example\n");
   }
   InitLogScreen();

@@ -6,13 +6,131 @@
  * @License: GPL 3.0
  */
 #include "battery_management.h"
+#include "chip/i2c/axp517.h"
 #include "common.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 
 #if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR) || \
-    (defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) && \
+    (defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) &&    \
         defined(CONFIG_LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2))
 
 namespace {
+
+#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) && \
+    defined(CONFIG_LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
+
+// 将协商状态转换为串口与屏幕共用的文本。
+const char* SinkStateName(cpp_bus_driver::Axp517Sink::State state) {
+  using State = cpp_bus_driver::Axp517Sink::State;
+  switch (state) {
+    case State::kDisabled:
+      return "disabled (waiting for Type-C attach / battery)";
+    case State::kWaitingCapabilities:
+      return "waiting for source capabilities";
+    case State::kWaitingAccept:
+      return "waiting for Accept";
+    case State::kWaitingPowerReady:
+      return "waiting for PS_RDY";
+    case State::kWaitingVoltageStable:
+      return "waiting for PMIC VBUS to settle";
+    case State::kReady:
+      return "contract ready";
+    case State::kError:
+      return "failed; conservative charging (reconnect or request restart)";
+  }
+  return "unknown";
+}
+
+const char* PsReadyResultName(cpp_bus_driver::Axp517Sink::PsReadyResult result) {
+  using Result = cpp_bus_driver::Axp517Sink::PsReadyResult;
+  switch (result) {
+    case Result::kNotSeen:
+      return "not seen";
+    case Result::kUnexpectedState:
+      return "unexpected state";
+    case Result::kTcpcReadFailed:
+      return "TCPC voltage read failed";
+    case Result::kVoltageMismatch:
+      return "PMIC VBUS mismatch after settling";
+    case Result::kVoltageSettling:
+      return "waiting for PMIC VBUS to settle";
+    case Result::kInputVoltageConfigFailed:
+      return "input voltage config failed";
+    case Result::kInputCurrentConfigFailed:
+      return "input current config failed";
+    case Result::kChargeCurrentConfigFailed:
+      return "charge current config failed";
+    case Result::kReady:
+      return "contract ready";
+  }
+  return "unknown";
+}
+
+// 状态复制期间短暂加锁，格式化输出不阻塞协议任务。
+void PrintSink() {
+  common::Axp517PdSnapshot snapshot;
+  if (!common::GetAxp517PdSnapshot(snapshot)) {
+    BatteryLogPrintf("\nBattery PD / PPS: service unavailable\n");
+    return;
+  }
+  const auto& status = snapshot.status;
+  BatteryLogPrintf("\nBattery PD / PPS:\n");
+  BatteryLogPrintf("  Selected battery: %s\n",
+      snapshot.external_battery_selected ? "external" : "internal");
+  BatteryLogPrintf("  PD service running: %s\n",
+      snapshot.service_running ? "yes" : "no");
+  BatteryLogPrintf("  PD enabled by board: %s, battery present: %s\n",
+      status.enabled ? "yes" : "no",
+      status.battery_present ? "yes" : "no");
+  BatteryLogPrintf("  Type-C attached: %s\n", status.attached ? "yes" : "no");
+  BatteryLogPrintf("  State: %s\n", SinkStateName(status.state));
+  if (status.state == cpp_bus_driver::Axp517Sink::State::kError) {
+    BatteryLogPrintf("  Failed from: %s\n",
+        SinkStateName(status.failure_stage));
+  }
+  BatteryLogPrintf("  Last PD alerts: 0x%04X\n", status.last_pd_alerts);
+  BatteryLogPrintf("  PD RX: %u, SourceCaps: %u, Request TX: %u\n",
+      status.rx_count, status.source_caps_count, status.request_count);
+  BatteryLogPrintf("  Accept: %u, PS_RDY: %u, TX failed: %u\n",
+      status.accept_count, status.ps_ready_count, status.tx_failed_count);
+  BatteryLogPrintf("  TCPC faults: %u, last fault: 0x%02X\n",
+      status.fault_count, status.last_fault_status);
+  BatteryLogPrintf("  Last request: PDO%u %s, %u mV, %u mA\n",
+      status.requested_pdo, status.requested_pps ? "PPS" : "fixed",
+      status.requested_voltage_mv, status.requested_current_ma);
+  BatteryLogPrintf("  First PS_RDY: %s (PDO%u, target %u mV)\n",
+      PsReadyResultName(status.first_ps_ready_result),
+      status.first_ps_ready_pdo, status.first_ps_ready_target_mv);
+  if (status.first_ps_ready_seen) {
+    if (status.first_ps_ready_pmic_valid) {
+      BatteryLogPrintf("  At PS_RDY: PMIC %u mV, TCPC diag %u mV\n",
+          status.first_ps_ready_pmic_mv, status.first_ps_ready_tcpc_mv);
+    } else {
+      BatteryLogPrintf("  At PS_RDY: PMIC read failed, TCPC diag %u mV\n",
+          status.first_ps_ready_tcpc_mv);
+    }
+    if (status.first_ps_ready_result !=
+        cpp_bus_driver::Axp517Sink::PsReadyResult::kVoltageSettling) {
+      BatteryLogPrintf("  After settling: PMIC %s %u mV, TCPC diag %s %u mV\n",
+          status.settled_pmic_valid ? "" : "read failed /",
+          status.settled_pmic_mv,
+          status.settled_tcpc_valid ? "" : "read failed /",
+          status.settled_tcpc_mv);
+    }
+  }
+  BatteryLogPrintf("  Contract: %s, %u mV, %u mA\n",
+      status.pps ? "PPS" : "fixed / none", status.voltage_mv,
+      status.current_ma);
+  if (status.charge_current_managed) {
+    BatteryLogPrintf("  PD charge current limit: %u mA\n",
+        status.charge_current_ma);
+  } else {
+    BatteryLogPrintf("  PD charge current limit: managed by caller\n");
+  }
+}
+
+#endif
 
 // 分类之间保留空行，分类中的项目统一缩进两个空格。
 void PrintSection(const char* title) {
@@ -438,14 +556,22 @@ void RunAxp517Example() {
     BatteryLogPrintf("AXP517 driver unavailable\n");
     return;
   }
+#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) && \
+    defined(CONFIG_LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
+  BatteryLogPrintf("External charge current target: %u mA\n",
+      kExternalChargeCurrentMa);
+#endif
   constexpr uint8_t kAdcChannels =
-      static_cast<uint8_t>(cpp_bus_driver::Axp517::AdcChannel::kBatteryVoltage) |
+      static_cast<uint8_t>(
+          cpp_bus_driver::Axp517::AdcChannel::kBatteryVoltage) |
       static_cast<uint8_t>(cpp_bus_driver::Axp517::AdcChannel::kTs) |
       static_cast<uint8_t>(cpp_bus_driver::Axp517::AdcChannel::kVbusVoltage) |
       static_cast<uint8_t>(cpp_bus_driver::Axp517::AdcChannel::kSystemVoltage) |
-      static_cast<uint8_t>(cpp_bus_driver::Axp517::AdcChannel::kDieTemperature) |
+      static_cast<uint8_t>(
+          cpp_bus_driver::Axp517::AdcChannel::kDieTemperature) |
       static_cast<uint8_t>(cpp_bus_driver::Axp517::AdcChannel::kChargeCurrent) |
-      static_cast<uint8_t>(cpp_bus_driver::Axp517::AdcChannel::kDischargeCurrent) |
+      static_cast<uint8_t>(
+          cpp_bus_driver::Axp517::AdcChannel::kDischargeCurrent) |
       static_cast<uint8_t>(cpp_bus_driver::Axp517::AdcChannel::kVbusCurrent);
   if (!chip->SetAdcChannels(kAdcChannels)) {
     BatteryLogPrintf("AXP517 ADC configuration failed\n");
@@ -453,6 +579,10 @@ void RunAxp517Example() {
   }
   while (true) {
     BatteryLogBeginSnapshot();
+#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) && \
+    defined(CONFIG_LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
+    PrintSink();
+#endif
     PrintAxp517(*chip);
     BatteryLogEndSnapshot();
     vTaskDelay(pdMS_TO_TICKS(1000));
