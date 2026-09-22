@@ -2,7 +2,7 @@
  * @Description: 电池管理示例的芯片测试入口声明
  * @Author: LILYGO_L
  * @Date: 2026-07-28 13:59:02
- * @LastEditTime: 2026-07-28 14:05:30
+ * @LastEditTime: 2026-09-22 15:11:24
  * @License: GPL 3.0
  */
 #pragma once
@@ -10,6 +10,7 @@
 #include <cstdint>
 
 // T-Display-P4 v2.0 外置电池测试电流：改这里即可，须为 64 mA 的倍数。
+// PD 已建立、未建立或失败时均使用此目标；实际电流仍受输入功率和温控限制。
 // 提高前须确认电芯和连接线允许的最大充电电流。
 inline constexpr uint16_t kExternalChargeCurrentMa = 1024;
 static_assert(kExternalChargeCurrentMa >= 64 &&

@@ -2,7 +2,7 @@
  * @Description: T-Display-P4 v2.0 应用公共 AXP517 PD 轮询任务
  * @Author: LILYGO_L
  * @Date: 2026-09-22 14:14:36
- * @LastEditTime: 2026-09-22 14:58:46
+ * @LastEditTime: 2026-09-22 15:11:24
  * @License: GPL 3.0
  */
 #include "battery/axp517_pd_service.h"
@@ -11,6 +11,7 @@
 #if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) && \
     defined(CONFIG_LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
 
+#include <algorithm>
 #include <atomic>
 #include <memory>
 
@@ -107,9 +108,13 @@ bool StartAxp517PdService(uint16_t external_charge_current_ma) {
   if (service.stopped == nullptr) service.stopped = xSemaphoreCreateBinary();
   if (service.mutex == nullptr || service.stopped == nullptr) return false;
 
-  const auto& config = *default_pd_config;
+  auto config = *default_pd_config;
   service.internal_charge_current_ma = config.contract_charge_current_ma;
   service.external_charge_current_ma = external_charge_current_ma;
+  // 电池充电电流跟随所选电池，与是否建立 PD 合同无关。
+  // Sink 会再与 Poll 传入的当前电池电流取最小值；USB 输入限流保持板级策略。
+  config.fallback_charge_current_ma = std::max(
+      service.internal_charge_current_ma, service.external_charge_current_ma);
   service.sink = std::make_unique<cpp_bus_driver::Axp517Sink>(
       *driver.chip().axp517, config);
   xSemaphoreTake(service.mutex, portMAX_DELAY);
