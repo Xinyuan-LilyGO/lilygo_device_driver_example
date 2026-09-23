@@ -7,5 +7,5 @@
  */
 #pragma once
 
-void RunBhi260apQmcImuExample();
-void RunIcm20948ImuExample();
+// 由所选开发板对应的实现提供统一入口。
+void RunImuExample();

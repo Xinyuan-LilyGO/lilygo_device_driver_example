@@ -139,7 +139,7 @@ bool GetMagnetometer() {
 
 }  // namespace
 
-void RunBhi260apQmcImuExample() {
+void RunImuExample() {
   if (!GetMagnetometer() || !ConfigureBhi260ap()) {
     auto& driver = common::GetDriver();
     driver.SetBhi260apSleep(true);
