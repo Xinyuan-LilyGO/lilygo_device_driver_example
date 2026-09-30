@@ -1,11 +1,10 @@
 /*
- * @Description: ICM20948 或 QMI8658 + QMC6309 姿态角读取实现
+ * @Description: ICM20948 或 QMI8658 + QMC6309 九轴采样数据输出
  * @Author: LILYGO_L
  * @Date: 2026-07-28 13:59:02
- * @LastEditTime: 2026-09-22 17:03:58
+ * @LastEditTime: 2026-09-30 11:32:41
  * @License: GPL 3.0
  */
-#include <cmath>
 #include <cstdint>
 #include <cstdio>
 
@@ -19,6 +18,10 @@
 #include "esp_timer.h"
 
 namespace {
+
+// 按常用传感器单位输出，仅作单位换算，不进行校准。
+constexpr double kStandardGravity = 9.80665;
+constexpr double kDegreesToRadians = 0.017453292519943295;
 
 using lilygo_device_driver::t_display_p4::device::ImuType;
 
@@ -138,7 +141,7 @@ bool ReadImuRawData(lilygo_device_driver::TDisplayP4Driver& driver,
 }
 
 
-// 原始数据的单位换算和姿态计算均在应用层完成。
+// 仅换算物理单位，保留传感器轴向，不进行校准或姿态融合。
 struct ImuVector3 {
   float x = 0.0f;
   float y = 0.0f;
@@ -170,192 +173,10 @@ ImuData ConvertImuData(const ImuRawData& raw) {
   return data;
 }
 
-// 姿态角，单位为度。
-struct EulerAngles {
-  float yaw = 0.0f;    // 偏航角，范围 0 至 360 度。
-  float pitch = 0.0f;  // 俯仰角。
-  float roll = 0.0f;   // 横滚角。
-};
-
-constexpr float kDegreesToRadians = 0.0174532925f;  // 度转弧度。
-constexpr float kRadiansToDegrees = 57.2957795f;    // 弧度转度。
-constexpr float kAccelerationMinimumSquared =
-    0.0001f;  // 有效加速度向量模平方下限。
-constexpr float kMagneticFieldMinimumSquared =
-    0.0001f;  // 有效磁场向量模平方下限。
-constexpr float kAccelCorrectionTimeConstantSeconds =
-    0.5f;  // 加速度姿态校正时间常数。
-constexpr float kMagCorrectionTimeConstantSeconds =
-    0.5f;                                       // 磁场偏航校正时间常数。
 constexpr uint32_t kSampleIntervalMs = 10;      // 传感器轮询间隔。
-constexpr uint32_t kLogIntervalMs = 100;        // 姿态日志间隔。
+constexpr uint32_t kLogIntervalMs = 500;        // 采样日志间隔。
+constexpr int64_t kMagneticDataTimeoutUs = 1000 * 1000;
 constexpr uint32_t kErrorLogIntervalMs = 1000;  // 错误日志限频间隔。
-
-/**
- * @brief 将角度归一化到 0 至 360 度
- * @param degrees 原始角度
- * @return 归一化后的角度
- */
-float NormalizeDegrees(float degrees) {
-  while (degrees < 0.0f) {
-    degrees += 360.0f;
-  }
-  while (degrees >= 360.0f) {
-    degrees -= 360.0f;
-  }
-  return degrees;
-}
-
-/**
- * @brief 计算从当前角度转到目标角度的最短有符号角度差
- * @param target_degrees 目标角度
- * @param current_degrees 当前角度
- * @return -180 至 180 度范围内的角度差
- */
-float ShortestAngleDifference(float target_degrees, float current_degrees) {
-  float difference =
-      NormalizeDegrees(target_degrees) - NormalizeDegrees(current_degrees);
-  if (difference > 180.0f) {
-    difference -= 360.0f;
-  } else if (difference < -180.0f) {
-    difference += 360.0f;
-  }
-  return difference;
-}
-
-/**
- * @brief 使用加速度计算俯仰角和横滚角
- * @param acceleration_g 三轴加速度，单位 g
- * @param angles 返回俯仰角和横滚角
- * @return 加速度向量有效时返回 true，否则返回 false
- */
-bool CalculateAccelAngles(
-    const ImuVector3& acceleration_g, EulerAngles& angles) {
-  const float magnitude_squared = acceleration_g.x * acceleration_g.x +
-                                  acceleration_g.y * acceleration_g.y +
-                                  acceleration_g.z * acceleration_g.z;
-  if (magnitude_squared < kAccelerationMinimumSquared) {
-    return false;
-  }
-
-  angles.pitch = std::atan2(-acceleration_g.x,
-                     std::sqrt(acceleration_g.y * acceleration_g.y +
-                               acceleration_g.z * acceleration_g.z)) *
-                 kRadiansToDegrees;
-  angles.roll =
-      std::atan2(acceleration_g.y, acceleration_g.z) * kRadiansToDegrees;
-  return true;
-}
-
-/**
- * @brief 使用倾斜补偿后的磁场计算偏航角
- * @param magnetic_field_ut 三轴磁场，单位 uT
- * @param pitch_degrees 当前俯仰角
- * @param roll_degrees 当前横滚角
- * @param yaw_degrees 返回偏航角
- * @return 磁场向量有效时返回 true，否则返回 false
- */
-bool CalculateMagneticYaw(const ImuVector3& magnetic_field_ut,
-    float pitch_degrees, float roll_degrees, float& yaw_degrees) {
-  const float magnitude_squared = magnetic_field_ut.x * magnetic_field_ut.x +
-                                  magnetic_field_ut.y * magnetic_field_ut.y +
-                                  magnetic_field_ut.z * magnetic_field_ut.z;
-  if (magnitude_squared < kMagneticFieldMinimumSquared) {
-    return false;
-  }
-
-  const float pitch_radians = pitch_degrees * kDegreesToRadians;
-  const float roll_radians = roll_degrees * kDegreesToRadians;
-  const float magnetic_x_horizontal =
-      magnetic_field_ut.x * std::cos(pitch_radians) +
-      magnetic_field_ut.z * std::sin(pitch_radians);
-  const float magnetic_y_horizontal =
-      magnetic_field_ut.x * std::sin(roll_radians) * std::sin(pitch_radians) +
-      magnetic_field_ut.y * std::cos(roll_radians) -
-      magnetic_field_ut.z * std::sin(roll_radians) * std::cos(pitch_radians);
-
-  yaw_degrees = NormalizeDegrees(
-      std::atan2(magnetic_y_horizontal, magnetic_x_horizontal) *
-      kRadiansToDegrees);
-  return true;
-}
-
-/**
- * @brief 融合加速度、角速度和磁场得到连续姿态角
- *
- * 本估算器仅进行运行时互补融合，不计算或保存陀螺仪零偏、加速度偏置、
- * 磁力计硬铁偏置与软铁矩阵。
- */
-class OrientationEstimator {
- public:
-  /**
-   * @brief 使用一组传感器数据更新姿态角
-   * @param data 统一物理单位的 IMU 数据
-   * @param delta_time_seconds 距离上次采样的时间，单位秒
-   * @param angles 返回当前姿态角
-   * @return 姿态角可用时返回 true，否则返回 false
-   */
-  bool Update(const ImuData& data, float delta_time_seconds,
-      EulerAngles& angles) {
-    EulerAngles accel_angles;
-    if (!CalculateAccelAngles(data.acceleration_g, accel_angles)) {
-      return false;
-    }
-
-    float magnetic_yaw = 0.0f;
-    const bool magnetic_data_valid =
-        data.magnetometer_data_ready && !data.magnetometer_overflow &&
-        CalculateMagneticYaw(data.magnetic_field_ut, accel_angles.pitch,
-            accel_angles.roll, magnetic_yaw);
-
-    if (!initialized_) {
-      if (!magnetic_data_valid) {
-        return false;
-      }
-      angles_ = accel_angles;
-      angles_.yaw = magnetic_yaw;
-      initialized_ = true;
-      angles = angles_;
-      return true;
-    }
-
-    if (delta_time_seconds <= 0.0f || delta_time_seconds > 1.0f) {
-      return false;
-    }
-
-    const float accel_weight =
-        delta_time_seconds /
-        (kAccelCorrectionTimeConstantSeconds + delta_time_seconds);
-    angles_.roll += data.angular_velocity_dps.x * delta_time_seconds;
-    angles_.pitch += data.angular_velocity_dps.y * delta_time_seconds;
-    angles_.yaw = NormalizeDegrees(
-        angles_.yaw + data.angular_velocity_dps.z * delta_time_seconds);
-
-    angles_.roll += accel_weight * (accel_angles.roll - angles_.roll);
-    angles_.pitch += accel_weight * (accel_angles.pitch - angles_.pitch);
-
-    if (magnetic_data_valid) {
-      if (CalculateMagneticYaw(data.magnetic_field_ut, angles_.pitch,
-              angles_.roll, magnetic_yaw)) {
-        const float mag_weight =
-            delta_time_seconds /
-            (kMagCorrectionTimeConstantSeconds + delta_time_seconds);
-        angles_.yaw = NormalizeDegrees(
-            angles_.yaw +
-            mag_weight * ShortestAngleDifference(magnetic_yaw, angles_.yaw));
-      }
-    }
-
-    angles = angles_;
-    return true;
-  }
-
- private:
-  // 当前融合姿态角。
-  EulerAngles angles_;
-  // 首组有效加速度和磁场数据完成初始化后置位。
-  bool initialized_ = false;
-};
 
 }  // namespace
 
@@ -367,45 +188,71 @@ void RunImuExample() {
   }
 
   vTaskDelay(pdMS_TO_TICKS(100));
-  printf("IMU orientation output started without sensor calibration\n");
+  printf("IMU sensor output started (m/s^2, rad/s, uT; no calibration or fusion)\n");
 
-  OrientationEstimator estimator;
-  int64_t last_sample_time_us = esp_timer_get_time();
-  int64_t last_log_time_us = last_sample_time_us;
+  ImuData latest;
+  bool motion_ready = false;
+  int64_t last_magnetic_time_us = 0;
+  int64_t last_log_time_us = esp_timer_get_time();
   int64_t last_error_log_time_us =
-      last_sample_time_us - static_cast<int64_t>(kErrorLogIntervalMs) * 1000;
+      last_log_time_us - static_cast<int64_t>(kErrorLogIntervalMs) * 1000;
 
   while (true) {
     ImuRawData raw;
-    if (!ReadImuRawData(driver, raw)) {
-      const int64_t now_us = esp_timer_get_time();
+    const bool read = ReadImuRawData(driver, raw);
+    const int64_t now_us = esp_timer_get_time();
+    if (!read) {
       if (now_us - last_error_log_time_us >=
           static_cast<int64_t>(kErrorLogIntervalMs) * 1000) {
         printf("IMU data read failed\n");
         last_error_log_time_us = now_us;
       }
-      last_sample_time_us = now_us;
-      vTaskDelay(pdMS_TO_TICKS(kSampleIntervalMs));
-      continue;
+    } else if (raw.data_ready) {
+      const ImuData data = ConvertImuData(raw);
+      latest.acceleration_g = data.acceleration_g;
+      latest.angular_velocity_dps = data.angular_velocity_dps;
+      motion_ready = true;
+      if (data.magnetometer_overflow) {
+        latest.magnetometer_data_ready = false;
+        latest.magnetometer_overflow = true;
+      } else if (data.magnetometer_data_ready) {
+        latest.magnetic_field_ut = data.magnetic_field_ut;
+        latest.magnetometer_data_ready = true;
+        latest.magnetometer_overflow = false;
+        last_magnetic_time_us = now_us;
+      }
     }
 
-    if (!raw.data_ready) {
-      vTaskDelay(pdMS_TO_TICKS(kSampleIntervalMs));
-      continue;
-    }
-
-    const int64_t now_us = esp_timer_get_time();
-    const float delta_time_seconds =
-        (now_us - last_sample_time_us) / 1000000.0f;
-    last_sample_time_us = now_us;
-
-    const ImuData data = ConvertImuData(raw);
-    EulerAngles angles;
-    if (estimator.Update(data, delta_time_seconds, angles) &&
-        now_us - last_log_time_us >=
-            static_cast<int64_t>(kLogIntervalMs) * 1000) {
-      printf("Yaw: %7.2f deg, Pitch: %7.2f deg, Roll: %7.2f deg\n", angles.yaw,
-          angles.pitch, angles.roll);
+    if (now_us - last_log_time_us >=
+        static_cast<int64_t>(kLogIntervalMs) * 1000) {
+      if (motion_ready) {
+        printf("Accelerometer (m/s^2): X: %.6f, Y: %.6f, Z: %.6f\n",
+            latest.acceleration_g.x * kStandardGravity,
+            latest.acceleration_g.y * kStandardGravity,
+            latest.acceleration_g.z * kStandardGravity);
+        printf("Gyroscope (rad/s): X: %.6f, Y: %.6f, Z: %.6f\n",
+            latest.angular_velocity_dps.x * kDegreesToRadians,
+            latest.angular_velocity_dps.y * kDegreesToRadians,
+            latest.angular_velocity_dps.z * kDegreesToRadians);
+      } else {
+        printf("Accelerometer (m/s^2): X: --, Y: --, Z: -- (no new data)\n");
+        printf("Gyroscope (rad/s): X: --, Y: --, Z: -- (no new data)\n");
+      }
+      // 暂无新样本时保留最近一次有效磁场，超过一秒不再输出旧值。
+      const bool magnetic_ready = latest.magnetometer_data_ready &&
+          now_us - last_magnetic_time_us <= kMagneticDataTimeoutUs;
+      if (magnetic_ready) {
+        printf("Magnetometer (uT): X: %.6f, Y: %.6f, Z: %.6f\n",
+            latest.magnetic_field_ut.x, latest.magnetic_field_ut.y,
+            latest.magnetic_field_ut.z);
+      } else {
+        printf("Magnetometer (uT): X: --, Y: --, Z: -- (%s)\n",
+            latest.magnetometer_overflow ? "overflow"
+                : last_magnetic_time_us != 0 ? "timeout" : "waiting for data");
+      }
+      PrintImuMagneticAngle(
+          latest.magnetic_field_ut.x, latest.magnetic_field_ut.y, magnetic_ready);
+      motion_ready = false;
       last_log_time_us = now_us;
     }
 
