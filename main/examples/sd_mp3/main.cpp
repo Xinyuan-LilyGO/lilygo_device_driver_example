@@ -150,7 +150,7 @@ extern "C" void app_main() {
       std::string(common::board::device::sd::kBasePath) + "/music.mp3";
   printf("SD MP3 example on %s %s\n", common::kBoardName,
       common::GetDriver().device_model_info().version);
-  if (!common::InitDriver()) {
+  if (!common::Init()) {
     printf(
         "Device driver initialization completed with errors; continuing "
         "example\n");

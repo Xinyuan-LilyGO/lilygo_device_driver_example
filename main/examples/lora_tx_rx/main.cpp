@@ -20,7 +20,7 @@ extern "C" void app_main() {
       static_cast<uint32_t>(lora_tx_rx::kBandwidthKhz),
       static_cast<unsigned int>(lora_tx_rx::kSyncWord));
 
-  if (!common::InitDriver()) {
+  if (!common::Init()) {
     printf(
         "Device driver initialization completed with errors; continuing "
         "example\n");

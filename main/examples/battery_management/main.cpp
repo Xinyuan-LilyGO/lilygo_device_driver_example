@@ -169,9 +169,9 @@ extern "C" void app_main() {
       common::GetDriver().device_model_info().version);
 #if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) && \
     defined(CONFIG_LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
-  const bool initialized = common::InitDriver(kExternalChargeCurrentMa);
+  const bool initialized = common::Init(kExternalChargeCurrentMa);
 #else
-  const bool initialized = common::InitDriver();
+  const bool initialized = common::Init();
 #endif
   if (!initialized) {
     BatteryLogPrintf(

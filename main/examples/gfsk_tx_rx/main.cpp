@@ -55,7 +55,7 @@ bool ButtonPressed(PlatformHal& platform_hal) {
 extern "C" void app_main() {
   printf("CC1101 GFSK TX/RX example on %s\n", common::kBoardName);
   auto& driver = common::GetDriver();
-  if (!common::InitMinimalDriver()) {
+  if (!common::InitMinimal()) {
     printf(
         "Minimal device driver initialization completed with errors; "
         "continuing example\n");

@@ -1458,7 +1458,7 @@ extern "C" void app_main() {
   std::printf("Maximum configured rate  : 848 kbit/s\n");
   std::printf("%s\n", kSectionLine);
   std::printf("Initializing board and NFC reader...\n");
-  if (!common::InitDriver()) {
+  if (!common::Init()) {
     std::printf(
         "Board initialization completed with errors: %s; continuing example\n",
         common::kBoardName);

@@ -275,7 +275,7 @@ bool FetchAndPrintRealTime() {
 extern "C" void app_main() {
   printf("Wi-Fi scan, connect, and time example on %s %s\n", common::kBoardName,
       common::GetDriver().device_model_info().version);
-  if (!common::InitDriver()) {
+  if (!common::Init()) {
     printf(
         "Device driver initialization completed with errors; continuing "
         "example\n");

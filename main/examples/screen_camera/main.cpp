@@ -376,7 +376,7 @@ void RunCameraPreview() {
 
 extern "C" void app_main() {
   printf("Camera screen example on %s\n", common::kBoardName);
-  if (!common::InitDriver()) {
+  if (!common::Init()) {
     printf(
         "Device driver initialization completed with errors; continuing "
         "example\n");

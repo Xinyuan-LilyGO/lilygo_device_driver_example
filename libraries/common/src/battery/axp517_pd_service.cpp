@@ -88,7 +88,7 @@ void RunPdService(void* argument) {
 
 }  // namespace
 
-bool InitDriver(uint16_t external_charge_current_ma) {
+bool Init(uint16_t external_charge_current_ma) {
   const bool result = GetDriver().Init(DeviceDriver::InitMode::kSync);
   if (GetDriver().IsAxp517Ready() &&
       !StartAxp517PdService(external_charge_current_ma)) {

@@ -334,7 +334,7 @@ void RunBootScreenTests(common::LvglPort& lvgl_port) {
 
 extern "C" void app_main() {
   printf("LVGL screen example on %s\n", common::kBoardName);
-  if (!common::InitDriver()) {
+  if (!common::Init()) {
     printf(
         "Device driver initialization completed with errors; continuing "
         "example\n");

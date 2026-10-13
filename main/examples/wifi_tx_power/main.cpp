@@ -99,7 +99,7 @@ bool ConfigureBand(uint8_t cycle) {
 
 extern "C" void app_main() {
   printf("Wi-Fi transmit power test on %s\n", common::kBoardName);
-  if (!common::InitDriver()) {
+  if (!common::Init()) {
     printf(
         "Device driver initialization completed with errors; continuing "
         "example\n");

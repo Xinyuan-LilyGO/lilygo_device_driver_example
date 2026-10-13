@@ -1050,7 +1050,7 @@ void OtaTask(void* task_parameter) {
 extern "C" void app_main() {
   printf(
       "ESP32-P4 BOOT-triggered HTTPS OTA example on %s\n", common::kBoardName);
-  if (!common::InitDriver()) {
+  if (!common::Init()) {
     printf(
         "Board driver initialization completed with errors; continuing "
         "example\n");

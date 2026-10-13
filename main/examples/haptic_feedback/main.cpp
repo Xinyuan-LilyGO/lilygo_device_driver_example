@@ -26,7 +26,7 @@ extern "C" void app_main() {
   printf("Haptic feedback example on %s\n", common::kBoardName);
 
   auto& driver = common::GetDriver();
-  if (!common::InitDriver()) {
+  if (!common::Init()) {
     printf(
         "Device driver initialization completed with errors; continuing "
         "example\n");

@@ -90,7 +90,7 @@ extern "C" void app_main() {
   printf(
       "NRF24L01 Enhanced ShockBurst TX/RX example on %s\n", common::kBoardName);
   auto& driver = common::GetDriver();
-  if (!common::InitMinimalDriver()) {
+  if (!common::InitMinimal()) {
     printf(
         "Minimal device driver initialization completed with errors; "
         "continuing example\n");

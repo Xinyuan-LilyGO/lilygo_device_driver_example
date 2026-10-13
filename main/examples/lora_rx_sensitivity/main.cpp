@@ -13,7 +13,7 @@
 extern "C" void app_main() {
   printf("LoRa RX sensitivity example on %s\n", common::kBoardName);
 
-  if (!common::InitDriver()) {
+  if (!common::Init()) {
     printf(
         "Device driver initialization completed with errors; continuing "
         "example\n");

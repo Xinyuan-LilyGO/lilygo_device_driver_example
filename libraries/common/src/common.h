@@ -53,7 +53,7 @@ inline DeviceDriver& GetDriver() { return DeviceDriver::GetInstance(); }
  * @brief 初始化当前板卡的最小设备驱动集合
  * @return 初始化成功返回 true，否则返回 false
  */
-inline bool InitMinimalDriver() { return GetDriver().InitMinimal(); }
+inline bool InitMinimal() { return GetDriver().InitMinimal(); }
 
 #if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) && \
     defined(CONFIG_LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
@@ -62,13 +62,13 @@ inline bool InitMinimalDriver() { return GetDriver().InitMinimal(); }
  * @param external_charge_current_ma 外置电池充电电流，单位 mA。
  * @return 板卡初始化成功返回 true，否则返回 false。
  */
-bool InitDriver(uint16_t external_charge_current_ma = 1024);
+bool Init(uint16_t external_charge_current_ma = 1024);
 #else
 /**
  * @brief 以同步模式初始化当前板卡设备驱动。
  * @return 初始化成功返回 true，否则返回 false。
  */
-inline bool InitDriver() {
+inline bool Init() {
   return GetDriver().Init(DeviceDriver::InitMode::kSync);
 }
 #endif
