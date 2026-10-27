@@ -1,5 +1,5 @@
 /*
- * @Description: BHI260AP 与 QMC6309/QMC6310N 九轴采样数据输出
+ * @Description: BHI260AP 与 QMC6309 九轴采样数据输出
  * @Author: LILYGO_L
  * @Date: 2026-07-28 13:59:02
  * @LastEditTime: 2026-09-30 11:32:30
@@ -86,9 +86,13 @@ void ParseAngularVelocity(
 
 bool ConfigureBhi260ap() {
   auto& driver = common::GetDriver();
-  if (!driver.IsBhi260apReady() || !driver.SetBhi260apSleep(false)) {
+  if (!driver.IsBhi260apReady()) {
+    printf("BHI260AP initialization failed; see driver initialization log\n");
+    return false;
+  }
+  if (!driver.SetBhi260apSleep(false)) {
     const auto* bhi260ap = driver.chip().bhi260ap.get();
-    printf("BHI260AP is not ready (error code: %d)\n",
+    printf("BHI260AP wake-up failed (error code: %d)\n",
         bhi260ap == nullptr ? BHY2_E_NULL_PTR : bhi260ap->last_error());
     return false;
   }
@@ -113,20 +117,12 @@ bool ConfigureBhi260ap() {
 
 bool GetMagnetometer() {
   auto& driver = common::GetDriver();
-#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4)
   if (!driver.IsQmc6309Ready() || !driver.SetQmc6309Sleep(false)) {
     printf("QMC6309 is not ready\n");
     return false;
   }
   g_magnetometer = driver.chip().qmc6309.get();
-#else
-  if (!driver.IsQmc6310nReady() || !driver.SetQmc6310nSleep(false)) {
-    printf("QMC6310N is not ready\n");
-    return false;
-  }
 
-  g_magnetometer = driver.chip().qmc6310n.get();
-#endif
   return g_magnetometer != nullptr;
 }
 
@@ -136,11 +132,8 @@ void RunImuExample() {
   if (!GetMagnetometer() || !ConfigureBhi260ap()) {
     auto& driver = common::GetDriver();
     driver.SetBhi260apSleep(true);
-#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4)
     driver.SetQmc6309Sleep(true);
-#else
-    driver.SetQmc6310nSleep(true);
-#endif
+
     printf("IMU initialization failed\n");
     return;
   }

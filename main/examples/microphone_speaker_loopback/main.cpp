@@ -26,6 +26,6 @@ extern "C" void app_main() {
 #elif defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR) || \
     (defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) &&      \
         defined(CONFIG_LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2))
-  RunEs8389MicrophoneSpeakerLoopback();
+  RunEs8390MicrophoneSpeakerLoopback();
 #endif
 }

@@ -1,5 +1,5 @@
 /*
- * @Description: ES8389 SD 卡 MP3 音频输出实现
+ * @Description: ES8390 SD 卡 MP3 音频输出实现
  * @Author: LILYGO_L
  * @Date: 2026-07-28 13:59:02
  * @LastEditTime: 2026-09-22 17:04:36
@@ -19,20 +19,20 @@
 namespace {
 
 esp_codec_dev_handle_t g_output_codec_dev = nullptr;
-uint32_t g_sample_rate = common::board::device::es8389::kSampleRate;
+uint32_t g_sample_rate = common::board::device::es8390::kSampleRate;
 
 }  // namespace
 
 bool InitSdMp3Audio() {
   auto& driver = common::GetDriver();
-  if (!driver.IsEs8389Ready() ||
-      !driver.SetEs8389OperatingMode(
-          common::DeviceDriver::Es8389OperatingMode::kActive)) {
+  if (!driver.IsEs8390Ready() ||
+      !driver.SetEs8390OperatingMode(
+          common::DeviceDriver::Es8390OperatingMode::kActive)) {
     return false;
   }
 
-  g_output_codec_dev = driver.es8389_output_codec_dev();
-  g_sample_rate = common::board::device::es8389::kSampleRate;
+  g_output_codec_dev = driver.es8390_output_codec_dev();
+  g_sample_rate = common::board::device::es8390::kSampleRate;
   return g_output_codec_dev != nullptr;
 }
 
@@ -45,12 +45,12 @@ bool ConfigureSdMp3Audio(uint32_t sample_rate) {
   }
 
   esp_codec_dev_sample_info_t sample_info = {
-      .bits_per_sample = common::board::device::es8389::kBitsPerSample,
-      .channel = common::board::device::es8389::kChannel,
+      .bits_per_sample = common::board::device::es8390::kBitsPerSample,
+      .channel = common::board::device::es8390::kChannel,
       .channel_mask = ESP_CODEC_DEV_MAKE_CHANNEL_MASK(0) |
                       ESP_CODEC_DEV_MAKE_CHANNEL_MASK(1),
       .sample_rate = sample_rate,
-      .mclk_multiple = common::board::device::es8389::kMclkMultiple,
+      .mclk_multiple = common::board::device::es8390::kMclkMultiple,
   };
   if (esp_codec_dev_close(g_output_codec_dev) != ESP_CODEC_DEV_OK ||
       esp_codec_dev_open(g_output_codec_dev, &sample_info) !=

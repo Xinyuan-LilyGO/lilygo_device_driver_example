@@ -5,6 +5,7 @@
  * @LastEditTime: 2026-09-22 17:04:04
  * @License: GPL 3.0
  */
+// 保留 LR1121 示例实现供后续板型复用；当前没有板型使用。
 #include <array>
 #include <cstdint>
 #include <cstdio>
@@ -14,8 +15,6 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "lora_rx_sensitivity.h"
-
-#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR)
 
 namespace lora_rx_sensitivity {
 namespace {
@@ -191,5 +190,3 @@ void RunLr1121() {
 }
 
 }  // namespace lora_rx_sensitivity
-
-#endif

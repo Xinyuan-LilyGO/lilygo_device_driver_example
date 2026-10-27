@@ -27,7 +27,7 @@ endif()
 if(example_name STREQUAL "imu")
     set(example_extra_sources
         "${example_path}/imu.cpp"
-        "${example_path}/bhi260ap_qmc6309_qmc6310n.cpp"
+        "${example_path}/bhi260ap_qmc6309.cpp"
         "${example_path}/icm20948_qmi8658_qmc6309.cpp")
 elseif(example_name STREQUAL "gps")
     set(example_extra_sources
@@ -38,12 +38,10 @@ elseif(example_name STREQUAL "lora_rx_sensitivity")
     set(example_extra_sources
         "${example_path}/lora_rx_sensitivity.cpp"
         "${example_path}/lr2021.cpp"
-        "${example_path}/lr1121.cpp"
         "${example_path}/sx1262.cpp")
 elseif(example_name STREQUAL "lora_tx_rx")
     set(example_extra_sources
         "${example_path}/lr2021.cpp"
-        "${example_path}/lr1121.cpp"
         "${example_path}/sx1262.cpp")
 elseif(example_name STREQUAL "battery_management")
     set(example_extra_sources
@@ -56,15 +54,15 @@ elseif(example_name STREQUAL "rtc")
 elseif(example_name STREQUAL "microphone_speaker_loopback")
     set(example_extra_sources
         "${example_path}/es8311.cpp"
-        "${example_path}/es8389.cpp")
+        "${example_path}/es8390.cpp")
 elseif(example_name STREQUAL "sd_mp3")
     set(example_extra_sources
         "${example_path}/es8311.cpp"
-        "${example_path}/es8389.cpp")
+        "${example_path}/es8390.cpp")
 elseif(example_name STREQUAL "wifi_mp3")
     set(example_extra_sources
         "${example_path}/es8311.cpp"
-        "${example_path}/es8389.cpp")
+        "${example_path}/es8390.cpp")
 elseif(example_name STREQUAL "screen_lvgl")
     set(example_extra_sources "${example_path}/lvgl_demo_ui.cpp")
 elseif(example_name STREQUAL "st25r3916")

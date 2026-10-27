@@ -8,4 +8,4 @@
 #pragma once
 
 void RunEs8311MicrophoneSpeakerLoopback();
-void RunEs8389MicrophoneSpeakerLoopback();
+void RunEs8390MicrophoneSpeakerLoopback();

@@ -44,7 +44,7 @@ extern "C" void app_main() {
     defined(CONFIG_LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
   lora_tx_rx::RunLr2021();
 #elif defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR)
-  lora_tx_rx::RunLr1121();
+  lora_tx_rx::RunLr2021();
 #elif defined(CONFIG_LILYGO_DEVICE_DRIVER_T_GLASSES_P4)
   lora_tx_rx::RunLr2021();
 #endif

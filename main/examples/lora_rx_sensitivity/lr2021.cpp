@@ -15,7 +15,8 @@
 #include "freertos/task.h"
 #include "lora_rx_sensitivity.h"
 
-#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) || \
+#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR) || \
+    defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) || \
     defined(CONFIG_LILYGO_DEVICE_DRIVER_T_GLASSES_P4)
 
 namespace lora_rx_sensitivity {
@@ -87,7 +88,8 @@ bool ButtonPressed(cpp_bus_driver::PlatformHal& platform_hal) {
 }
 
 bool RadioIrqAsserted() {
-#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_GLASSES_P4) ||  \
+#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR) || \
+    defined(CONFIG_LILYGO_DEVICE_DRIVER_T_GLASSES_P4) ||  \
     (defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) && \
         defined(CONFIG_LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2))
   cpp_bus_driver::PlatformHal platform_hal;

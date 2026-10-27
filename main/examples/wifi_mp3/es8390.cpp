@@ -1,5 +1,5 @@
 /*
- * @Description: ES8389 网络 MP3 音频输出实现
+ * @Description: ES8390 网络 MP3 音频输出实现
  * @Author: LILYGO_L
  * @Date: 2026-07-28 13:59:02
  * @LastEditTime: 2026-09-22 17:04:47
@@ -22,13 +22,13 @@ esp_codec_dev_handle_t g_output_codec_dev = nullptr;
 
 bool InitWifiMp3Audio() {
   auto& driver = common::GetDriver();
-  if (!driver.IsEs8389Ready() ||
-      !driver.SetEs8389OperatingMode(
-          common::DeviceDriver::Es8389OperatingMode::kActive)) {
+  if (!driver.IsEs8390Ready() ||
+      !driver.SetEs8390OperatingMode(
+          common::DeviceDriver::Es8390OperatingMode::kActive)) {
     return false;
   }
 
-  g_output_codec_dev = driver.es8389_output_codec_dev();
+  g_output_codec_dev = driver.es8390_output_codec_dev();
   return g_output_codec_dev != nullptr;
 }
 

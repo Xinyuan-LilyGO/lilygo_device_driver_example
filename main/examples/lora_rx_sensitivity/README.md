@@ -13,7 +13,6 @@ and automatic radio detection:
 | --- | ---: |
 | SX1262 | 433 MHz |
 | LR2021 | 433 MHz |
-| LR1121 | 433 MHz |
 
 These frequencies match the current hardware RF paths. Do not change them
 without verifying the RF matching network and applicable regulatory
@@ -27,11 +26,10 @@ for example:
 inline constexpr uint32_t kFrequencyHz = kFrequency868MHz;
 ```
 
-At 433, 868, or 915 MHz, LR2021 and LR1121 automatically use the Sub-GHz RF
-path and 125 kHz bandwidth. At 2400 MHz, LR2021 uses 500 kHz and LR1121 uses
-approximately 406 kHz on the HF RF path. SX1262 does not support 2400 MHz; if it is
-automatically detected, the program reports the unsupported frequency and
-stops the test.
+At 433, 868, or 915 MHz, LR2021 automatically uses the Sub-GHz RF path and
+125 kHz bandwidth. At 2400 MHz, LR2021 uses 500 kHz on the HF RF path. SX1262
+does not support 2400 MHz; if it is automatically detected, the program
+reports the unsupported frequency and stops the test.
 
 The LR2021 RF path on T-Display-P4 has an additional hardware limit: at
 frequencies of 1 GHz or above, transmit power must not exceed `+5 dBm`.
@@ -45,8 +43,8 @@ safe and consistent with the TX/RX example.
 The program uses the LoRa sensitivity conditions defined in the Semtech
 datasheets:
 
-- Bandwidth: 125 kHz for Sub-GHz; at 2400 MHz, 500 kHz for LR2021 and
-  approximately 406 kHz for LR1121 (SX1262 does not support 2400 MHz)
+- Bandwidth: 125 kHz for Sub-GHz; at 2400 MHz, 500 kHz for LR2021
+  (SX1262 does not support 2400 MHz)
 - Spreading factor: Set by `kSpreadingFactor`, default SF7
 - Coding rate: 4/5
 - Preamble: 8 symbols
@@ -60,10 +58,8 @@ datasheets:
 - Pass criterion: PER no greater than 1%
 
 Change `kSpreadingFactor` in `lora_rx_sensitivity.h` to set the actual receive
-SF used by LR2021, SX1262, and LR1121 together. The valid range is 5 through
-12. These are the default program settings. LR1121 also uses its 433 MHz
-Sub-GHz path, so the corresponding official typical sensitivity below can
-be used as a reference.
+SF used by LR2021 and SX1262. The valid range is 5 through 12. These are the
+default program settings.
 
 The RF signal generator must transmit exactly 1000 packets. PER is calculated
 as:
@@ -90,7 +86,7 @@ match the receiver:
 | --- | --- |
 | Frequency | Match the radio frequency in the table above |
 | Spreading Factor | Match `kSpreadingFactor`, default SF7 |
-| Bandwidth | 125 kHz for Sub-GHz; 500 kHz for LR2021 HF or approximately 406 kHz for LR1121 HF |
+| Bandwidth | 125 kHz for Sub-GHz; 500 kHz for LR2021 HF |
 | Coding Rate | 4/5 |
 | Preamble Length | 8 |
 | Header | Explicit |
@@ -171,8 +167,6 @@ serial log.
 | SX1262 | SF7 / BW125 kHz / RX Boosted | -124 dBm |
 | LR2021 Sub-GHz | SF7 / BW125 kHz / RX Boost Mode 7 | -127.5 dBm |
 | LR2021 2.4 GHz | SF7 / BW500 kHz / RX Boost Mode 7 | -119 dBm |
-| LR1121 Sub-GHz | SF7 / BW125 kHz / RX Boosted | -127 dBm |
-| LR1121 2.4 GHz | SF7 / BW406 kHz / RX Boosted | -114 dBm |
 
 These values are typical IC RF-port results under the datasheet conditions.
 They exclude losses from RF switches, filters, matching networks, the PCB,
@@ -187,7 +181,6 @@ actual test.
 | --- | ---: | ---: | ---: | ---: |
 | LR2021 | -130 dBm to -145 dBm | -130 dBm to -145 dBm | -110 dBm to -125 dBm | Approximately -130 dBm to -145 dBm |
 | SX1262 | -125 dBm to -140 dBm | -125 dBm to -140 dBm | -105 dBm to -120 dBm | Approximately -125 dBm to -140 dBm |
-| LR1121 | -130 dBm to -145 dBm | -130 dBm to -145 dBm | -110 dBm to -125 dBm | Approximately -130 dBm to -145 dBm |
 
 Set the instrument using:
 

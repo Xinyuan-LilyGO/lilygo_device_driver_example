@@ -20,7 +20,7 @@ inline constexpr uint32_t kFrequency433MHz = 433000000U;
 inline constexpr uint32_t kFrequency868MHz = 868000000U;
 inline constexpr uint32_t kFrequency915MHz = 915000000U;
 inline constexpr uint32_t kFrequency2400MHz = 2400000000U;
-// LR2021、SX1262和LR1121统一使用的默认载波频率，修改此处即可切换
+// LR2021和SX1262统一使用的默认载波频率，修改此处即可切换
 inline constexpr uint32_t kFrequencyHz = kFrequency433MHz;
 static_assert(
     kFrequencyHz == kFrequency433MHz || kFrequencyHz == kFrequency868MHz ||
@@ -37,7 +37,7 @@ inline constexpr uint32_t kExpectedPacketCount = 1000;
 inline constexpr uint32_t kIdleFinishTimeMs = 10000;
 // 等待首包和测试进行期间周期输出状态日志的时间间隔
 inline constexpr uint32_t kProgressPrintIntervalMs = 5000;
-// 可修改的LoRa扩频因子，LR2021、SX1262和LR1121统一使用该值
+// 可修改的LoRa扩频因子，LR2021和SX1262统一使用该值
 inline constexpr ral_lora_sf_t kSpreadingFactor = RAL_LORA_SF7;
 static_assert(
     kSpreadingFactor >= RAL_LORA_SF5 && kSpreadingFactor <= RAL_LORA_SF12,
@@ -270,14 +270,14 @@ class TestSession {
 };
 
 /**
- * @brief 运行LR1121接收灵敏度测试
- */
-void RunLr1121();
-
-/**
  * @brief 运行LR2021接收灵敏度测试
  */
 void RunLr2021();
+
+/**
+ * @brief 运行LR1121接收灵敏度测试
+ */
+void RunLr1121();
 
 /**
  * @brief 运行SX1262接收灵敏度测试

@@ -230,7 +230,8 @@ ScreenTestSequence GetScreenTestSequence() {
     };
     return {"HI8561", kSteps, sizeof(kSteps) / sizeof(kSteps[0])};
   }
-#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4)
+#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) || \
+    defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR)
   if (common::IsRm69a10Screen() && driver.IsScreenReady()) {
     static auto* screen = driver.chip().rm69a10.get();
     static const ScreenTestStep kSteps[] = {

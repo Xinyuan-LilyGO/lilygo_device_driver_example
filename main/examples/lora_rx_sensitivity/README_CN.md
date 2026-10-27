@@ -11,7 +11,6 @@
 | --- | ---: |
 | SX1262 | 433 MHz |
 | LR2021 | 433 MHz |
-| LR1121 | 433 MHz |
 
 这些频率与当前硬件射频通路相匹配，不应在未确认射频匹配网络和法规要求时
 随意修改。
@@ -23,10 +22,9 @@
 inline constexpr uint32_t kFrequencyHz = kFrequency868MHz;
 ```
 
-选择433、868或915 MHz时，LR2021和LR1121自动使用Sub-GHz射频通路及
-125 kHz带宽；选择2400 MHz时，LR2021的HF带宽为500 kHz，LR1121约为
-406 kHz。SX1262
-不支持2400 MHz，如果自动检测到SX1262，程序会输出频率不支持并停止测试。
+选择433、868或915 MHz时，LR2021自动使用Sub-GHz射频通路及125 kHz带宽；
+选择2400 MHz时，LR2021的HF带宽为500 kHz。SX1262不支持2400 MHz，如果自动
+检测到SX1262，程序会输出频率不支持并停止测试。
 
 T-Display-P4的LR2021射频通路有额外硬件限制：频率在1 GHz及以上时，发射
 功率不得超过 `+5 dBm`。LR2021实现已按官方HF PA功率表配置为 `+5 dBm`；
@@ -37,8 +35,7 @@ Sub-GHz仍配置为 `+22 dBm`。本接收灵敏度示例不会主动发射，该
 
 程序使用 Semtech 数据手册的 LoRa 灵敏度条件：
 
-- 带宽：Sub-GHz为125 kHz；2400 MHz时LR2021为500 kHz、LR1121约为406 kHz
-  （SX1262不支持2400 MHz）
+- 带宽：Sub-GHz为125 kHz；2400 MHz时LR2021为500 kHz（SX1262不支持2400 MHz）
 - 扩频因子：由 `kSpreadingFactor` 设置，默认为SF12
 - 编码率：4/5
 - 前导码：8 symbols
@@ -52,9 +49,7 @@ Sub-GHz仍配置为 `+22 dBm`。本接收灵敏度示例不会主动发射，该
 - 通过条件：PER 不大于 1%
 
 修改 `lora_rx_sensitivity.h` 中的 `kSpreadingFactor` 即可统一改变
-LR2021、SX1262和LR1121的实际接收SF，有效范围为5至12。以上是程序默认配置；
-LR1121当前也使用433 MHz Sub-GHz通路，可采用下文对应的官方典型灵敏度
-作为参考。
+LR2021和SX1262的实际接收SF，有效范围为5至12。以上是程序默认配置。
 
 射频信号发生器必须精确发送1000包。PER计算方式为：
 
@@ -77,7 +72,7 @@ CRC、Header、长度、Payload 内容和读取错误均不会计入正确包。
 | --- | --- |
 | Frequency | 与上表对应的芯片频率一致 |
 | Spreading Factor | 与 `kSpreadingFactor` 一致，默认SF7 |
-| Bandwidth | Sub-GHz设置125 kHz；2400 MHz时LR2021设置500 kHz、LR1121设置约406 kHz |
+| Bandwidth | Sub-GHz设置125 kHz；2400 MHz时LR2021设置500 kHz |
 | Coding Rate | 4/5 |
 | Preamble Length | 8 |
 | Header | Explicit |
@@ -148,8 +143,6 @@ DUT输入功率 =
 | SX1262 | SF7 / BW125 kHz / RX Boosted | -124 dBm |
 | LR2021 Sub-GHz | SF7 / BW125 kHz / RX Boost Mode 7 | -127.5 dBm |
 | LR2021 2.4 GHz | SF7 / BW500 kHz / RX Boost Mode 7 | -119 dBm |
-| LR1121 Sub-GHz | SF7 / BW125 kHz / RX Boosted | -127 dBm |
-| LR1121 2.4 GHz | SF7 / BW406 kHz / RX Boosted | -114 dBm |
 
 表中数值是数据手册规定条件下的芯片射频端典型值，不包含射频开关、滤波器、
 匹配网络、PCB、线缆和转接头损耗，也不是产品必须保证达到的最差值。
@@ -161,7 +154,6 @@ DUT输入功率 =
 | --- | ---: | ---: | ---: | ---: |
 | LR2021 | -130 dBm至-145 dBm | -130 dBm至-145 dBm | -110 dBm至-125 dBm | 约-130 dBm至-145 dBm |
 | SX1262 | -125 dBm至-140 dBm | -125 dBm至-140 dBm | -105 dBm至-120 dBm | 约-125 dBm至-140 dBm |
-| LR1121 | -130 dBm至-145 dBm | -130 dBm至-145 dBm | -110 dBm至-125 dBm | 约-130 dBm至-145 dBm |
 
 仪器应按下面的公式设置：
 

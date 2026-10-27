@@ -57,8 +57,7 @@ TestSession::TestSession(const char* radio_name, uint32_t frequency_hz)
 
 void TestSession::PrintConfiguration() const {
   const uint32_t bandwidth_khz =
-      (kUseHighFrequencyPath && std::strcmp(radio_name_, "LR1121") == 0) ? 406UL
-      : (kUseHighFrequencyPath && std::strcmp(radio_name_, "LR2021") == 0)
+      (kUseHighFrequencyPath && std::strcmp(radio_name_, "LR2021") == 0)
           ? 500UL
           : static_cast<uint32_t>(kBandwidthKhz);
   printf("Frequency: %" PRIu32 " Hz\n", static_cast<uint32_t>(frequency_hz_));

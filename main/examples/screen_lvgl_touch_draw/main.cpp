@@ -54,7 +54,8 @@ bool ReadSingleTouch(int& x, int& y) {
   if (common::IsHi8561Screen()) {
     return ReadSingleTouchFrom(driver.chip().hi8561_touch.get(), x, y);
   }
-#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4)
+#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) || \
+    defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR)
   return ReadSingleTouchFrom(driver.chip().gt9895.get(), x, y);
 #else
   return false;
@@ -86,7 +87,8 @@ void PrintMultipleTouch() {
     PrintMultipleTouchFrom(driver.chip().hi8561_touch.get());
     return;
   }
-#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4)
+#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) || \
+    defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR)
   PrintMultipleTouchFrom(driver.chip().gt9895.get());
 #endif
 }

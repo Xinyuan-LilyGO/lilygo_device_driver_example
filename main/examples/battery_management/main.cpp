@@ -58,7 +58,8 @@ void TouchInput(lv_indev_t*, lv_indev_data_t* data) {
     ReadTouch(driver.chip().hi8561_touch.get(), data);
     return;
   }
-#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4)
+#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) || \
+    defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR)
   ReadTouch(driver.chip().gt9895.get(), data);
 #endif
 }

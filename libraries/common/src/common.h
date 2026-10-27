@@ -106,10 +106,9 @@ inline constexpr int BootButtonGpio() {
  * @return 当前屏幕为 HI8561 返回 true，否则返回 false
  */
 inline bool IsHi8561Screen() {
-#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4)
+#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) || \
+    defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR)
   return GetDriver().screen_type() == board::device::ScreenType::kHi8561;
-#elif defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR)
-  return true;
 #else
   return false;
 #endif
@@ -120,7 +119,8 @@ inline bool IsHi8561Screen() {
  * @return 当前屏幕为 RM69A10 返回 true，否则返回 false
  */
 inline bool IsRm69a10Screen() {
-#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4)
+#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) || \
+    defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR)
   return GetDriver().screen_type() == board::device::ScreenType::kRm69a10;
 #else
   return false;
@@ -161,7 +161,8 @@ inline bool SendScreen(
     return driver.chip().hi8561->SendColorStreamCoordinate(
         x_start, y_start, x_end, y_end, data);
   }
-#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4)
+#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) || \
+    defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR)
   if (IsRm69a10Screen() && driver.IsScreenReady()) {
     return driver.chip().rm69a10->SendColorStreamCoordinate(
         x_start, y_start, x_end, y_end, data);
@@ -221,7 +222,22 @@ inline void StartBacklight() {
     }
   }
 #elif defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR)
-  if (driver.IsScreenBacklightReady()) {
+  if (IsRm69a10Screen() && driver.IsScreenReady()) {
+    auto* screen = driver.chip().rm69a10.get();
+    if (!screen->SetSleep(false) || !screen->SetScreenOff(false)) {
+      printf("Screen wake-up failed\n");
+      return;
+    }
+    for (uint16_t brightness = 0; brightness <= 255; brightness += 5) {
+      if (!screen->SetBrightness(static_cast<uint8_t>(brightness))) {
+        printf("Screen brightness update failed\n");
+        return;
+      }
+      vTaskDelay(pdMS_TO_TICKS(10));
+    }
+    return;
+  }
+  if (IsHi8561Screen() && driver.IsScreenBacklightReady()) {
     driver.chip().sy7200a->FadeTo({.value = 1, .scale = 1}, 500,
         cpp_bus_driver::Pwm::FadeMode::kWaitForCompletion);
   }
