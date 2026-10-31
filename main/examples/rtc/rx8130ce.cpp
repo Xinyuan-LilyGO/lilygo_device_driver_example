@@ -5,10 +5,38 @@
 #include "rtc.h"
 
 #include <cstdio>
-#include <ctime>
 #include "common.h"
 
 #if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR)
+
+namespace {
+
+constexpr int kRtcInterruptGpio = 0;
+using Rtc = cpp_bus_driver::Rx8130ce;
+
+bool ConfigureAlarm(Rtc& rtc) {
+  const Rtc::Alarm alarm = {
+      .minute = 0,
+      .hour = 0,
+      .day_or_weekday = 1,
+      .minute_enabled = true,
+      .hour_enabled = true,
+      .day_or_weekday_enabled = true,
+      .weekday_mode = false,
+  };
+  return rtc.SetAlarmInterruptEnabled(false) && rtc.SetAlarm(alarm) &&
+         rtc.ClearAlarmFlag() && rtc.SetAlarmInterruptEnabled(true);
+}
+
+bool ResetTime(Rtc& rtc) {
+  const Rtc::Time initial_time = {
+      55, 59, 23, Rtc::Weekday::kThursday, 31, 12, 26};
+  const bool written = rtc.SetTime(initial_time);
+  const bool flag_cleared = written && rtc.ClearVoltageLossFlag();
+  return written && flag_cleared && ConfigureAlarm(rtc);
+}
+
+}  // namespace
 
 void RunRx8130ceRtcExample() {
   auto& driver = common::GetDriver();
@@ -18,6 +46,18 @@ void RunRx8130ceRtcExample() {
   }
 
   auto& rtc = *driver.chip().rx8130ce;
+  cpp_bus_driver::PlatformHal platform_hal;
+  if (!platform_hal.SetGpioMode(kRtcInterruptGpio,
+          cpp_bus_driver::PlatformHal::GpioMode::kInput,
+          cpp_bus_driver::PlatformHal::GpioStatus::kPullup)) {
+    printf("RX8130CE interrupt GPIO0 initialization failed\n");
+    return;
+  }
+  if (!ConfigureAlarm(rtc)) {
+    printf("RX8130CE alarm configuration failed\n");
+    return;
+  }
+
   cpp_bus_driver::Rx8130ce::Status status;
   const bool status_read = rtc.GetStatus(status);
   if (!status_read) {
@@ -27,7 +67,7 @@ void RunRx8130ceRtcExample() {
     printf("RX8130CE VLF is set; checking calendar data\n");
   }
 
-  printf("RX8130CE external RTC started\n");
+  printf("RX8130CE started; alarm: 1st day of each month at 00:00, INT: GPIO0\n");
   while (true) {
     cpp_bus_driver::Rx8130ce::Time time;
     if (rtc.GetTime(time)) {
@@ -38,15 +78,21 @@ void RunRx8130ceRtcExample() {
       printf("RX8130CE calendar read failed\n");
     }
 
+    if (rtc.GetStatus(status)) {
+      if (status.alarm_flag) {
+        printf("RTC alarm flag set (GPIO0 level: %d)\n",
+            platform_hal.GpioRead(kRtcInterruptGpio));
+        if (!rtc.ClearAlarmFlag()) {
+          printf("RX8130CE alarm flag clear failed\n");
+        }
+      }
+    } else {
+      printf("RX8130CE status read failed\n");
+    }
+
     if (WaitForRtcReset()) {
-      const cpp_bus_driver::Rx8130ce::Time initial_time = {
-          55, 59, 23, cpp_bus_driver::Rx8130ce::Weekday::kThursday,
-          31, 12, 26};
-      const bool reset = rtc.SetTime(initial_time);
-      const bool clear_voltage_loss = reset && rtc.ClearVoltageLossFlag();
-      const bool success = reset && clear_voltage_loss;
-      printf("BOOT: RX8130CE time reset to 2026-12-31 23:59:55: %s%s%s\n",
-          success ? "success" : "failed", "", "");
+      printf("BOOT: RTC time reset to 2026-12-31 23:59:55: %s\n",
+          ResetTime(rtc) ? "success" : "failed");
     }
   }
 }
