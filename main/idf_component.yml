@@ -18,7 +18,7 @@ dependencies:
   lvgl/lvgl:
     version: "9.5.0"
     matches:
-      - if: '$CONFIG{EXAMPLE_BUILD_NAME} in ["screen_lvgl", "screen_lvgl_touch_draw", "battery_management"]'
+      - if: '$CONFIG{EXAMPLE_BUILD_NAME} in ["screen_lvgl", "screen_lvgl_touch_draw", "screen_lvgl_aw933xx", "battery_management"]'
 
   espressif/esp_hosted:
     override_path: "../libraries/esp_hosted"

@@ -104,6 +104,9 @@ menu "Example Configuration"
         config EXAMPLE_BUILD_SCREEN_LVGL
             bool "screen_lvgl"
             depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 || LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR || LILYGO_DEVICE_DRIVER_T_GLASSES_P4
+        config EXAMPLE_BUILD_SCREEN_LVGL_AW933XX
+            bool "screen_lvgl_aw933xx"
+            depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 && LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2
         config EXAMPLE_BUILD_SCREEN_LVGL_TOUCH_DRAW
             bool "screen_lvgl_touch_draw"
             depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 || LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR
@@ -144,6 +147,7 @@ menu "Example Configuration"
         default "i2c_scan" if EXAMPLE_BUILD_I2C_SCAN
         default "screen_camera" if EXAMPLE_BUILD_SCREEN_CAMERA
         default "screen_lvgl" if EXAMPLE_BUILD_SCREEN_LVGL
+        default "screen_lvgl_aw933xx" if EXAMPLE_BUILD_SCREEN_LVGL_AW933XX
         default "screen_lvgl_touch_draw" if EXAMPLE_BUILD_SCREEN_LVGL_TOUCH_DRAW
         default "st25r3916" if EXAMPLE_BUILD_ST25R3916
         default "sleep" if EXAMPLE_BUILD_SLEEP
