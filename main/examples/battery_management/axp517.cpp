@@ -291,7 +291,7 @@ void PrintAxp517(cpp_bus_driver::Axp517& chip) {
     BatteryLogPrintf("  TCPC vendor ID: 0x%04X\n", tcpc_id.vendor_id);
     BatteryLogPrintf("  TCPC product ID: 0x%04X\n", tcpc_id.product_id);
     BatteryLogPrintf(
-        "  TCPC device revision: 0x%04X\n", tcpc_id.device_revision);
+        "  TCPC chip revision: 0x%04X\n", tcpc_id.chip_revision);
     BatteryLogPrintf("  Type-C revision: 0x%04X\n", tcpc_id.type_c_revision);
     BatteryLogPrintf("  TCPC PD revision: 0x%04X\n", tcpc_id.pd_revision);
     BatteryLogPrintf(
