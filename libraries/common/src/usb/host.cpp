@@ -53,7 +53,7 @@ void ButtonTask(void* arg) {
 
 bool DisablePower() {
   auto& driver = lilygo_device_driver::TDisplayP4Driver::GetInstance();
-  const bool result = driver.SetUsbHostPowerEnabled(false);
+  const bool result = driver.SetTypeAUsbPowerEnabled(false);
   if (!result) {
     printf("Failed to disable USB host power\n");
   }
@@ -68,7 +68,7 @@ bool InitPower() {
         "continuing USB host power setup\n");
   }
 
-  if (!driver.InitUsbHostPower() || !driver.SetUsbHostPowerEnabled(true)) {
+  if (!driver.SetTypeAUsbPowerEnabled(true)) {
     DisablePower();
     return false;
   }
