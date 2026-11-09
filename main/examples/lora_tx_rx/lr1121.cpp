@@ -2,8 +2,7 @@
  * @Description: LR1121 LoRa 数据发送与接收实现
  * @Author: LILYGO_L
  * @Date: 2026-07-28 13:59:02
- * @LastEditTime: 2026-09-22 17:04:11
- * @License: GPL 3.0
+ * @LastEditTime: 2026-11-09 10:22:56
  */
 // 保留 LR1121 示例实现供后续板型复用；当前没有板型使用。
 #include <array>

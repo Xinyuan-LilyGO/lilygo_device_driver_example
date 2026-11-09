@@ -2,8 +2,7 @@
  * @Description: tca8418
  * @Author: LILYGO_L
  * @Date: 2025-06-13 14:20:16
- * @LastEditTime: 2026-09-22 17:04:41
- * @License: GPL 3.0
+ * @LastEditTime: 2026-11-09 10:22:56
  */
 #include <cstddef>
 #include <cstdint>

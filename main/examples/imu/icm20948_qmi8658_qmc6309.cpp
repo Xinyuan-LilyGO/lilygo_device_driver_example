@@ -2,8 +2,7 @@
  * @Description: ICM20948 或 QMI8658 + QMC6309 九轴采样数据输出
  * @Author: LILYGO_L
  * @Date: 2026-07-28 13:59:02
- * @LastEditTime: 2026-09-30 11:32:41
- * @License: GPL 3.0
+ * @LastEditTime: 2026-11-09 10:22:56
  */
 #include <cstdint>
 #include <cstdio>

@@ -2,8 +2,7 @@
  * @Description: 实现 LoRa 接收灵敏度测试会话、数据校验与丢包率统计
  * @Author: LILYGO_L
  * @Date: 2026-07-29 15:09:12
- * @LastEditTime: 2026-09-22 17:04:01
- * @License: GPL 3.0
+ * @LastEditTime: 2026-11-09 10:22:56
  */
 #include "lora_rx_sensitivity.h"
 

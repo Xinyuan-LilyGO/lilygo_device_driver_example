@@ -1,6 +1,8 @@
 /*
  * @Description: CC1101 GFSK TX/RX on the P4 keyboard expansion
- * @License: GPL 3.0
+ * @Author: LILYGO_L
+ * @Date: 2026-09-05 17:11:38
+ * @LastEditTime: 2026-11-09 10:22:56
  */
 #include <array>
 #include <atomic>

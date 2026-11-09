@@ -2,8 +2,7 @@
  * @Description: 准备无线协处理器固件下载所需的电源和控制信号
  * @Author: LILYGO_L
  * @Date: 2026-07-30 14:57:16
- * @LastEditTime: 2026-09-22 17:03:43
- * @License: GPL 3.0
+ * @LastEditTime: 2026-11-09 10:22:56
  */
 #include <cstdint>
 #include <cstdio>

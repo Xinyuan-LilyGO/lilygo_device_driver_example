@@ -2,8 +2,7 @@
  * @Description: 检查并更新网络适配器固件的示例
  * @Author: LILYGO_L
  * @Date: 2026-07-28 13:59:02
- * @LastEditTime: 2026-09-22 17:04:17
- * @License: GPL 3.0
+ * @LastEditTime: 2026-11-09 10:22:56
  */
 #include <algorithm>
 #include <cinttypes>

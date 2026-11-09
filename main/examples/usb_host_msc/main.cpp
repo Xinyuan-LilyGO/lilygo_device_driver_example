@@ -2,8 +2,7 @@
  * @Description: 在 T-Display-P4 V2.0 上插入 U 盘自动读写测试，按 BOOT 安全卸载
  * @Author: LILYGO_L
  * @Date: 2026-05-20
- * @LastEditTime: 2026-09-22 17:04:46
- * @License: GPL 3.0
+ * @LastEditTime: 2026-11-09 10:22:56
  */
 #include <dirent.h>
 #include <sys/stat.h>

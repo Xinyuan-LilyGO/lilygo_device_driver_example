@@ -1,6 +1,8 @@
 /*
  * @Description: RX8130CE 外部实时时钟示例
- * @License: GPL 3.0
+ * @Author: LILYGO_L
+ * @Date: 2026-10-31 17:15:06
+ * @LastEditTime: 2026-11-09 10:22:56
  */
 #include "rtc.h"
 

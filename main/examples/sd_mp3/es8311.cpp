@@ -2,8 +2,7 @@
  * @Description: ES8311 SD 卡 MP3 音频输出实现
  * @Author: LILYGO_L
  * @Date: 2026-07-28 13:59:02
- * @LastEditTime: 2026-07-28 14:05:30
- * @License: GPL 3.0
+ * @LastEditTime: 2026-11-09 10:22:56
  */
 #include <cstddef>
 #include <cstdint>

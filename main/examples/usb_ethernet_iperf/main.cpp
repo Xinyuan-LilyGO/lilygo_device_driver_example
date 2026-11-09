@@ -2,8 +2,7 @@
  * @Description: 在 T-Display-P4 V2.0 上使用 USB RTL8152B 网卡进行 iperf 测试
  * @Author: LILYGO_L
  * @Date: 2026-05-05 18:15:09
- * @LastEditTime: 2026-09-22 17:04:42
- * @License: GPL 3.0
+ * @LastEditTime: 2026-11-09 10:22:56
  */
 #include <cstdint>
 #include <cstdio>

@@ -2,8 +2,7 @@
  * @Description: 演示关闭外设并进入无唤醒源深度睡眠
  * @Author: LILYGO_L
  * @Date: 2026-07-28 13:59:02
- * @LastEditTime: 2026-08-03 09:46:03
- * @License: GPL 3.0
+ * @LastEditTime: 2026-11-09 10:22:56
  */
 #include <cstdio>
 

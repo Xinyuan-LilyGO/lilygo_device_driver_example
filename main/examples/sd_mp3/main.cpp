@@ -2,8 +2,7 @@
  * @Description: 从 SD 卡读取、解码并播放 MP3 音频文件
  * @Author: LILYGO_L
  * @Date: 2026-07-28 13:59:02
- * @LastEditTime: 2026-09-22 17:04:37
- * @License: GPL 3.0
+ * @LastEditTime: 2026-11-09 10:22:56
  */
 #include <cstddef>
 #include <cstdint>

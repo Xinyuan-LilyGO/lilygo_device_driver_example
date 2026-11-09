@@ -1,3 +1,9 @@
+/*
+ * @Description: RTC 示例入口与 BOOT 按键复位检测
+ * @Author: LILYGO_L
+ * @Date: 2026-07-29 10:31:29
+ * @LastEditTime: 2026-11-09 10:22:56
+ */
 
 #include <cstdio>
 

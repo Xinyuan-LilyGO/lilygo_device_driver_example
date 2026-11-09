@@ -2,8 +2,7 @@
  * @Description: 扫描 I2C 总线并输出已发现设备地址的示例
  * @Author: LILYGO_L
  * @Date: 2026-07-28 13:59:02
- * @LastEditTime: 2026-09-22 17:03:55
- * @License: GPL 3.0
+ * @LastEditTime: 2026-11-09 10:22:56
  */
 #include <cstddef>
 #include <cstdint>

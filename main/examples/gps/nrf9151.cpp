@@ -2,8 +2,7 @@
  * @Description: nRF9151 GNSS 定位数据读取示例实现
  * @Author: LILYGO_L
  * @Date: 2026-07-29 00:22:40
- * @LastEditTime: 2026-09-22 17:03:52
- * @License: GPL 3.0
+ * @LastEditTime: 2026-11-09 10:22:56
  */
 #include <cstddef>
 #include <cstdint>

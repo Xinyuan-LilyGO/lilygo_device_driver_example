@@ -1,9 +1,8 @@
 /*
  * @Description: 在支持的设备上测试 Wi-Fi 发射功率
  * @Author: LILYGO_L
- * @Date: 2026-09-15
- * @LastEditTime: 2026-09-22 17:04:50
- * @License: GPL 3.0
+ * @Date: 2026-09-15 14:37:23
+ * @LastEditTime: 2026-11-09 10:22:56
  */
 #include <cstdint>
 #include <cstdio>

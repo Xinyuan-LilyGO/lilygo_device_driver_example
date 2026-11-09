@@ -2,8 +2,7 @@
  * @Description: 实现 LR2021 的 LoRa 接收灵敏度测试
  * @Author: LILYGO_L
  * @Date: 2026-07-29 15:09:12
- * @LastEditTime: 2026-09-22 17:04:05
- * @License: GPL 3.0
+ * @LastEditTime: 2026-11-09 10:22:56
  */
 #include <array>
 #include <cstdint>

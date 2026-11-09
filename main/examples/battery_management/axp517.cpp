@@ -2,8 +2,7 @@
  * @Description: AXP517 充电、电池状态、ADC 与中断监测实现
  * @Author: LILYGO_L
  * @Date: 2026-07-28 13:59:02
- * @LastEditTime: 2026-09-22 17:03:37
- * @License: GPL 3.0
+ * @LastEditTime: 2026-11-09 10:22:56
  */
 #include "chip/i2c/axp517.h"
 
