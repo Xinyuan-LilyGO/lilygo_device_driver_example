@@ -1,8 +1,5 @@
 /*
  * @Description: 内部 RTC 时间设置与读取示例
- * @Author: LILYGO_L
- * @Date: 2026-09-10 14:55:31
- * @LastEditTime: 2026-11-09 10:22:56
  */
 
 #include <sys/time.h>

@@ -1,8 +1,5 @@
 /*
  * @Description: T-Display-P4 V2 外接 AW93307 的独立触摸按键及三电极滑动调试
- * @Author: LILYGO_L
- * @Date: 2026-10-30 00:00:00
- * @LastEditTime: 2026-11-09 10:22:56
  */
 #include <algorithm>
 #include <array>

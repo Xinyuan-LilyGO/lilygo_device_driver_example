@@ -1,9 +1,5 @@
 /*
  * @Description: MP3 文件元数据、音频流参数与信息输出实现
- * @Author: LILYGO_L
- * @Date: 2026-07-28 13:59:02
- * @LastEditTime: 2026-07-28 14:05:30
- * @License: GPL 3.0
  */
 #include "audio/mp3_metadata.h"
 

@@ -1,9 +1,5 @@
 /*
  * @Description: 应用公共 AXP517 PD 服务接口
- * @Author: LILYGO_L
- * @Date: 2026-09-22 14:14:36
- * @LastEditTime: 2026-09-22 14:14:36
- * @License: GPL 3.0
  */
 #pragma once
 

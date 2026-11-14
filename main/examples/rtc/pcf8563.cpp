@@ -1,8 +1,5 @@
 /*
  * @Description: PCF8563 时钟、定时器与闹钟测试
- * @Author: LILYGO_L
- * @Date: 2026-09-10 14:55:31
- * @LastEditTime: 2026-11-09 10:22:56
  */
 #include <cstdio>
 

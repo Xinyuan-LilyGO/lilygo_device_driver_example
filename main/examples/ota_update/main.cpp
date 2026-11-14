@@ -1,8 +1,5 @@
 /*
  * @Description: 通过 BOOT 按键触发网络适配器与主控固件 HTTPS OTA 更新的示例
- * @Author: LILYGO_L
- * @Date: 2026-07-28 13:59:02
- * @LastEditTime: 2026-11-09 10:22:56
  */
 #include <algorithm>
 #include <cerrno>

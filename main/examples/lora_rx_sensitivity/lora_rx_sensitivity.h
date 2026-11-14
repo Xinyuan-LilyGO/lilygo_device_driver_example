@@ -1,8 +1,5 @@
 /*
  * @Description: 声明 LoRa 接收灵敏度与丢包率测试的公共接口
- * @Author: LILYGO_L
- * @Date: 2026-07-29 15:09:12
- * @LastEditTime: 2026-11-09 10:22:56
  */
 #pragma once
 #include <array>

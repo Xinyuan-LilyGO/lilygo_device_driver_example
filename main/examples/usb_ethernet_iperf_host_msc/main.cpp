@@ -1,8 +1,5 @@
 /*
  * @Description: 在 T-Display-P4 V2.0 上通过 USB Hub 测试网卡和 U 盘，按 BOOT 安全卸载 U 盘
- * @Author: LILYGO_L
- * @Date: 2026-05-20
- * @LastEditTime: 2026-11-09 10:22:56
  */
 #include <dirent.h>
 #include <sys/stat.h>

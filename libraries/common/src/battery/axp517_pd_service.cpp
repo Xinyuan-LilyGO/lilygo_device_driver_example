@@ -1,9 +1,5 @@
 /*
  * @Description: T-Display-P4 v2.0 应用公共 AXP517 PD 轮询任务
- * @Author: LILYGO_L
- * @Date: 2026-09-22 14:14:36
- * @LastEditTime: 2026-09-22 15:11:24
- * @License: GPL 3.0
  */
 #include "battery/axp517_pd_service.h"
 

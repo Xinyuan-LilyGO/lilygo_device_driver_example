@@ -1,8 +1,5 @@
 /*
  * @Description: 在屏幕上运行 LVGL 仪表盘界面的示例
- * @Author: LILYGO_L
- * @Date: 2026-07-28 13:59:02
- * @LastEditTime: 2026-11-09 10:22:56
  */
 #include <cstddef>
 #include <cstdint>

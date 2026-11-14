@@ -1,8 +1,5 @@
 /*
  * @Description: 采集摄像头画面并实时显示到屏幕的示例
- * @Author: LILYGO_L
- * @Date: 2026-07-28 13:59:02
- * @LastEditTime: 2026-11-09 10:22:56
  */
 #include <fcntl.h>
 #include <sys/ioctl.h>

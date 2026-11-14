@@ -1,9 +1,5 @@
 /*
  * @Description: 显示示例共用的 LVGL 显示、输入和任务管理
- * @Author: LILYGO_L
- * @Date: 2026-07-11 16:22:23
- * @LastEditTime: 2026-07-13 00:00:00
- * @License: GPL 3.0
  */
 #pragma once
 

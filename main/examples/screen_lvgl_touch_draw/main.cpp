@@ -1,8 +1,5 @@
 /*
  * @Description: 使用 LVGL 读取触摸输入并在屏幕上绘图的示例
- * @Author: LILYGO_L
- * @Date: 2026-07-28 13:59:02
- * @LastEditTime: 2026-11-09 10:22:56
  */
 #include <cstddef>
 #include <cstdint>
