@@ -118,7 +118,7 @@ menu "Example Configuration"
             depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 || LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR
         config EXAMPLE_BUILD_TCA8418
             bool "tca8418"
-            depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4
+            depends on LILYGO_DEVICE_DRIVER_T_DISPLAY_P4 && LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V1
     endchoice
 
     # 构建和依赖清单共用示例名称，避免读取被设备条件隐藏的 choice 选项。

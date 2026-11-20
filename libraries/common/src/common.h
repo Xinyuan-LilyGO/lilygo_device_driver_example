@@ -55,10 +55,9 @@ inline bool InitMinimal() { return GetDriver().InitMinimal(); }
     defined(CONFIG_LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
 /**
  * @brief 初始化板卡并启动应用层 AXP517 PD 轮询。
- * @param external_charge_current_ma 外置电池充电电流，单位 mA。
  * @return 板卡初始化成功返回 true，否则返回 false。
  */
-bool Init(uint16_t external_charge_current_ma = 1024);
+bool Init();
 #else
 /**
  * @brief 以同步模式初始化当前板卡设备驱动。

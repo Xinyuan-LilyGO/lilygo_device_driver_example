@@ -8,7 +8,6 @@
 #if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) && \
     defined(CONFIG_LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
 
-#include <algorithm>
 #include <atomic>
 #include <cstdio>
 #include <memory>
@@ -32,7 +31,6 @@ struct PdService {
   std::atomic<bool> stop_requested{false};
   std::atomic<bool> stop_result{true};
   std::atomic<bool> restart_requested{false};
-  uint16_t external_charge_current_ma = 1024;
   Axp517PdSnapshot snapshot;
 };
 
@@ -51,9 +49,7 @@ void RunPdService(void* argument) {
       service.sink->Restart(now_ms);
     }
     const bool external = driver.IsExternalBatterySelected();
-    const bool success = service.sink->Poll(now_ms, true,
-        external ? service.external_charge_current_ma
-                 : service.internal_charge_current_ma);
+    const bool success = service.sink->Poll(now_ms, true);
     xSemaphoreTake(service.mutex, portMAX_DELAY);
     service.snapshot.status = service.sink->status();
     service.snapshot.external_battery_selected = external;
@@ -84,10 +80,10 @@ void RunPdService(void* argument) {
 
 }  // namespace
 
-bool Init(uint16_t external_charge_current_ma) {
+bool Init() {
   const bool result = GetDriver().Init(DeviceDriver::InitMode::kSync);
   if (GetDriver().IsAxp517Ready() &&
-      !StartAxp517PdService(external_charge_current_ma)) {
+      !StartAxp517PdService()) {
     printf(
         "AXP517 PD application task unavailable; charging stays "
         "conservative\n");
@@ -95,14 +91,10 @@ bool Init(uint16_t external_charge_current_ma) {
   return result;
 }
 
-bool StartAxp517PdService(uint16_t external_charge_current_ma) {
+bool StartAxp517PdService() {
   auto& service = GetPdService();
-  if (external_charge_current_ma < 64 || external_charge_current_ma > 5120 ||
-      external_charge_current_ma % 64 != 0) {
-    return false;
-  }
   if (service.task != nullptr) {
-    return service.external_charge_current_ma == external_charge_current_ma;
+    return true;
   }
   auto& driver = GetDriver();
   if (!driver.IsAxp517Ready() || driver.chip().axp517 == nullptr) {
@@ -124,11 +116,6 @@ bool StartAxp517PdService(uint16_t external_charge_current_ma) {
 
   auto config = *default_pd_config;
   service.internal_charge_current_ma = config.contract_charge_current_ma;
-  service.external_charge_current_ma = external_charge_current_ma;
-  // 电池充电电流跟随所选电池，与是否建立 PD 合同无关。
-  // Sink 会再与 Poll 传入的当前电池电流取最小值；USB 输入限流保持板级策略。
-  config.fallback_charge_current_ma = std::max(
-      service.internal_charge_current_ma, service.external_charge_current_ma);
   service.sink = std::make_unique<cpp_bus_driver::Axp517Sink>(
       *driver.chip().axp517, config);
   xSemaphoreTake(service.mutex, portMAX_DELAY);

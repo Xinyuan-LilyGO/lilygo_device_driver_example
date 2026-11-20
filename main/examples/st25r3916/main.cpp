@@ -1454,11 +1454,22 @@ extern "C" void app_main() {
   std::printf("Maximum configured rate  : 848 kbit/s\n");
   std::printf("%s\n", kSectionLine);
   std::printf("Initializing board and NFC reader...\n");
+#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) && \
+    defined(CONFIG_LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
+  std::printf("Keyboard V2: TCA8418 disabled, NFC CS=GPIO%d IRQ=GPIO%d\n",
+      common::board::keyboard_expansion::gpio::t_mix_rf::st25r3916::kCs,
+      common::board::keyboard_expansion::gpio::t_mix_rf::st25r3916::kInt);
+  if (!common::InitMinimal()) {
+    std::printf("[ERROR] Base board initialization failed\n");
+    return;
+  }
+#else
   if (!common::Init()) {
     std::printf(
         "Board initialization completed with errors: %s; continuing example\n",
         common::kBoardName);
   }
+#endif
 
 #if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4)
   auto& board_driver = common::GetDriver();

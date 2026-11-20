@@ -9,7 +9,10 @@
 #include "battery_management.h"
 #include "common.h"
 #include "freertos/FreeRTOS.h"
+#include "freertos/queue.h"
+#include "freertos/semphr.h"
 #include "freertos/task.h"
+#include "esp_timer.h"
 
 #if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR) || \
     (defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) &&    \
@@ -77,8 +80,10 @@ void PrintSink() {
   }
   const auto& status = snapshot.status;
   BatteryLogPrintf("\nBattery PD / PPS:\n");
-  BatteryLogPrintf("  Selected battery: %s\n",
-      snapshot.external_battery_selected ? "external" : "internal");
+  BatteryLogPrintf("  Keyboard 5V input: %s\n",
+      common::GetDriver().IsExternalBatterySelected()
+          ? "present (hardware priority)"
+          : "absent");
   BatteryLogPrintf(
       "  PD service running: %s\n", snapshot.service_running ? "yes" : "no");
   BatteryLogPrintf("  PD enabled by board: %s, battery present: %s\n",
@@ -272,8 +277,9 @@ const char* NtcFaultName(cpp_bus_driver::Axp517::NtcFault value) {
 }
 
 // 只读取并展示状态，不在采样过程中调整充电参数或清除中断。
-void PrintAxp517(cpp_bus_driver::Axp517& chip) {
-  BatteryLogPrintf("\nAXP517 snapshot\n");
+void PrintAxp517(cpp_bus_driver::Axp517& chip,
+    const char* title = "AXP517 snapshot", bool ntc_configured = true) {
+  BatteryLogPrintf("\n%s\n", title);
   PrintSection("Chip information");
   cpp_bus_driver::Axp517::ChipId id;
   if (chip.GetChipId(id)) {
@@ -457,7 +463,9 @@ void PrintAxp517(cpp_bus_driver::Axp517& chip) {
   } else {
     BatteryLogPrintf("  Die temperature: read failed\n");
   }
-  if (chip.GetBatteryTemperature(measurement)) {
+  if (!ntc_configured) {
+    BatteryLogPrintf("  Battery temperature: not available (NTC not fitted)\n");
+  } else if (chip.GetBatteryTemperature(measurement)) {
     BatteryLogPrintf("  Battery temperature: %.1f C\n", measurement);
   } else {
     BatteryLogPrintf("  Battery temperature: unavailable or read failed\n");
@@ -535,6 +543,136 @@ void PrintAxp517(cpp_bus_driver::Axp517& chip) {
   }
 }
 
+#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) && defined(CONFIG_LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
+struct KeyboardSample {
+  cpp_bus_driver::Axp517::Status power{};
+  cpp_bus_driver::Axp517Sink::Status pd{};
+  uint16_t battery_mv = 0;
+  uint16_t vbus_mv = 0;
+  uint16_t system_mv = 0;
+  float charge_ma = 0;
+  uint8_t level = 0;
+  bool connected = false;
+  bool adc_valid = false;
+  bool level_valid = false;
+};
+
+struct KeyboardMonitorContext {
+  QueueHandle_t queue = nullptr;
+  SemaphoreHandle_t mutex = nullptr;
+};
+
+using common::board::keyboard_expansion::device::axp517::kDefaultChargeCurrentMa;
+
+void MonitorKeyboardPower(void* argument) {
+  auto* context = static_cast<KeyboardMonitorContext*>(argument);
+  auto queue = context->queue;
+  auto mutex = context->mutex;
+  auto& driver = common::GetDriver();
+  auto config = *driver.battery_info().default_pd_config;
+  config.contract_charge_current_ma = kDefaultChargeCurrentMa;
+  config.fallback_charge_current_ma = kDefaultChargeCurrentMa;
+  for (;;) {
+    KeyboardSample sample;
+    bool initialized = false;
+    if (xSemaphoreTake(mutex, portMAX_DELAY) == pdTRUE) {
+      initialized = driver.InitKeyboardAxp517();
+      xSemaphoreGive(mutex);
+    }
+    if (initialized) {
+      auto* chip = driver.chip().keyboard_axp517.get();
+      if (chip == nullptr) {
+        initialized = false;
+      }
+      if (!initialized) {
+        xSemaphoreTake(mutex, portMAX_DELAY);
+        driver.DeinitKeyboardAxp517();
+        xSemaphoreGive(mutex);
+      }
+    }
+    if (initialized) {
+      auto& chip = *driver.chip().keyboard_axp517;
+      cpp_bus_driver::Axp517Sink sink(chip, config);
+      int64_t next_sample = 0;
+      for (;;) {
+        const int64_t now = esp_timer_get_time() / 1000;
+        if (now >= next_sample) {
+          bool sample_ok = false;
+          if (xSemaphoreTake(mutex, portMAX_DELAY) == pdTRUE) {
+            sample_ok = chip.GetStatus(sample.power);
+            if (sample_ok) {
+              sample.connected = true;
+              sample.level_valid = chip.GetBatteryLevel(sample.level);
+              sample.adc_valid = chip.GetBatteryVoltage(sample.battery_mv) &&
+                  chip.GetSystemVoltage(sample.system_mv) &&
+                  chip.GetVbusVoltage(sample.vbus_mv) &&
+                  chip.GetChargingCurrent(sample.charge_ma);
+            }
+            xSemaphoreGive(mutex);
+          }
+          if (!sample_ok) break;
+          sample.pd = sink.status();
+          xQueueOverwrite(queue, &sample);
+          next_sample = now + 1000;
+        }
+        bool status_ok = true;
+        bool success = false;
+        if (xSemaphoreTake(mutex, portMAX_DELAY) == pdTRUE) {
+          success = sink.Poll(now, true);
+          if (!success) status_ok = chip.GetStatus(sample.power);
+          xSemaphoreGive(mutex);
+        }
+        if (!status_ok) break;
+        const auto wait = pdMS_TO_TICKS(success ? 2 : 100);
+        vTaskDelay(wait ? wait : 1);
+      }
+    }
+    xSemaphoreTake(mutex, portMAX_DELAY);
+    driver.DeinitKeyboardAxp517();
+    xSemaphoreGive(mutex);
+    sample = {};
+    xQueueOverwrite(queue, &sample);
+    vTaskDelay(pdMS_TO_TICKS(1000));
+  }
+}
+
+void PrintKeyboard(const KeyboardMonitorContext& context) {
+  const auto queue = context.queue;
+  KeyboardSample sample;
+  static bool previous_connected = false;
+  static bool connection_state_initialized = false;
+  const bool connected = queue != nullptr &&
+      xQueuePeek(queue, &sample, 0) == pdTRUE && sample.connected;
+  if (!connection_state_initialized || connected != previous_connected) {
+    BatteryLogResetScroll(true);
+    previous_connected = connected;
+    connection_state_initialized = true;
+  }
+  BatteryLogPrintf("Keyboard AXP517 | charge target: %u mA\n", kDefaultChargeCurrentMa);
+  BatteryLogPrintf("5V to mainboard: %s\n", common::GetDriver().IsExternalBatterySelected()
+      ? "detected (keyboard priority)" : "not detected (mainboard supply)");
+  if (!queue) {
+    BatteryLogPrintf("Keyboard monitor unavailable\n");
+  } else if (xQueuePeek(queue, &sample, 0) != pdTRUE || !sample.connected) {
+    BatteryLogPrintf("Keyboard PMIC offline / not ready. Retrying...\n");
+  } else {
+    auto& driver = common::GetDriver();
+    if (xSemaphoreTake(context.mutex, portMAX_DELAY) == pdTRUE) {
+      if (driver.chip().keyboard_axp517) {
+        PrintAxp517(*driver.chip().keyboard_axp517,
+            "Keyboard AXP517 snapshot", false);
+      }
+      xSemaphoreGive(context.mutex);
+    }
+    BatteryLogPrintf("PD: %s\n", SinkStateName(sample.pd.state));
+    if (sample.pd.state == cpp_bus_driver::Axp517Sink::State::kReady) {
+      BatteryLogPrintf("Contract: %s, %u mV / %u mA\n", sample.pd.pps ? "PPS" : "fixed",
+          sample.pd.voltage_mv, sample.pd.current_ma);
+    }
+  }
+}
+#endif
+
 }  // namespace
 
 void RunAxp517Example() {
@@ -551,8 +689,24 @@ void RunAxp517Example() {
   }
 #if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) && \
     defined(CONFIG_LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
-  BatteryLogPrintf(
-      "External charge current target: %u mA\n", kExternalChargeCurrentMa);
+  KeyboardMonitorContext keyboard_context;
+  keyboard_context.queue = xQueueCreate(1, sizeof(KeyboardSample));
+  keyboard_context.mutex = xSemaphoreCreateMutex();
+  const bool monitor_resources_ready = keyboard_context.queue != nullptr &&
+      keyboard_context.mutex != nullptr;
+  const bool monitor_task_ready = monitor_resources_ready &&
+      xTaskCreate(MonitorKeyboardPower, "keyboard_power", 8192,
+          &keyboard_context, tskIDLE_PRIORITY + 3, nullptr) == pdPASS;
+  if (!monitor_task_ready) {
+    if (keyboard_context.queue != nullptr) {
+      vQueueDelete(keyboard_context.queue);
+    }
+    if (keyboard_context.mutex != nullptr) {
+      vSemaphoreDelete(keyboard_context.mutex);
+    }
+    keyboard_context.queue = nullptr;
+    keyboard_context.mutex = nullptr;
+  }
 #endif
   constexpr uint8_t kAdcChannels =
       static_cast<uint8_t>(
@@ -578,6 +732,11 @@ void RunAxp517Example() {
 #endif
     PrintAxp517(*chip);
     BatteryLogEndSnapshot();
+#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) && defined(CONFIG_LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
+    BatteryLogBeginSnapshot(true);
+    PrintKeyboard(keyboard_context);
+    BatteryLogEndSnapshot();
+#endif
     vTaskDelay(pdMS_TO_TICKS(1000));
   }
 }

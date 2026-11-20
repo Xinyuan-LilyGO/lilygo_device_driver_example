@@ -17,10 +17,9 @@ struct Axp517PdSnapshot {
 
 /**
  * @brief 启动应用层 AXP517 PD 轮询任务；重复调用不会创建第二个任务。
- * @param external_charge_current_ma 外置电池充电电流，单位 mA。
  * @return 任务已启动返回 true，否则返回 false。
  */
-bool StartAxp517PdService(uint16_t external_charge_current_ma = 1024);
+bool StartAxp517PdService();
 
 /**
  * @brief 停止应用层 PD 任务；关闭 AXP517 电源前必须先调用。
