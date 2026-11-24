@@ -26,6 +26,15 @@ bool InitSdMp3Audio() {
   return g_output_codec_dev != nullptr;
 }
 
+void DeinitSdMp3Audio() {
+  if (g_output_codec_dev != nullptr) {
+    esp_codec_dev_close(g_output_codec_dev);
+    common::GetDriver().SetAudioPowerEnabled(false);
+  }
+  g_output_codec_dev = nullptr;
+  g_sample_rate = 0;
+}
+
 bool ConfigureSdMp3Audio(uint32_t sample_rate) {
   if (g_output_codec_dev == nullptr || sample_rate == 0) {
     return false;
@@ -37,6 +46,11 @@ bool ConfigureSdMp3Audio(uint32_t sample_rate) {
     return false;
   }
   g_sample_rate = 0;
+
+  if (!common::GetDriver().SetAudioPowerEnabled(true)) {
+    return false;
+  }
+  vTaskDelay(pdMS_TO_TICKS(10));
 
   esp_codec_dev_sample_info_t sample_info = {
       .bits_per_sample = codec::kBitsPerSample,

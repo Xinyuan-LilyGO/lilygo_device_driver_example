@@ -31,6 +31,12 @@ bool InitSdMp3Audio() {
   return g_output_codec_dev != nullptr;
 }
 
+void DeinitSdMp3Audio() {
+  common::GetDriver().SetEs8390OperatingMode(
+      common::DeviceDriver::Es8390OperatingMode::kSleep);
+  g_output_codec_dev = nullptr;
+}
+
 bool ConfigureSdMp3Audio(uint32_t sample_rate) {
   if (g_output_codec_dev == nullptr || sample_rate == 0) {
     return false;

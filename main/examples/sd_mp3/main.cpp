@@ -23,6 +23,11 @@ constexpr size_t kPcmBufferSize = 8 * 1024;
 
 cpp_bus_driver::PlatformHal g_platform_hal;
 
+class SdMp3AudioSession {
+ public:
+  ~SdMp3AudioSession() { DeinitSdMp3Audio(); }
+};
+
 bool PlayMp3File(const char* path) {
   common::audio::Mp3Metadata metadata;
   if (!common::audio::ReadMp3Metadata(path, &metadata)) {
@@ -30,6 +35,12 @@ bool PlayMp3File(const char* path) {
     return false;
   }
   common::audio::PrintMp3Input(path, metadata);
+  if (!InitSdMp3Audio()) {
+    printf("Audio output initialization failed\n");
+    return false;
+  }
+  const SdMp3AudioSession audio_session;
+
   if (!ConfigureSdMp3Audio(metadata.sample_rate_hz)) {
     printf("Audio sample rate configuration failed\n");
     return false;
@@ -162,11 +173,6 @@ extern "C" void app_main() {
     printf("BOOT button initialization failed\n");
     return;
   }
-  if (!InitSdMp3Audio()) {
-    printf("Audio output initialization failed\n");
-    return;
-  }
-
   printf("Press BOOT to play: %s\n", mp3_file_path.c_str());
   bool was_pressed = false;
   while (true) {

@@ -6,5 +6,6 @@
 #include <cstdint>
 
 bool InitSdMp3Audio();
+void DeinitSdMp3Audio();
 bool ConfigureSdMp3Audio(uint32_t sample_rate);
 bool WriteSdMp3Pcm(const void* data, size_t byte_count);

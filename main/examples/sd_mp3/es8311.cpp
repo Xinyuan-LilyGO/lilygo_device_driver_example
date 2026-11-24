@@ -30,6 +30,12 @@ bool InitSdMp3Audio() {
   return g_es8311 != nullptr;
 }
 
+void DeinitSdMp3Audio() {
+  common::GetDriver().SetEs8311OperatingMode(
+      common::DeviceDriver::Es8311OperatingMode::kSleep);
+  g_es8311 = nullptr;
+}
+
 bool ConfigureSdMp3Audio(uint32_t sample_rate) {
   if (g_es8311 == nullptr || sample_rate == 0) {
     return false;
