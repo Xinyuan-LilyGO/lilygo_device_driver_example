@@ -141,19 +141,15 @@ void LvglPort::TaskEntry(void* context) {
  * @return 注册成功返回 true，否则返回 false
  */
 bool LvglPort::RegisterFlushReadyCallback() {
-  const esp_lcd_dpi_panel_event_callbacks_t callbacks = {
-      .on_color_trans_done = [](esp_lcd_panel_handle_t,
-                                 esp_lcd_dpi_panel_event_data_t*,
-                                 void* context) -> bool {
-        auto* port = static_cast<LvglPort*>(context);
-        if (port != nullptr && port->display_ != nullptr) {
-          lv_display_flush_ready(port->display_);
-        }
-        return false;
-      },
-      .on_refresh_done = [](esp_lcd_panel_handle_t,
-                             esp_lcd_dpi_panel_event_data_t*,
-                             void*) -> bool { return false; },
+  esp_lcd_dpi_panel_event_callbacks_t callbacks{};
+  callbacks.on_color_trans_done = [](esp_lcd_panel_handle_t,
+                                     esp_lcd_dpi_panel_event_data_t*,
+                                     void* context) -> bool {
+    auto* port = static_cast<LvglPort*>(context);
+    if (port != nullptr && port->display_ != nullptr) {
+      lv_display_flush_ready(port->display_);
+    }
+    return false;
   };
   return esp_lcd_dpi_panel_register_event_callbacks(
              GetDriver().bus().screen_mipi_bus->device_handle(), &callbacks,

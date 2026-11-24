@@ -21,12 +21,12 @@ constexpr uint32_t kStopMs = 180;
 extern "C" void app_main() {
   printf("Haptic feedback example on %s\n", common::kBoardName);
 
-  auto& driver = common::GetDriver();
   if (!common::Init()) {
     printf(
         "Device driver initialization completed with errors; continuing "
         "example\n");
   }
+  auto& driver = common::GetDriver();
   if (!driver.IsAw86224Ready()) {
     printf("AW86224 init failed\n");
     return;

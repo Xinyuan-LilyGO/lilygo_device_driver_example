@@ -106,11 +106,10 @@ bool RunScreenSoftwareColorBars(lv_display_t* display) {
   }
   lv_refr_now(display);
 #if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_GLASSES_P4)
+  constexpr uint16_t kStartupBrightnessGain = 0x100;
   auto* screen = common::GetDriver().chip().s023msafjf10111e1.get();
   const bool result =
-      screen != nullptr &&
-      screen->SetBrightnessGain(
-          cpp_bus_driver::S023msafjf10111e1::kDefaultBrightnessGain);
+      screen != nullptr && screen->SetBrightnessGain(kStartupBrightnessGain);
 #else
   common::StartBacklight();
   const bool result = true;

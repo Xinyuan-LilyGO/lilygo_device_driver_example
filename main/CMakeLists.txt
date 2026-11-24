@@ -59,6 +59,7 @@ elseif(example_name STREQUAL "microphone_speaker_loopback")
 elseif(example_name STREQUAL "sd_mp3")
     set(example_extra_sources
         "${example_path}/es8311.cpp"
+        "${example_path}/es8389.cpp"
         "${example_path}/es8390.cpp")
 elseif(example_name STREQUAL "wifi_mp3")
     set(example_extra_sources
