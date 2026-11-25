@@ -9,11 +9,13 @@
 extern "C" void app_main() {
   printf("IMU example on %s\n", common::kBoardName);
 
+#if !defined(CONFIG_LILYGO_DEVICE_DRIVER_T_GLASSES_P4)
   if (!common::Init()) {
     printf(
         "Device driver initialization completed with errors; continuing "
         "example\n");
   }
+#endif
 
   RunImuExample();
 }

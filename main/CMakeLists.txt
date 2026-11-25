@@ -27,6 +27,7 @@ endif()
 if(example_name STREQUAL "imu")
     set(example_extra_sources
         "${example_path}/imu.cpp"
+        "${example_path}/bhi260ap_bmm350.cpp"
         "${example_path}/bhi260ap_qmc6309.cpp"
         "${example_path}/icm20948_qmi8658_qmc6309.cpp")
 elseif(example_name STREQUAL "gps")
