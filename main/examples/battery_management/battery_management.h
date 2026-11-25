@@ -3,14 +3,15 @@
  */
 #pragma once
 
-// 示例日志同时输出到串口和 LVGL；仅从 app_main 所在任务调用。
+// 示例日志输出到串口，T-Display-P4 和 T-Display-P4-Air 同步显示到屏幕。
 void BatteryLogPrintf(const char* format, ...)
     __attribute__((format(printf, 1, 2)));
 
-// 每轮采样统一更新屏幕，保留启动信息，避免历史日志无限增长。
+// 屏幕日志按采样轮次更新，并保留启动信息。
 void BatteryLogBeginSnapshot(bool keyboard = false);
 void BatteryLogEndSnapshot();
 void BatteryLogResetScroll(bool keyboard);
 
 void RunBq27220Example();
 void RunAxp517Example();
+void RunBq25896Example();

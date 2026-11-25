@@ -46,7 +46,8 @@ elseif(example_name STREQUAL "lora_tx_rx")
 elseif(example_name STREQUAL "battery_management")
     set(example_extra_sources
         "${example_path}/bq27220.cpp"
-        "${example_path}/axp517.cpp")
+        "${example_path}/axp517.cpp"
+        "${example_path}/bq25896.cpp")
 elseif(example_name STREQUAL "rtc")
     set(example_extra_sources
         "${example_path}/pcf8563.cpp"

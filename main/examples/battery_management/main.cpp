@@ -2,12 +2,16 @@
  * @Description: 根据当前硬件配置运行对应的电池管理示例
  */
 #include <cstdarg>
-#include <cstddef>
-#include <cstdint>
 #include <cstdio>
-#include <string>
 
 #include "battery_management.h"
+#include "common.h"
+
+#if !defined(CONFIG_LILYGO_DEVICE_DRIVER_T_GLASSES_P4)
+#include <cstddef>
+#include <cstdint>
+#include <string>
+
 #include "display/lvgl.h"
 
 namespace {
@@ -52,8 +56,8 @@ bool ReadTouch(Touch* touch, lv_indev_data_t* data) {
 }
 
 void TouchInput(lv_indev_t*, lv_indev_data_t* data) {
-  auto& driver = common::GetDriver();
   data->state = LV_INDEV_STATE_RELEASED;
+  auto& driver = common::GetDriver();
   if (!driver.IsTouchReady()) {
     return;
   }
@@ -113,12 +117,12 @@ lv_obj_t* CreateBatteryTile(lv_obj_t* tiles, size_t index) {
 }
 
 void InitLogScreen() {
-  auto& driver = common::GetDriver();
-  // 完整初始化已经负责初始化屏幕、触摸和背光，这里只检查结果，避免重复复位屏幕。
+  // 屏幕已由板级初始化流程处理，这里只检查结果，避免重复复位。
   if (!common::IsScreenReady()) {
     BatteryLogPrintf("Screen is not ready; continuing serial output\n");
     return;
   }
+  auto& driver = common::GetDriver();
   if (!driver.IsTouchReady()) {
     BatteryLogPrintf("Touch init failed; touch scrolling unavailable\n");
   }
@@ -215,21 +219,39 @@ void BatteryLogResetScroll(bool keyboard) {
   lv_obj_scroll_to_y(lv_obj_get_parent(g_labels[1]), 0, LV_ANIM_OFF);
   g_lvgl_port.Unlock();
 }
+#else
+void BatteryLogPrintf(const char* format, ...) {
+  va_list args;
+  va_start(args, format);
+  std::vprintf(format, args);
+  va_end(args);
+}
+#endif
 
 namespace {
 
 void BatteryManagementTask(void*) {
   BatteryLogPrintf("Battery management example on %s %s\n", common::kBoardName,
       common::GetDriver().device_model_info().version);
+#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_GLASSES_P4)
+  auto& driver = common::GetDriver();
+  bool initialized = common::InitMinimal();
+  initialized &= driver.InitBq27220();
+#else
   const bool initialized = common::Init();
+#endif
   if (!initialized) {
     BatteryLogPrintf(
         "Device driver initialization completed with errors; continuing "
         "example\n");
   }
+#if !defined(CONFIG_LILYGO_DEVICE_DRIVER_T_GLASSES_P4)
   InitLogScreen();
+#endif
 
-#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) && \
+#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_GLASSES_P4)
+  RunBq25896Example();
+#elif defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) && \
     !defined(CONFIG_LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
   RunBq27220Example();
 #elif defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR) || \
