@@ -36,11 +36,13 @@ bool WaitForRtcReset() {
 extern "C" void app_main() {
   printf("RTC example on %s %s\n", common::kBoardName,
       common::GetDriver().device_model_info().version);
+#if !defined(CONFIG_LILYGO_DEVICE_DRIVER_T_GLASSES_P4)
   if (!common::Init()) {
     printf(
         "Device driver initialization completed with errors; continuing "
         "example\n");
   }
+#endif
   if (!g_platform_hal.SetGpioMode(common::BootButtonGpio(),
           cpp_bus_driver::PlatformHal::GpioMode::kInput,
           cpp_bus_driver::PlatformHal::GpioStatus::kPullup)) {
@@ -48,7 +50,8 @@ extern "C" void app_main() {
     return;
   }
 
-#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR)
+#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR) || \
+    defined(CONFIG_LILYGO_DEVICE_DRIVER_T_GLASSES_P4)
   RunRx8130ceRtcExample();
 #elif defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) && \
     !defined(CONFIG_LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
