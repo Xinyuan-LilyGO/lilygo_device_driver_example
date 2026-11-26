@@ -18,7 +18,8 @@ bool InitCoprocessorControlHardware() {
   return common::GetDriver().InitMinimal();
 }
 
-#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR)
+#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR) || \
+    defined(CONFIG_LILYGO_DEVICE_DRIVER_T_GLASSES_P4)
 /**
  * @brief 切换外部串口连接目标并输出切换日志
  * @param target 目标处理器
@@ -28,15 +29,15 @@ bool SwitchUartTarget(common::DeviceDriver::UartTarget target) {
   const char* name = target == common::DeviceDriver::UartTarget::kEsp32c5
                          ? "ESP32-C5"
                          : "ESP32-P4";
-  printf("UART switching to %s\n", name);
+  printf("Serial port switching to %s\n", name);
   // 切离 P4 前刷新日志，并留出串口发送时间。
   fflush(stdout);
   vTaskDelay(pdMS_TO_TICKS(100));
   if (!common::GetDriver().SetUartTarget(target)) {
-    printf("UART switch to %s failed\n", name);
+    printf("Serial port switch to %s failed\n", name);
     return false;
   }
-  printf("UART connected to %s\n", name);
+  printf("Serial port connected to %s\n", name);
   return true;
 }
 
@@ -79,7 +80,9 @@ void RunBootUartSwitch() {
     vTaskDelay(pdMS_TO_TICKS(10));
   }
 }
+#endif
 
+#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR)
 /**
  * @brief 为外部调试器开启 nRF9151 电源
  * @return 电源控制成功返回 true，否则返回 false
@@ -126,6 +129,14 @@ bool PrepareCoprocessors() {
   printf("BOOT GPIO %d toggles the UART between ESP32-P4 and ESP32-C5\n",
       common::BootButtonGpio());
   return SwitchUartTarget(common::DeviceDriver::UartTarget::kEsp32c5);
+#elif defined(CONFIG_LILYGO_DEVICE_DRIVER_T_GLASSES_P4)
+  printf("Switching USB to the ESP32-C5 CH343P serial port\n");
+  printf("Use the new COM port with esptool --chip esp32c5\n");
+  printf("BOOT GPIO %d toggles USB between ESP32-P4 and ESP32-C5\n",
+      common::BootButtonGpio());
+  fflush(stdout);
+  vTaskDelay(pdMS_TO_TICKS(100));
+  return driver.EnterEsp32c5DownloadMode();
 #elif defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) && \
     defined(CONFIG_LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
   if (!driver.EnterEsp32c5DownloadMode()) {
@@ -170,7 +181,8 @@ extern "C" void app_main() {
     printf("Coprocessor preparation failed\n");
   } else {
     printf("Coprocessor preparation completed\n");
-#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR)
+#if defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4_AIR) || \
+    defined(CONFIG_LILYGO_DEVICE_DRIVER_T_GLASSES_P4)
     RunBootUartSwitch();
 #endif
   }
