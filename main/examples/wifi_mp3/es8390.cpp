@@ -16,7 +16,7 @@ esp_codec_dev_handle_t g_output_codec_dev = nullptr;
 
 }  // namespace
 
-bool InitWifiMp3Audio() {
+bool InitWifiMp3Audio(const esp_audio_dec_info_t&) {
   auto& driver = common::GetDriver();
   if (!driver.IsEs8390Ready() ||
       !driver.SetEs8390OperatingMode(
@@ -26,6 +26,14 @@ bool InitWifiMp3Audio() {
 
   g_output_codec_dev = driver.es8390_output_codec_dev();
   return g_output_codec_dev != nullptr;
+}
+
+void DeinitWifiMp3Audio() {
+  if (g_output_codec_dev != nullptr) {
+    common::GetDriver().SetEs8390OperatingMode(
+        common::DeviceDriver::Es8390OperatingMode::kSleep);
+    g_output_codec_dev = nullptr;
+  }
 }
 
 bool WriteWifiMp3Pcm(const void* data, size_t byte_count) {

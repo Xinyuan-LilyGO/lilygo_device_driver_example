@@ -15,7 +15,7 @@ cpp_bus_driver::Es8311* g_es8311 = nullptr;
 
 }  // namespace
 
-bool InitWifiMp3Audio() {
+bool InitWifiMp3Audio(const esp_audio_dec_info_t&) {
   auto& driver = common::GetDriver();
   if (!driver.IsEs8311Ready() ||
       !driver.SetEs8311OperatingMode(
@@ -25,6 +25,14 @@ bool InitWifiMp3Audio() {
 
   g_es8311 = driver.chip().es8311.get();
   return g_es8311 != nullptr;
+}
+
+void DeinitWifiMp3Audio() {
+  if (g_es8311 != nullptr) {
+    common::GetDriver().SetEs8311OperatingMode(
+        common::DeviceDriver::Es8311OperatingMode::kSleep);
+    g_es8311 = nullptr;
+  }
 }
 
 bool WriteWifiMp3Pcm(const void* data, size_t byte_count) {

@@ -131,7 +131,7 @@ bool PrepareCoprocessors() {
   return SwitchUartTarget(common::DeviceDriver::UartTarget::kEsp32c5);
 #elif defined(CONFIG_LILYGO_DEVICE_DRIVER_T_GLASSES_P4)
   printf("Switching USB to the ESP32-C5 CH343P serial port\n");
-  printf("Use the new COM port with esptool --chip esp32c5\n");
+  printf("Use esptool on the new COM port to enter download mode via DTR/RTS\n");
   printf("BOOT GPIO %d toggles USB between ESP32-P4 and ESP32-C5\n",
       common::BootButtonGpio());
   fflush(stdout);

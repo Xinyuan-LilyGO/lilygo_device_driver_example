@@ -149,6 +149,7 @@ void HttpStreamPlayTask(void*) {
   const uint32_t start_time = GetSystemTimeMs();
   uint32_t last_print_time = start_time;
   bool playback_ok = true;
+  bool audio_initialized = false;
 
   while (playback_ok) {
     const int read_length = esp_http_client_read(client,
@@ -191,11 +192,22 @@ void HttpStreamPlayTask(void*) {
         break;
       }
 
-      if (output.decoded_size > 0 &&
-          !WriteWifiMp3Pcm(output.buffer, output.decoded_size)) {
-        printf("PCM audio output failed\n");
-        playback_ok = false;
-        break;
+      if (output.decoded_size > 0) {
+        if (!audio_initialized) {
+          esp_audio_dec_info_t stream_info = {};
+          if (esp_audio_dec_get_info(decoder, &stream_info) != ESP_AUDIO_ERR_OK ||
+              !InitWifiMp3Audio(stream_info)) {
+            printf("Audio output initialization failed\n");
+            playback_ok = false;
+            break;
+          }
+          audio_initialized = true;
+        }
+        if (!WriteWifiMp3Pcm(output.buffer, output.decoded_size)) {
+          printf("PCM audio output failed\n");
+          playback_ok = false;
+          break;
+        }
       }
 
       if (input.consumed == 0) {
@@ -228,6 +240,7 @@ void HttpStreamPlayTask(void*) {
     }
   }
 
+  DeinitWifiMp3Audio();
   printf("MP3 stream playback finished\n");
   CleanupStream(client, decoder);
   vTaskDelete(nullptr);
@@ -303,11 +316,6 @@ extern "C" void app_main() {
   InitWifiStation();
   xEventGroupWaitBits(
       g_wifi_events, kWifiConnectedBit, pdFALSE, pdTRUE, portMAX_DELAY);
-
-  if (!InitWifiMp3Audio()) {
-    printf("Audio output initialization failed\n");
-    return;
-  }
 
   if (xTaskCreate(HttpStreamPlayTask, "wifi_mp3_task", 10 * 1024, nullptr, 5,
           nullptr) != pdPASS) {

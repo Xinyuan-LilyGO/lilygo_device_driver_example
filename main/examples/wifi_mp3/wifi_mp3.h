@@ -4,5 +4,8 @@
 #pragma once
 #include <cstddef>
 
-bool InitWifiMp3Audio();
+#include "esp_audio_dec.h"
+
+bool InitWifiMp3Audio(const esp_audio_dec_info_t& stream_info);
+void DeinitWifiMp3Audio();
 bool WriteWifiMp3Pcm(const void* data, size_t byte_count);
