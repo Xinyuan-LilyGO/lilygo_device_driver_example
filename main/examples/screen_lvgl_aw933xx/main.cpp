@@ -1,15 +1,13 @@
 /*
- * @Description: T-Display-P4 V2 外接 AW93307 的独立触摸按键及三电极滑动调试
+ * @Description: T-Glasses-P4 触摸按键与滑条的 LVGL 交互示例
  */
 #include <algorithm>
 #include <array>
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
-#include <memory>
 
-#include "bus/i2c/software_i2c.h"
-#include "chip/i2c/aw933xx.h"
+#include "common.h"
 #include "display/lvgl.h"
 #include "driver/gpio.h"
 #include "esp_timer.h"
@@ -17,37 +15,19 @@
 #include "freertos/task.h"
 #include "lvgl.h"
 
-#if !defined(CONFIG_LILYGO_DEVICE_DRIVER_T_DISPLAY_P4) || \
-    !defined(CONFIG_LILYGO_DEVICE_DRIVER_DEVICE_VERSION_V2)
-#error "screen_lvgl_aw933xx requires T-Display-P4 V2"
+#if !defined(CONFIG_LILYGO_DEVICE_DRIVER_T_GLASSES_P4)
+#error "screen_lvgl_aw933xx requires T-Glasses-P4"
 #endif
 
 namespace {
 
-using Sensor = cpp_bus_driver::Aw933xx;
-// CN10: 2=NFC_IRQ(GPIO27), 4=NFC_CS(GPIO28), 6=CC_GDO2(GPIO29)。
-// SDA/SCL 和 INTN 均通过 1.8V/3.3V 电平转换连接，不连接键盘或 RF 扩展板。
-constexpr int kSda = 27;
-constexpr int kScl = 28;
-constexpr int kInterrupt = 29;
-constexpr uint16_t kEnabledChannels = 0x0F;
-// 提高硬件及软件触摸阈值以降低灵敏度；软件差值保持原始 Q10 单位。
-constexpr uint32_t kSliderTouchThreshold = 2000000;
-constexpr uint32_t kSliderPositionThreshold = 50000;
-constexpr uint32_t kButtonTouchThreshold = 800000;
-constexpr uint32_t kSignalTouchThreshold = 320000000;
-constexpr uint32_t kSignalReleaseThreshold = kSignalTouchThreshold / 2;
-constexpr uint32_t kSliderSignalTouchThreshold = 800000000;
-constexpr uint32_t kSliderSignalReleaseThreshold =
-    kSliderSignalTouchThreshold / 2;
-constexpr uint8_t kSignalDebounceSamples = 3;
-constexpr uint8_t kButtonChannel = 0;
-constexpr uint8_t kSliderFirstChannel = 1;
-constexpr uint8_t kSliderChannelCount = 3;
-// CH0 为 CS1 按键；CH1/2/3 分别为滑条 CS0/3/4。
-constexpr std::array<uint8_t, 4> kElectrodes = {1, 0, 3, 4};
+using TouchEvent = common::DeviceDriver::Aw93307TouchEvent;
 
 constexpr int64_t kGestureHighlightMs = 2500;
+constexpr int64_t kCalibrationStatusMs = 3000;
+constexpr int64_t kButtonDebounceMs = 30;
+constexpr int32_t kTextScrollStep = 40;
+constexpr char kTouchReadyText[] = "AW93307 touch test";
 constexpr uint32_t kInkColor = 0x202B3C;
 constexpr uint32_t kMutedColor = 0x66758A;
 constexpr uint32_t kAccentColor = 0x1869C9;
@@ -69,7 +49,7 @@ struct GestureView {
 };
 
 struct GestureHistory {
-  Sensor::SliderEvent event{};
+  TouchEvent event{};
   int64_t time_ms = -1;
 };
 
@@ -84,6 +64,7 @@ struct NavigationState {
 
 struct Ui {
   lv_obj_t* status = nullptr;
+  lv_obj_t* interactions = nullptr;
   GestureView button;
   GestureView slider;
   lv_obj_t* position = nullptr;
@@ -93,6 +74,33 @@ struct Ui {
   lv_obj_t* app_tileview = nullptr;
   lv_obj_t* app_list = nullptr;
   std::array<lv_obj_t*, kAppListItemCount> app_rows{};
+};
+
+class Button {
+ public:
+  explicit Button(int gpio)
+      : gpio_(static_cast<gpio_num_t>(gpio)),
+        sampled_(gpio_get_level(gpio_) == 0),
+        pressed_(sampled_) {}
+
+  bool ReadPress(int64_t now_ms) {
+    const bool sampled = gpio_get_level(gpio_) == 0;
+    if (sampled != sampled_) {
+      sampled_ = sampled;
+      changed_ms_ = now_ms;
+    }
+    if (sampled_ == pressed_ || now_ms - changed_ms_ < kButtonDebounceMs) {
+      return false;
+    }
+    pressed_ = sampled_;
+    return pressed_;
+  }
+
+ private:
+  gpio_num_t gpio_;
+  bool sampled_;
+  bool pressed_;
+  int64_t changed_ms_ = 0;
 };
 
 // 主循环持有 LvglPort 锁时更新，输入回调由同一 LVGL 任务读取。
@@ -139,8 +147,8 @@ lv_obj_t* CreateInteractionArea(
   lv_obj_set_style_border_color(area, lv_color_hex(kLineColor), 0);
   lv_obj_set_style_border_width(area, 1, 0);
   lv_obj_set_style_radius(area, 12, 0);
-  lv_obj_set_style_pad_all(area, 18, 0);
-  lv_obj_set_style_pad_row(area, 10, 0);
+  lv_obj_set_style_pad_all(area, 6, 0);
+  lv_obj_set_style_pad_row(area, 2, 0);
   lv_obj_set_flex_flow(area, LV_FLEX_FLOW_COLUMN);
   auto* heading = AddLabel(area, title);
   lv_obj_set_style_text_color(heading, lv_color_hex(kAccentColor), 0);
@@ -282,16 +290,37 @@ Ui CreateUi() {
   lv_obj_set_style_bg_color(root, lv_color_hex(0xFFFFFF), 0);
   lv_obj_set_style_text_color(root, lv_color_hex(kInkColor), 0);
   lv_obj_set_style_text_font(root, &lv_font_montserrat_26, 0);
-  lv_obj_set_style_pad_all(root, 24, 0);
-  lv_obj_set_style_pad_row(root, 16, 0);
+  lv_obj_set_style_pad_all(root, 8, 0);
+  lv_obj_set_style_pad_row(root, 6, 0);
   lv_obj_set_flex_flow(root, LV_FLEX_FLOW_COLUMN);
-  AddLabel(root, "AW93307 touch test");
   Ui ui;
   ui.status = AddLabel(root, "Loading sensor...");
-  lv_obj_set_style_text_color(ui.status, lv_color_hex(kMutedColor), 0);
-  CreateInteractionArea(root, "Touch button / CS1", &ui.button);
-  auto* slider_area =
-      CreateInteractionArea(root, "Slider / CS0 - CS3 - CS4", &ui.slider);
+  auto* button_hint = AddLabel(root, "POWER: calibrate / BOOT: up / KEY: down");
+  lv_obj_set_style_text_color(button_hint, lv_color_hex(kMutedColor), 0);
+  auto* body = lv_obj_create(root);
+  lv_obj_set_width(body, LV_PCT(100));
+  lv_obj_set_height(body, 0);
+  lv_obj_set_flex_grow(body, 1);
+  lv_obj_remove_flag(body, LV_OBJ_FLAG_SCROLLABLE);
+  lv_obj_set_style_pad_all(body, 0, 0);
+  lv_obj_set_style_pad_column(body, 8, 0);
+  lv_obj_set_style_border_width(body, 0, 0);
+  lv_obj_set_style_bg_opa(body, LV_OPA_TRANSP, 0);
+  lv_obj_set_flex_flow(body, LV_FLEX_FLOW_ROW);
+
+  auto* interactions = ui.interactions = lv_obj_create(body);
+  lv_obj_set_width(interactions, LV_PCT(40));
+  lv_obj_set_height(interactions, LV_PCT(100));
+  lv_obj_add_flag(interactions, LV_OBJ_FLAG_SCROLLABLE);
+  lv_obj_set_scroll_dir(interactions, LV_DIR_VER);
+  lv_obj_set_scrollbar_mode(interactions, LV_SCROLLBAR_MODE_AUTO);
+  lv_obj_set_style_pad_all(interactions, 0, 0);
+  lv_obj_set_style_pad_row(interactions, 4, 0);
+  lv_obj_set_style_border_width(interactions, 0, 0);
+  lv_obj_set_style_bg_opa(interactions, LV_OPA_TRANSP, 0);
+  lv_obj_set_flex_flow(interactions, LV_FLEX_FLOW_COLUMN);
+  CreateInteractionArea(interactions, "Touch button", &ui.button);
+  auto* slider_area = CreateInteractionArea(interactions, "Slider", &ui.slider);
   ui.position = AddLabel(slider_area, "Signal position: --");
   ui.bar = lv_bar_create(slider_area);
   lv_obj_set_size(ui.bar, LV_PCT(100), 20);
@@ -299,117 +328,21 @@ Ui CreateUi() {
   lv_obj_set_style_bg_color(ui.bar, lv_color_hex(0xE8EEF6), LV_PART_MAIN);
   lv_obj_set_style_bg_color(
       ui.bar, lv_color_hex(kAccentColor), LV_PART_INDICATOR);
-  auto* preview = lv_obj_create(root);
-  lv_obj_set_width(preview, LV_PCT(100));
-  lv_obj_set_height(preview, 0);
+  auto* preview = lv_obj_create(body);
+  lv_obj_set_width(preview, 0);
+  lv_obj_set_height(preview, LV_PCT(100));
   lv_obj_set_flex_grow(preview, 1);
-  lv_obj_set_style_min_height(preview, 330, 0);
+  lv_obj_set_style_min_width(preview, 0, 0);
   lv_obj_remove_flag(preview, LV_OBJ_FLAG_SCROLLABLE);
-  lv_obj_set_style_pad_all(preview, 18, 0);
-  lv_obj_set_style_pad_row(preview, 10, 0);
+  lv_obj_set_style_pad_all(preview, 8, 0);
+  lv_obj_set_style_pad_row(preview, 6, 0);
   lv_obj_set_style_bg_color(preview, lv_color_hex(0xFFFFFF), 0);
   lv_obj_set_style_border_color(preview, lv_color_hex(kLineColor), 0);
   lv_obj_set_style_border_width(preview, 1, 0);
   lv_obj_set_style_radius(preview, 12, 0);
   lv_obj_set_flex_flow(preview, LV_FLEX_FLOW_COLUMN);
   CreateAppNavigation(preview, &ui);
-  AddLabel(root, "BOOT: calibrate with fingers away");
   return ui;
-}
-
-/**
- * @brief 空载校准滑条及独立按键的四个通道，等待寄生电容校准稳定。
- * @param sensor 已启用四通道扫描的传感器。
- * @return 四通道校准命令发送成功并完成等待返回 true，否则返回 false。
- */
-bool CalibrateSensor(Sensor* sensor) {
-  if (!sensor->Calibrate(kEnabledChannels)) {
-    return false;
-  }
-  vTaskDelay(pdMS_TO_TICKS(500));
-  return true;
-}
-
-/**
- * @brief 配置三电极滑条与 CS1 独立触摸按键，保持佩戴算法关闭。
- * @param sensor 已加载固件并处于睡眠模式的传感器。
- * @return 所有配置、启动及空载校准成功返回 true。
- */
-bool ConfigureSensor(Sensor* sensor) {
-  uint32_t id;
-  if (!sensor->GetChipId(&id) || id != 0xA9330710 ||
-      !sensor->SetInterruptPin(Sensor::InterruptPin::kCs2)) {
-    return false;
-  }
-  for (uint8_t channel = 0; channel < kElectrodes.size(); ++channel) {
-    std::array<Sensor::ElectrodeMode, Sensor::kChannelCount> electrodes{};
-    for (uint8_t cs = 0; cs < Sensor::kChannelCount; ++cs) {
-      if ((sensor->electrode_mask() & (1U << cs)) != 0 && cs != 2 && cs != 5) {
-        electrodes[cs] = Sensor::ElectrodeMode::kGround;
-      }
-    }
-    electrodes[kElectrodes[channel]] = Sensor::ElectrodeMode::kMeasure;
-    if (!sensor->ConfigureElectrodes(channel, electrodes)) {
-      return false;
-    }
-  }
-  Sensor::WidgetConfig slider;
-  slider.first_channel = kSliderFirstChannel;
-  slider.x_channels = kSliderChannelCount;
-  slider.touch_threshold = kSliderTouchThreshold;
-  slider.position_threshold = kSliderPositionThreshold;
-  slider.scan_period_ms = 20;
-  slider.click_interval_ms = 500;
-  Sensor::WidgetConfig button;
-  button.widget = Sensor::Widget::kButton;
-  button.first_channel = kButtonChannel;
-  button.x_channels = 1;
-  button.touch_threshold = kButtonTouchThreshold;
-  button.position_threshold = kButtonTouchThreshold;
-  button.scan_period_ms = 20;
-  button.click_interval_ms = 500;
-  button.long_press_ms = 2000;
-  button.longer_press_ms = 3000;
-  button.super_long_press_ms = 4000;
-  if (!sensor->ConfigureWidget(0, slider) ||
-      !sensor->ConfigureWidget(1, button) ||
-      !sensor->ConfigureScan(kEnabledChannels, 20) ||
-      !sensor->SetInterruptMask(0x8007F) ||
-      !sensor->SetOperatingMode(Sensor::OperatingMode::kActive)) {
-    return false;
-  }
-  if (!CalibrateSensor(sensor)) {
-    return false;
-  }
-  vTaskDelay(pdMS_TO_TICKS(100));
-  Sensor::Events discarded;
-  return sensor->ReadEvents(&discarded);
-}
-
-/**
- * @brief 获取滑动电极正差值加权位置，仅用于观察电极响应，不代替芯片事件。
- * @param channels 四通道采样数据。
- * @param threshold 本次触摸判定阈值，使用芯片原始单位。
- * @param position 输出 0~100 的调试位置，未达到阈值时保持不变。
- * @return 滑动电极存在超过指定阈值的信号返回 true。
- */
-bool GetSignalPosition(const std::array<Sensor::ChannelData, 4>& channels,
-    uint32_t threshold, int32_t* position) {
-  int64_t total = 0;
-  int64_t weighted = 0;
-  bool touched = false;
-  for (size_t i = 0; i < kSliderChannelCount; ++i) {
-    const int64_t signal =
-        std::max<int32_t>(0, channels[kSliderFirstChannel + i].difference);
-    touched |= signal > threshold;
-    total += signal;
-    weighted += signal * i * 50;
-  }
-  if (!touched || total == 0) {
-    return false;
-  }
-  *position = static_cast<int32_t>(weighted / total);
-  return true;
 }
 
 /**
@@ -435,7 +368,7 @@ const char* ClickGestureName(uint8_t clicks) {
 /**
  * @brief 将芯片按住事件编码转换为名称，不将软件触摸状态当作手势。
  * @param press 芯片报告的按住事件编码。
- * @return 对应的英文名称，未知编码可通过串口原始值排查。
+ * @return 对应的英文名称。
  */
 const char* HoldGestureName(uint8_t press) {
   switch (press) {
@@ -458,7 +391,7 @@ const char* HoldGestureName(uint8_t press) {
  * @param text 输出缓冲区。
  * @param size 输出缓冲区容量。
  */
-void FormatGesture(const Sensor::SliderEvent& event, char* text, size_t size) {
+void FormatGesture(const TouchEvent& event, char* text, size_t size) {
   const bool has_click = event.clicks != 0;
   const bool has_hold = event.press != 0;
   snprintf(text, size, "%s%s%s%s%s%s%s%s",
@@ -473,23 +406,18 @@ void FormatGesture(const Sensor::SliderEvent& event, char* text, size_t size) {
 }
 
 /**
- * @brief 保存当前组的新硬件事件，空报告不覆盖历史，并同步输出串口日志。
+ * @brief 保存当前组的新硬件事件，空报告不覆盖历史。
  * @param history 对应区域的独立事件记录。
  * @param event 本轮读取的硬件事件。
  * @param now_ms 当前毫秒时刻。
- * @param name 串口中的区域名称。
  */
-void CaptureGesture(GestureHistory* history, const Sensor::SliderEvent& event,
-    int64_t now_ms, const char* name) {
+void CaptureGesture(
+    GestureHistory* history, const TouchEvent& event, int64_t now_ms) {
   if (event.clicks == 0 && event.press == 0 && event.directions == 0) {
     return;
   }
   history->event = event;
   history->time_ms = now_ms;
-  char text[112];
-  FormatGesture(event, text, sizeof(text));
-  printf("AW933xx %s gesture: %s (clicks=%u press=%u directions=0x%02X)\n",
-      name, text, event.clicks, event.press, event.directions);
 }
 
 /**
@@ -572,10 +500,10 @@ void RefreshAppNavigation(const Ui& ui, const NavigationState& navigation) {
  * @param navigation 当前页面状态和本次滑动锚点。
  * @param touched 本轮是否存在有效滑条信号。
  * @param position 软件信号位置，范围 0~100。
- * @param button_event 本轮 CS1 硬件事件；不处理滑条自身的点击事件。
+ * @param button_event 本轮独立触摸按键硬件事件；不处理滑条自身的点击事件。
  */
 void UpdateNavigation(const Ui& ui, NavigationState* navigation, bool touched,
-    int32_t position, const Sensor::SliderEvent& button_event) {
+    int32_t position, const TouchEvent& button_event) {
   if (!navigation->in_app) {
     const int32_t step = lv_obj_get_content_width(ui.app_tileview);
     if (step > 0) {
@@ -657,6 +585,10 @@ void UpdateNavigation(const Ui& ui, NavigationState* navigation, bool touched,
 }  // namespace
 
 extern "C" void app_main() {
+  using common::board::gpio::button::kEsp32p4Boot;
+  using common::board::gpio::button::kKey;
+  using common::board::gpio::button::kPower;
+
   if (!common::Init()) {
     printf(
         "Device driver initialization completed with errors; continuing "
@@ -671,172 +603,94 @@ extern "C" void app_main() {
   if (!port.Start()) {
     return;
   }
-  gpio_config_t inputs = {};
-  inputs.pin_bit_mask =
-      (1ULL << kInterrupt) | (1ULL << common::BootButtonGpio());
-  inputs.mode = GPIO_MODE_INPUT;
-  // INTN 高侧由电平转换模块上拉；不向 1.8V 小板额外注入 3.3V。
-  inputs.pull_up_en = GPIO_PULLUP_DISABLE;
-  inputs.pull_down_en = GPIO_PULLDOWN_DISABLE;
-  inputs.intr_type = GPIO_INTR_DISABLE;
-  if (gpio_config(&inputs) != ESP_OK) {
+  gpio_config_t button_input = {};
+  button_input.pin_bit_mask = (1ULL << kEsp32p4Boot) | (1ULL << kKey) |
+                              (1ULL << kPower);
+  button_input.mode = GPIO_MODE_INPUT;
+  button_input.pull_up_en = GPIO_PULLUP_ENABLE;
+  if (gpio_config(&button_input) != ESP_OK) {
     port.Lock();
     lv_label_set_text(ui.status, "GPIO setup failed");
     port.Unlock();
     return;
   }
-  auto bus = std::make_shared<cpp_bus_driver::SoftwareI2c>(kSda, kScl);
-  Sensor sensor(bus);
-  // 软件 I2C 避免占用板载显示使用的两个硬件控制器。
-  const bool initialized = sensor.Init() && ConfigureSensor(&sensor);
+  auto& driver = common::GetDriver();
+  const bool initialized = driver.IsAw93307Ready();
   port.Lock();
-  lv_label_set_text(ui.status,
-      initialized
-          ? "Sensor ready / I2C 0x12"
-          : "Sensor init failed\nCheck wiring, 1.8V level shift and ID.");
+  lv_label_set_text(
+      ui.status, initialized ? kTouchReadyText : "AW93307 initialization failed");
   port.Unlock();
   if (!initialized) {
-    printf("AW933xx initialization failed; no valid sensor data\n");
-    sensor.Deinit();
     return;
   }
-  uint32_t chip_id = 0, version = 0;
-  sensor.GetChipId(&chip_id);
-  sensor.GetFirmwareVersion(&version);
-  printf("AW933xx ID=0x%08lX FW=0x%08lX SDA=%d SCL=%d INT=%d\n",
-      static_cast<unsigned long>(chip_id), static_cast<unsigned long>(version),
-      kSda, kScl, kInterrupt);
-  bool previous_boot = false;
-  int64_t last_action = 0, last_log = 0;
+  Button boot_button(kEsp32p4Boot);
+  Button key_button(kKey);
+  Button power_button(kPower);
+  int64_t calibration_finished_ms = 0;
   const char* calibration_status = nullptr;
   GestureHistory button_history, slider_history;
   NavigationState navigation;
-  bool button_touched = false;
-  uint8_t button_transition_samples = 0;
-  bool signal_touched = false;
-  uint8_t signal_transition_samples = 0;
   while (true) {
     const int64_t now = esp_timer_get_time() / 1000;
-    const bool boot =
-        gpio_get_level(static_cast<gpio_num_t>(common::BootButtonGpio())) == 0;
-    const char* action = nullptr;
-    if (now - last_action > 300 && boot && !previous_boot) {
-      signal_touched = false;
-      signal_transition_samples = 0;
-      button_touched = false;
-      button_transition_samples = 0;
+    const bool scroll_up = boot_button.ReadPress(now);
+    const bool scroll_down = key_button.ReadPress(now);
+    const bool calibrating = power_button.ReadPress(now);
+    if (calibrating) {
       button_history = {};
       slider_history = {};
       navigation.tracking = false;
       port.Lock();
       slider_pointer.state = LV_INDEV_STATE_RELEASED;
+      lv_label_set_text(ui.status, "Calibrating...");
       port.Unlock();
-      action = CalibrateSensor(&sensor) ? "Air calibration complete"
-                                        : "Air calibration failed";
-      calibration_status = action;
-      last_action = now;
+      printf("POWER (GPIO%d) pressed: calibrating AW93307\n", kPower);
+      calibration_status = driver.CalibrateAw93307()
+                               ? "Air calibration complete"
+                               : "Air calibration failed";
+      calibration_finished_ms = esp_timer_get_time() / 1000;
     }
-    previous_boot = boot;
-    std::array<Sensor::ChannelData, 4> channels;
-    Sensor::Events events;
-    Sensor::SliderState slider, button;
-    // 固定周期读清事件，同时可观察 INTN 电平；即使未接 INTN 也能轮询调试。
-    bool success = sensor.ReadEvents(&events) &&
-                   sensor.ReadSliderState(0, &slider) &&
-                   sensor.ReadSliderState(1, &button);
-    for (size_t i = 0; success && i < channels.size(); ++i) {
-      success = sensor.ReadChannel(i, &channels[i]);
-    }
+    common::DeviceDriver::Aw93307TouchState touch;
+    const bool success = driver.ReadAw93307Touch(touch);
     const int64_t sample_time_ms = esp_timer_get_time() / 1000;
-    bool hardware_touched = false;
-    bool position_valid = false;
-    int32_t position = 0;
-    if (!success) {
-      signal_touched = false;
-      signal_transition_samples = 0;
-      button_touched = false;
-      button_transition_samples = 0;
+    if (success) {
+      CaptureGesture(&button_history, touch.button_event, sample_time_ms);
+      CaptureGesture(&slider_history, touch.slider_event, sample_time_ms);
+    } else {
       button_history = {};
       slider_history = {};
-    } else {
-      const bool button_candidate =
-          channels[kButtonChannel].difference >
-          static_cast<int32_t>(
-              button_touched ? kSignalReleaseThreshold : kSignalTouchThreshold);
-      if (button_candidate == button_touched) {
-        button_transition_samples = 0;
-      } else if (++button_transition_samples >= kSignalDebounceSamples) {
-        button_touched = button_candidate;
-        button_transition_samples = 0;
-      }
-      hardware_touched = (events.proximity0 & (1U << kButtonChannel)) != 0;
-      const bool candidate = GetSignalPosition(channels,
-          signal_touched ? kSliderSignalReleaseThreshold
-                         : kSliderSignalTouchThreshold,
-          &position);
-      if (candidate == signal_touched) {
-        signal_transition_samples = 0;
-      } else if (++signal_transition_samples >= kSignalDebounceSamples) {
-        signal_touched = candidate;
-        signal_transition_samples = 0;
-      }
-      position_valid = signal_touched && candidate;
-      if (!position_valid) {
-        position = 0;
-      }
-      // 日志和页面使用同一份分组事件记录；组 0 不覆盖组 1 的手势。
-      CaptureGesture(
-          &slider_history, events.sliders[0], sample_time_ms, "slider");
-      CaptureGesture(&button_history, events.sliders[1], sample_time_ms, "CS1");
-      if (sample_time_ms - last_log >= 1000) {
-        printf(
-            "AW933xx button=%d button_state=0x%lX hw_x=%u centroid=%ld "
-            "touch=%d diff(CH0-3)=%ld,%ld,%ld,%ld prox0=0x%X prox1=0x%X "
-            "irq=0x%lX\n",
-            button_touched, static_cast<unsigned long>(button.button_state),
-            slider.position_x, static_cast<long>(position), signal_touched,
-            static_cast<long>(channels[0].difference / 1024),
-            static_cast<long>(channels[1].difference / 1024),
-            static_cast<long>(channels[2].difference / 1024),
-            static_cast<long>(channels[3].difference / 1024),
-            static_cast<unsigned>(events.proximity0),
-            static_cast<unsigned>(events.proximity1),
-            static_cast<unsigned long>(events.source));
-        last_log = sample_time_ms;
-      }
     }
     port.Lock();
-    if (!success) {
-      lv_label_set_text(ui.status, "Read failed - check sensor connection");
-      lv_label_set_text(ui.position, "Signal position: --");
+    if (calibration_status != nullptr &&
+        sample_time_ms - calibration_finished_ms < kCalibrationStatusMs) {
+      lv_label_set_text(ui.status, calibration_status);
     } else {
       lv_label_set_text(ui.status,
-          calibration_status != nullptr && sample_time_ms - last_action < 3000
-              ? calibration_status
-              : "Ready - touch button or slide");
-      if (position_valid) {
-        lv_label_set_text_fmt(
-            ui.position, "Signal position: %ld%%", static_cast<long>(position));
-      } else {
-        lv_label_set_text(ui.position, "Signal position: --");
-      }
+          success ? kTouchReadyText : "Read failed - check sensor connection");
     }
-    UpdateGestureView(
-        ui.button, button_history, hardware_touched, success, sample_time_ms);
-    UpdateGestureView(
-        ui.slider, slider_history, signal_touched, success, sample_time_ms);
-    lv_bar_set_value(ui.bar, position, LV_ANIM_OFF);
-    if (success && action == nullptr) {
-      UpdateNavigation(
-          ui, &navigation, position_valid, position, events.sliders[1]);
+    if (success && touch.slider_position_valid) {
+      lv_label_set_text_fmt(ui.position, "Signal position: %ld%%",
+          static_cast<long>(touch.slider_position));
+    } else {
+      lv_label_set_text(ui.position, "Signal position: --");
+    }
+    UpdateGestureView(ui.button, button_history, touch.button_touched, success,
+        sample_time_ms);
+    UpdateGestureView(ui.slider, slider_history, touch.slider_touched, success,
+        sample_time_ms);
+    lv_bar_set_value(ui.bar, touch.slider_position, LV_ANIM_OFF);
+    if (scroll_up != scroll_down) {
+      const int32_t offset = scroll_up ? -kTextScrollStep : kTextScrollStep;
+      lv_obj_scroll_to_y(ui.interactions,
+          lv_obj_get_scroll_y(ui.interactions) + offset, LV_ANIM_OFF);
+    }
+    if (success && !calibrating) {
+      UpdateNavigation(ui, &navigation, touch.slider_position_valid,
+          touch.slider_position, touch.button_event);
     } else {
       slider_pointer.state = LV_INDEV_STATE_RELEASED;
       navigation.tracking = false;
     }
     port.Unlock();
-    if (action != nullptr) {
-      printf("AW933xx: %s\n", action);
-    }
     vTaskDelay(pdMS_TO_TICKS(30));
   }
 }
